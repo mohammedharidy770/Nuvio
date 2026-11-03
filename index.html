@@ -105,14 +105,14 @@
     <i class="fas fa-sticky-note"></i>
     <span data-i18n="nav.notes">المذكرات</span>
 </a>
+                        <a href="#ai" class="nav-item ai-nav-item" data-section="ai">
+                            <span class="ai-nav-icon" aria-hidden="true">N</span>
+                            <span>AI Nuvio</span>
+                        </a>
                         <a href="#settings" class="nav-item" data-section="settings">
                 <i class="fas fa-cog"></i>
                 <span data-i18n="nav.settings">الإعدادات</span>
             </a>
-                        <a href="#ai" class="nav-item ai-nav-item" data-section="ai">
-                            <span class="ai-nav-icon" aria-hidden="true"><i class="fas fa-sparkles"></i></span>
-                            <span>AI Nuvio</span>
-                        </a>
 </nav>
         <div class="sidebar-footer">
             <div class="user-info">
@@ -1344,7 +1344,7 @@
     <script src="./js/main.js"></script>
     <script src="./js/ai-page.js?v=7"></script>
     <!-- زر عائم لفتح الشات بالذكاء الاصطناعي -->
-<button onclick="app.showSection('ai')" id="ai-chat-btn" class="ai-chat-fab" aria-label="فتح AI Nuvio"><i class="fas fa-robot"></i></button>
+<button onclick="app.showSection('ai')" id="ai-chat-btn" class="ai-chat-fab" aria-label="فتح AI Nuvio"><span aria-hidden="true">N</span></button>
 
 </body>
 </html>
