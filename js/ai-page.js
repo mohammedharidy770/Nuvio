@@ -292,8 +292,25 @@
                 estimatedTime: task.estimatedTime
             })),
             habits: Array.isArray(window.app?.habits) ? window.app.habits.slice(0, 30).map(habit => ({
-                id: habit.id, title: habit.title, completed: habit.completed, streak: habit.streak
-            })) : []
+                id: habit.id, title: habit.title, target: habit.target, unit: habit.unit,
+                logs: habit.logs, repeatDays: habit.repeatDays
+            })) : [],
+            notes: Array.isArray(window.app?.notes) ? window.app.notes.slice(0, 40).map(note => ({
+                id: note.id, title: note.title, content: String(note.content || '').slice(0, 500),
+                tags: note.tags, updatedAt: note.updatedAt
+            })) : [],
+            water: window.app?.waterData ? {
+                today: window.app.waterData.today, goal: window.app.waterData.goal
+            } : null,
+            focus: window.app?.timerState ? {
+                running: window.app.timerState.running, paused: window.app.timerState.paused,
+                mode: window.app.timerState.mode, timeLeft: window.app.timerState.timeLeft
+            } : null,
+            counts: {
+                tasks: tasks.length,
+                habits: window.app?.habits?.length || 0,
+                notes: window.app?.notes?.length || 0
+            }
         };
     }
 
@@ -302,11 +319,27 @@
             ? reference?.title || reference?.id || ''
             : reference || '').trim().toLowerCase();
         if (!value) return null;
-        return getTasks().find(task =>
-            task.id === value ||
-            task.title?.toLowerCase?.() === value ||
-            task.title?.toLowerCase?.().includes(value)
-        ) || null;
+        const exact = getTasks().filter(task =>
+            task.id === value || task.title?.toLowerCase?.() === value
+        );
+        if (exact.length === 1) return exact[0];
+        if (exact.length > 1) return null;
+        const partial = getTasks().filter(task => task.title?.toLowerCase?.().includes(value));
+        return partial.length === 1 ? partial[0] : null;
+    }
+
+    function findNote(reference) {
+        const value = String(typeof reference === 'object'
+            ? reference?.title || reference?.id || ''
+            : reference || '').trim().toLowerCase();
+        if (!value || !Array.isArray(window.app?.notes)) return null;
+        const exact = window.app.notes.filter(note =>
+            note.id === value || note.title?.toLowerCase?.() === value
+        );
+        if (exact.length === 1) return exact[0];
+        if (exact.length > 1) return null;
+        const partial = window.app.notes.filter(note => note.title?.toLowerCase?.().includes(value));
+        return partial.length === 1 ? partial[0] : null;
     }
 
     function executeActions(actions) {
@@ -316,6 +349,12 @@
 
         actions.forEach(action => {
             if (!action?.type) return;
+
+            if (['delete_task', 'delete_note', 'delete_habit'].includes(action.type)) {
+                const label = action.type === 'delete_task' ? 'المهمة'
+                    : action.type === 'delete_note' ? 'الملاحظة' : 'العادة';
+                if (!window.confirm(`هل تريد حذف ${label} المحددة؟`)) return;
+            }
 
             if (action.type === 'navigate') {
                 const sections = ['dashboard', 'tasks', 'focus', 'calendar', 'reports', 'habits', 'prayer', 'sleep', 'water', 'notes', 'settings', 'ai'];
@@ -357,9 +396,13 @@
 
             if (action.type === 'complete_habit' || action.type === 'toggle_habit') {
                 const value = String(action.habit || '').trim().toLowerCase();
-                const habit = window.app.habits.find(item =>
-                    item.id === action.habit || item.title?.toLowerCase().includes(value)
+                const matches = window.app.habits.filter(item =>
+                    item.id === action.habit || item.title?.toLowerCase() === value
                 );
+                const partial = matches.length ? matches : window.app.habits.filter(item =>
+                    item.title?.toLowerCase().includes(value)
+                );
+                const habit = partial.length === 1 ? partial[0] : null;
                 if (habit) {
                     window.app.toggleHabitToday(habit.id);
                     count++;
@@ -369,9 +412,14 @@
 
             if (action.type === 'delete_habit') {
                 const value = String(action.habit || '').trim().toLowerCase();
-                window.app.habits = window.app.habits.filter(habit =>
-                    habit.id !== action.habit && !habit.title?.toLowerCase().includes(value)
+                const matches = window.app.habits.filter(habit =>
+                    habit.id === action.habit || habit.title?.toLowerCase() === value
                 );
+                const partial = matches.length ? matches : window.app.habits.filter(habit =>
+                    habit.title?.toLowerCase().includes(value)
+                );
+                if (partial.length !== 1) return;
+                window.app.habits = window.app.habits.filter(habit => habit.id !== partial[0].id);
                 window.app.saveHabits();
                 window.app.renderHabits();
                 count++;
@@ -379,7 +427,65 @@
             }
 
             if (action.type === 'add_water_glass') {
-                window.app.addWaterGlass();
+                if (typeof window.app.addWaterGlass === 'function') {
+                    window.app.addWaterGlass();
+                    count++;
+                }
+                return;
+            }
+
+            if (action.type === 'set_water_goal') {
+                const goal = Number(action.goal);
+                if (Number.isInteger(goal) && goal > 0 && goal <= 30 && window.app.waterData) {
+                    window.app.updateWaterGoal(goal);
+                    count++;
+                }
+                return;
+            }
+
+            if (action.type === 'add_note') {
+                const input = action.note || {};
+                const title = String(input.title || '').trim().slice(0, 150);
+                if (!title || !Array.isArray(window.app.notes)) return;
+                const content = String(input.content || '').trim().slice(0, 10000);
+                const duplicate = window.app.notes.some(note =>
+                    note.title.toLowerCase() === title.toLowerCase() && note.content === content
+                );
+                if (duplicate) return;
+                window.app.notes.unshift({
+                    id: 'note-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+                    title, content,
+                    tags: Array.isArray(input.tags) ? input.tags.slice(0, 10).map(tag => String(tag).slice(0, 40)) : [],
+                    color: /^#[0-9a-f]{6}$/i.test(input.color || '') ? input.color : '#fef3c7',
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                });
+                window.app.saveNotes();
+                window.app.renderNotes();
+                count++;
+                return;
+            }
+
+            if (action.type === 'update_note') {
+                const note = findNote(action.note);
+                if (!note) return;
+                const changes = action.changes || {};
+                if (typeof changes.title === 'string' && changes.title.trim()) note.title = changes.title.trim().slice(0, 150);
+                if (typeof changes.content === 'string') note.content = changes.content.slice(0, 10000);
+                if (Array.isArray(changes.tags)) note.tags = changes.tags.slice(0, 10).map(tag => String(tag).slice(0, 40));
+                note.updatedAt = new Date().toISOString();
+                window.app.saveNotes();
+                window.app.renderNotes();
+                count++;
+                return;
+            }
+
+            if (action.type === 'delete_note') {
+                const note = findNote(action.note);
+                if (!note) return;
+                window.app.notes = window.app.notes.filter(item => item.id !== note.id);
+                window.app.saveNotes();
+                window.app.renderNotes();
                 count++;
                 return;
             }
@@ -472,17 +578,6 @@
         return count;
     }
 
-    function timeToDate(time, reference = new Date()) {
-        const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
-        if (!match) return null;
-        let hour = Number(match[1]);
-        const minute = Number(match[2]);
-        if (hour >= 1 && hour <= 8) hour += 12;
-        const date = new Date(reference);
-        date.setHours(hour, minute, 0, 0);
-        return date;
-    }
-
     function parseSchedule(message) {
         const actions = [];
         String(message).split(/\n+/).forEach(line => {
@@ -534,24 +629,6 @@
         saveHistory();
         renderHistory();
 
-        const localSchedule = parseSchedule(text);
-        if (localSchedule.length) {
-            const count = settings.actionsEnabled ? executeActions(localSchedule) : 0;
-            if (!settings.actionsEnabled) {
-                await animateReply('لقد فهمت الجدول، لكن تنفيذ الإجراءات متوقف من الإعدادات.');
-                chat.messages.push({ role: 'assistant', content: 'لقد فهمت الجدول، لكن تنفيذ الإجراءات متوقف من الإعدادات.' });
-                saveHistory();
-                sending = false;
-                dom.send.disabled = false;
-                return;
-            }
-            await animateReply(`تم تطبيق الجدول مباشرة، وأضيفت ${count} مهمة.`);
-            chat.messages.push({ role: 'assistant', content: `تم تطبيق الجدول مباشرة، وأضيفت ${count} مهمة.` });
-            saveHistory();
-            sending = false;
-            dom.send.disabled = false;
-            return;
-        }
 
         const typing = showTyping();
         try {
