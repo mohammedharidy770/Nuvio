@@ -123,3 +123,144 @@ body:not(.ai-page-body) .integrated-ai * { box-sizing:border-box; }
   .ai-welcome h1 { font-size:24px; }
   .ai-suggestions button { grid-template-columns:24px 1fr; }
 }
+
+
+/* AI Nuvio visual identity and mobile layout refinement */
+.ai-section {
+  --ai-brand: #36b9d6;
+  --ai-brand-deep: #167d9b;
+  --ai-brand-gold: #c6a66a;
+  --ai-brand-glow: rgba(54,185,214,.16);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.ai-section .ai-brand-mark,
+.ai-section .ai-welcome-mark {
+  color: #07151b;
+  background: linear-gradient(135deg, #76e0ee 0%, #36b9d6 58%, #c6a66a 100%);
+  box-shadow: 0 8px 24px rgba(26,151,181,.20);
+}
+.ai-section .ai-brand-mark {
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(198,166,106,.5);
+  border-radius: 14px;
+  font-size: 18px;
+}
+.ai-section .ai-brand { letter-spacing: -.25px; }
+.ai-section .ai-brand > span:last-child { color: var(--ai-text); }
+.ai-section .ai-nav-icon,
+.ai-nav-item .ai-nav-icon {
+  color: #36b9d6 !important;
+  background: rgba(54,185,214,.12) !important;
+  border: 1px solid rgba(54,185,214,.22);
+}
+.ai-section .ai-send,
+.ai-section .ai-new-chat {
+  background: linear-gradient(135deg,#36b9d6,#167d9b);
+  color: #06141a;
+}
+.ai-section .ai-send:hover,
+.ai-section .ai-new-chat:hover { filter: brightness(1.08); }
+.ai-section .ai-message-user {
+  background: linear-gradient(135deg,#167d9b,#239fbd);
+  color: #fff;
+}
+.ai-section .ai-suggestions button:hover {
+  border-color: rgba(54,185,214,.55);
+  box-shadow: 0 10px 24px rgba(22,125,155,.10);
+}
+.ai-section .ai-suggestions button i,
+.ai-section .ai-history-row:hover,
+.ai-section .ai-history-row.active,
+.ai-section .ai-copy-message:hover { color: #239fbd; }
+.ai-section .ai-section .ai-sidebar { min-width: 0; }
+.ai-section .ai-main { min-width: 0; }
+.ai-section .ai-header,
+.ai-section .ai-composer-wrap,
+.ai-section .ai-composer { min-width: 0; }
+.ai-section .ai-composer textarea { min-width: 0; }
+.ai-section .ai-messages { overflow-x: hidden; }
+
+@media (max-width: 768px) {
+  .ai-section { height: calc(100dvh - var(--header-height, 64px)); }
+  .ai-section .integrated-ai {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0,1fr);
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .ai-section .ai-main {
+    grid-column: 1;
+    grid-row: 1;
+    height: 100%;
+    min-height: 0;
+    grid-template-rows: 56px minmax(0,1fr) auto;
+  }
+  .ai-section .ai-sidebar {
+    position: absolute;
+    inset: 0 auto 0 0;
+    right: 0;
+    left: auto;
+    width: min(310px, 86vw);
+    max-width: 100%;
+    height: 100%;
+    min-height: 0;
+    z-index: 30;
+    transform: translate3d(105%,0,0);
+    visibility: hidden;
+    pointer-events: none;
+    transition: transform .24s ease, visibility .24s ease;
+    box-shadow: -14px 0 36px rgba(0,0,0,.22);
+  }
+  .ai-section .ai-sidebar.open {
+    transform: translate3d(0,0,0);
+    visibility: visible;
+    pointer-events: auto;
+  }
+  .ai-section .ai-mobile-menu {
+    display: grid;
+    place-items: center;
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--ai-border);
+    border-radius: 11px;
+    background: var(--ai-soft);
+    color: var(--ai-text);
+    font-size: 17px;
+  }
+  .ai-section .ai-header { gap: 9px; padding-inline: 10px; }
+  .ai-section .ai-header strong { min-width: 0; flex: 1; }
+  .ai-section .ai-messages {
+    padding: 14px 12px 20px;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ai-section .ai-welcome { min-height: 100%; padding: 22px 0; }
+  .ai-section .ai-composer-wrap {
+    padding: 8px 9px max(10px, env(safe-area-inset-bottom));
+  }
+  .ai-section .ai-composer { border-radius: 16px; }
+  .ai-section .ai-composer textarea { font-size: 16px; }
+}
+@media (max-width: 480px) {
+  .ai-section { height: calc(100dvh - 56px); }
+  .ai-section .ai-header { height: 54px; }
+  .ai-section .ai-header strong { font-size: 14px; }
+  .ai-section .ai-message { max-width: 96%; }
+  .ai-section .ai-suggestions { grid-template-columns: 1fr; gap: 8px; }
+  .ai-section .ai-suggestions button { min-height: 68px; }
+  .ai-section .ai-welcome { padding: 14px 0 8px; }
+  .ai-section .ai-welcome > p { margin-bottom: 16px; font-size: 13px; }
+  .ai-section .ai-composer textarea { min-height: 42px; padding: 9px 7px; }
+  .ai-section .ai-send { width: 42px; height: 42px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-section .ai-sidebar,
+  .ai-section .ai-message,
+  .ai-section .ai-suggestions button { transition: none; animation: none; }
+}
