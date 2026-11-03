@@ -359,3 +359,17 @@
   background: #b91c1c !important;
   box-shadow: none !important;
 }
+
+
+/* Main sidebar: use the same red hover treatment across every section */
+.sidebar-nav .nav-item:not(.active):hover {
+    color: var(--primary) !important;
+    background: linear-gradient(90deg, rgba(220,38,38,.13), rgba(220,38,38,.035)) !important;
+    box-shadow: inset -3px 0 0 var(--primary);
+}
+.sidebar-nav .nav-item:not(.active):hover > i {
+    color: var(--primary) !important;
+}
+.sidebar-nav .nav-item.active {
+    color: var(--primary) !important;
+}
