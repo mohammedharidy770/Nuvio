@@ -235,7 +235,7 @@
     }
 
     function inferDirectActions(message) {
-        const text = String(message).toLower();
+        const text = String(message).toLowerCase();
         const actions = [];
         const sections = {
             dashboard: /لوحة التحكم|الرئيسية/,
