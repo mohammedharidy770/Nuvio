@@ -72,6 +72,7 @@
             button.textContent = chat.title;
             button.addEventListener('click', () => {
                 activeId = chat.id;
+                dom.sidebar?.classList.remove('open');
                 render();
             });
             const remove = document.createElement('button');
@@ -708,7 +709,17 @@
                 createChat();
             }
         });
-        dom.mobileMenu?.addEventListener('click', () => dom.sidebar?.classList.toggle('open'));
+        dom.mobileMenu?.addEventListener('click', () => {
+            const isOpen = dom.sidebar?.classList.toggle('open') || false;
+            dom.mobileMenu?.setAttribute('aria-expanded', String(isOpen));
+        });
+        document.addEventListener('click', event => {
+            if (window.innerWidth > 768 || !dom.sidebar?.classList.contains('open')) return;
+            if (!dom.sidebar.contains(event.target) && !dom.mobileMenu?.contains(event.target)) {
+                dom.sidebar.classList.remove('open');
+                dom.mobileMenu?.setAttribute('aria-expanded', 'false');
+            }
+        });
         document.getElementById('openAISettings')?.addEventListener('click', () => {
             syncSettings();
             openSettings(true);
