@@ -15,6 +15,22 @@ Object.assign(NuvioApp.prototype, {
             document.getElementById('sidebar').classList.remove('active');
         });
 
+        // Close the mobile navigation when the user taps outside it or presses Escape.
+        document.addEventListener('click', (event) => {
+            const sidebar = document.getElementById('sidebar');
+            const menuToggle = document.getElementById('menuToggle');
+            if (window.innerWidth <= 768 && sidebar?.classList.contains('active')
+                && !sidebar.contains(event.target) && !menuToggle?.contains(event.target)) {
+                sidebar.classList.remove('active');
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                document.getElementById('sidebar')?.classList.remove('active');
+            }
+        });
+
         document.getElementById('btnNewTask').addEventListener('click', () => {
             this.openTaskModal();
         });
