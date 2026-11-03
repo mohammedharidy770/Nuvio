@@ -345,3 +345,17 @@
 }
 .ai-nav-item { gap: 12px; }
 .ai-nav-item.active .ai-nav-icon { box-shadow: 0 0 0 3px rgba(220,38,38,.14), 0 5px 14px rgba(220,38,38,.28); }
+
+
+/* AI navigation icon matches the site's red and black theme */
+.ai-nav-icon {
+  color: #fff !important;
+  background: #dc2626 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.ai-nav-icon i { color: #fff !important; font-size: 15px !important; }
+.ai-nav-item.active .ai-nav-icon {
+  background: #b91c1c !important;
+  box-shadow: none !important;
+}
