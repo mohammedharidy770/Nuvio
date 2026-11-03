@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuvio</title>
+    <link rel="icon" href="./assets/layer-group.svg" type="image/svg+xml">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="stylesheet" href="./css/base.css?v=10">
+    <link rel="stylesheet" href="./css/layout.css">
+    <link rel="stylesheet" href="./css/components.css">
+    <link rel="stylesheet" href="./css/dashboard.css?v=7">
+    <link rel="stylesheet" href="./css/tasks-focus.css">
+    <link rel="stylesheet" href="./css/productivity.css">
+    <link rel="stylesheet" href="./css/tracking.css">
+    <link rel="stylesheet" href="./css/personal.css">
+    <link rel="stylesheet" href="./css/responsive.css?v=9">
+    <link rel="stylesheet" href="./css/auth.css?v=1">
+    <link rel="stylesheet" href="./css/motion.css?v=1">
+    <link rel="stylesheet" href="./css/ai-chat.css?v=2">
+    <link rel="stylesheet" href="./css/ai-page.css?v=4">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<base target="_blank">
+</head>
+<body>
+        <!-- Welcome Screen -->
+    <div class="welcome-screen" id="welcomeScreen">
+        <div class="welcome-card">
+            <div class="welcome-logo">
+                <div class="logo-icon large">N</div>
+                <h1>Nuvio</h1>
+                <p data-i18n="welcome.subtitle">نظام التشغيل الشخصي</p>
+            </div>
+            <div class="welcome-form">
+                <div class="avatar-upload">
+                    <div class="avatar-preview" id="avatarPreview">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <input type="file" id="avatarInput" accept="image/*" onchange="app.handleAvatarUpload(event)" style="display:none;">
+                    <button type="button" class="btn-outline" onclick="document.getElementById('avatarInput').click()">
+                        <i class="fas fa-camera"></i> <span data-i18n="welcome.choosePhoto">اختر صورة</span>
+                    </button>
+                </div>
+                <div class="form-group">
+                    <label for="userNameInput" data-i18n="welcome.yourName">اسمك</label>
+                    <input type="text" id="userNameInput" data-i18n-placeholder="welcome.namePlaceholder" placeholder="اكتب اسمك هنا" maxlength="30">
+                </div>
+                <button class="btn-primary btn-full" onclick="app.saveUserProfile()">
+                    <span data-i18n="welcome.start">ابدأ</span> <i class="fas fa-arrow-left"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+<div class="logo-icon">
+  <img src="./assets/layer-group.svg" alt="N" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">
+</div>
+                <span class="logo-text">Nuvio</span>
+            </div>
+            <button class="sidebar-close" id="sidebarClose"><i class="fas fa-times"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="#dashboard" class="nav-item active" data-section="dashboard">
+                <i class="fas fa-th-large"></i>
+                <span data-i18n="nav.dashboard">لوحة التحكم</span>
+            </a>
+            <a href="#tasks" class="nav-item" data-section="tasks">
+                <i class="fas fa-tasks"></i>
+                <span data-i18n="nav.tasks">المهام</span>
+                <span class="nav-badge" id="pendingBadge">0</span>
+            </a>
+            <a href="#focus" class="nav-item" data-section="focus">
+                <i class="fas fa-clock"></i>
+                <span data-i18n="nav.focus">التركيز</span>
+            </a>
+            <a href="#calendar" class="nav-item" data-section="calendar">
+                <i class="fas fa-calendar-alt"></i>
+                <span data-i18n="nav.calendar">التقويم</span>
+            </a>
+            <a href="#reports" class="nav-item" data-section="reports">
+                <i class="fas fa-chart-bar"></i>
+                <span data-i18n="nav.reports">التقارير</span>
+            </a>
+                    <a href="#habits" class="nav-item" data-section="habits">
+                <i class="fas fa-spa"></i>
+                <span data-i18n="nav.habits">العادات اليومية</span>
+            </a>
+            <a href="#prayer" class="nav-item" data-section="prayer">
+                <i class="fas fa-mosque"></i>
+                <span data-i18n="nav.prayer">مواقيت الصلاة</span>
+            </a>
+            <a href="#sleep" class="nav-item" data-section="sleep">
+    <i class="fas fa-bed"></i>
+    <span data-i18n="nav.sleep">تتبع النوم</span>
+</a>
+<a href="#water" class="nav-item" data-section="water">
+    <i class="fas fa-tint"></i>
+    <span data-i18n="nav.water">شرب الماء</span>
+</a>
+            <a href="#notes" class="nav-item" data-section="notes">
+    <i class="fas fa-sticky-note"></i>
+    <span data-i18n="nav.notes">المذكرات</span>
+</a>
+                        <a href="#settings" class="nav-item" data-section="settings">
+                <i class="fas fa-cog"></i>
+                <span data-i18n="nav.settings">الإعدادات</span>
+            </a>
+                        <a href="#ai" class="nav-item ai-nav-item" data-section="ai">
+                            <span class="ai-nav-icon" aria-hidden="true"><i class="fas fa-sparkles"></i></span>
+                            <span>AI Nuvio</span>
+                        </a>
+</nav>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar" id="sidebarAvatar"><i class="fas fa-user"></i></div>
+<div class="user-details">
+    <div class="user-name-row">
+        <span class="user-name" id="sidebarUserName" data-i18n="user.name">مستخدم</span>
+        <button class="user-edit-btn" onclick="app.editUserProfile()" title="تعديل البروفايل">
+            <i class="fas fa-pen"></i>
+        </button>
+    </div>
+</div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="top-header">
+            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+            <div class="header-title">
+                <h1 id="pageTitle" data-i18n="pages.dashboard">لوحة التحكم</h1>
+            </div>
+            <div class="header-actions">
+                <button class="theme-toggle" id="themeToggle" title="تبديل الوضع">
+                    <i class="fas fa-moon" id="themeIcon"></i>
+                </button>
+                <button class="lang-toggle" id="langToggle" title="تبديل اللغة">
+                    <span>EN</span>
+                </button>
+                <button class="btn-new-task" id="btnNewTask">
+                    <i class="fas fa-plus"></i>
+                    <span data-i18n="actions.newTask">مهمة جديدة</span>
+                </button>
+                <button class="header-btn" id="btnHelp" title="التعليمات" onclick="app.showHelp()">
+    <i class="fas fa-question-circle"></i>
+</button>
+
+                <button class="header-btn" id="btnNotifications">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-dot" id="notificationDot"></span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Dashboard Section -->
+        <section class="section active" id="dashboardSection">
+            <div class="welcome-banner">
+                <div class="welcome-text">
+                    <h2 data-i18n="dashboard.welcome">مرحباً بعودتك</h2>
+                    <p id="welcomeDate">إليك يومك</p>
+                </div>
+                <div class="welcome-time">
+                    <span id="currentTime">--:--</span>
+                    <span id="currentDate">--</span>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="dash-card progress-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-chart-pie"></i> <span data-i18n="dashboard.todayProgress">تقدم اليوم</span></h3>
+                        <span class="card-date" id="progressDate">--</span>
+                    </div>
+                    <div class="progress-circle-container">
+                        <div class="progress-circle" id="progressCircle">
+                            <svg viewBox="0 0 120 120">
+                                <defs><linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:var(--primary)"/><stop offset="100%" style="stop-color:var(--primary-light)"/></linearGradient></defs>
+                                <circle class="progress-bg" cx="60" cy="60" r="52"/>
+                                <circle class="progress-bar" id="progressBar" cx="60" cy="60" r="52"/>
+                            </svg>
+                            <div class="progress-text">
+                                <span class="progress-percent" id="progressPercent">0%</span>
+                                <span class="progress-label" data-i18n="dashboard.completed">مكتمل</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="progress-stats">
+                        <div class="stat-item">
+                            <span class="stat-value" id="completedCount">0</span>
+                            <span class="stat-label" data-i18n="dashboard.completedLabel">مكتمل</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="totalCount">0</span>
+                            <span class="stat-label" data-i18n="dashboard.totalLabel">الكل</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="pendingCount">0</span>
+                            <span class="stat-label" data-i18n="dashboard.pendingLabel">معلق</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dash-card current-task-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-play-circle"></i> <span data-i18n="dashboard.currentTask">المهمة الحالية</span></h3>
+                    </div>
+                    <div class="current-task-content" id="currentTaskContent">
+                        <div class="empty-state">
+                            <i class="fas fa-clipboard-list"></i>
+                            <p data-i18n="dashboard.noActiveTask">لا توجد مهمة نشطة</p>
+                            <button class="btn-outline" onclick="app.openTaskModal()" data-i18n="actions.selectTask">اختر مهمة</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dash-card quick-actions-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-bolt"></i> <span data-i18n="dashboard.quickActions">إجراءات سريعة</span></h3>
+                    </div>
+                    <div class="quick-actions-grid">
+                        <button class="quick-action" onclick="app.openTaskModal()">
+                            <div class="qa-icon"><i class="fas fa-plus"></i></div>
+                            <span data-i18n="actions.newTask">مهمة جديدة</span>
+                        </button>
+                        <button class="quick-action" onclick="app.startQuickFocus()">
+                            <div class="qa-icon"><i class="fas fa-clock"></i></div>
+                            <span data-i18n="actions.focusSession">جلسة تركيز</span>
+                        </button>
+                        <button class="quick-action" onclick="app.showSection('reports')">
+                            <div class="qa-icon"><i class="fas fa-chart-line"></i></div>
+                            <span data-i18n="actions.report">التقرير</span>
+                        </button>
+                        <button class="quick-action" onclick="app.exportData()">
+                            <div class="qa-icon"><i class="fas fa-download"></i></div>
+                            <span data-i18n="actions.export">تصدير</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="dash-card stats-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-chart-bar"></i> <span data-i18n="dashboard.todayStats">إحصائيات اليوم</span></h3>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-icon completed"><i class="fas fa-check-circle"></i></div>
+                            <div class="stat-info">
+                                <span class="stat-number" id="todayCompleted">0</span>
+                                <span class="stat-desc" data-i18n="dashboard.tasksCompleted">مهمة مكتملة</span>
+                            </div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-icon time"><i class="fas fa-hourglass-half"></i></div>
+                            <div class="stat-info">
+                                <span class="stat-number" id="todayFocusTime">0h</span>
+                                <span class="stat-desc" data-i18n="dashboard.focusTime">وقت التركيز</span>
+                            </div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-icon productivity"><i class="fas fa-fire"></i></div>
+                            <div class="stat-info">
+                                <span class="stat-number" id="todayProductivity">0%</span>
+                                <span class="stat-desc" data-i18n="dashboard.productivity">الإنتاجية</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dash-card focus-summary-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-brain"></i> <span data-i18n="dashboard.focusSummary">ملخص التركيز</span></h3>
+                    </div>
+                    <div class="focus-summary" id="focusSummary">
+                        <div class="focus-status">
+                            <div class="status-indicator" id="focusStatusIndicator">
+                                <i class="fas fa-circle"></i>
+                                <span data-i18n="dashboard.onTrack">في المسار</span>
+                            </div>
+                        </div>
+                        <div class="focus-metrics">
+                            <div class="focus-metric">
+                                <span class="fm-value" id="focusSessions">0</span>
+                                <span class="fm-label" data-i18n="dashboard.sessions">جلسات</span>
+                            </div>
+                            <div class="focus-metric">
+                                <span class="fm-value" id="focusTotalTime">0h 0m</span>
+                                <span class="fm-label" data-i18n="dashboard.totalTime">الوقت الكلي</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dash-card weekly-preview-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-calendar-week"></i> <span data-i18n="dashboard.weeklyReport">التقرير الأسبوعي</span></h3>
+                        <button class="btn-text" onclick="app.showSection('reports')" data-i18n="actions.viewAll">عرض الكل</button>
+                    </div>
+                    <div class="weekly-chart" id="weeklyChart">
+                        <canvas id="weeklyCanvas"></canvas>
+                    </div>
+                    <div class="weekly-legend">
+                        <div class="legend-item">
+                            <span class="legend-color" style="background: var(--primary);"></span>
+                            <span data-i18n="dashboard.focusHours">ساعات التركيز</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color" style="background: var(--secondary);"></span>
+                            <span data-i18n="dashboard.completedTasks">المهام المكتملة</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tasks Section -->
+        <section class="section" id="tasksSection">
+            <div class="tasks-header">
+                <div class="tasks-filters">
+                    <button class="filter-btn active" data-filter="all" data-i18n="filters.all">الكل</button>
+                    <button class="filter-btn" data-filter="pending" data-i18n="filters.pending">معلقة</button>
+                    <button class="filter-btn" data-filter="in-progress" data-i18n="filters.inProgress">قيد التنفيذ</button>
+                    <button class="filter-btn" data-filter="completed" data-i18n="filters.completed">مكتملة</button>
+                    <button class="filter-btn" data-filter="overdue" data-i18n="filters.overdue">متأخرة</button>
+                </div>
+                <div class="tasks-sort">
+                    <select id="sortTasks" onchange="app.sortTasks()">
+                        <option value="newest" data-i18n="sort.newest">الأحدث</option>
+                        <option value="priority" data-i18n="sort.priority">الأولوية</option>
+                        <option value="due-date" data-i18n="sort.dueDate">موعد النهاية</option>
+                        <option value="estimated-time" data-i18n="sort.estimatedTime">الوقت المقدر</option>
+                    </select>
+                </div>
+            </div>
+            <div class="tasks-list" id="tasksList"></div>
+            <div class="tasks-empty" id="tasksEmpty">
+                <i class="fas fa-clipboard-check"></i>
+                <h3 data-i18n="tasks.noTasks">لا توجد مهام</h3>
+                <p data-i18n="tasks.createFirst">أنشئ أول مهمة للبدء</p>
+                <button class="btn-primary" onclick="app.openTaskModal()">
+                    <i class="fas fa-plus"></i> <span data-i18n="actions.newTask">مهمة جديدة</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Focus Section -->
+        <section class="section" id="focusSection">
+            <div class="focus-container">
+                <div class="focus-timer-card">
+                    <div class="timer-display">
+                        <div class="timer-circle">
+                            <svg viewBox="0 0 300 300">
+                                <circle class="timer-bg" cx="150" cy="150" r="130"/>
+                                <circle class="timer-progress" id="timerProgress" cx="150" cy="150" r="130"/>
+                            </svg>
+                            <div class="timer-text">
+                                <span id="timerMinutes">25</span>
+                                <span class="timer-sep">:</span>
+                                <span id="timerSeconds">00</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="timer-mode">
+                        <button class="mode-btn active" data-mode="pomodoro" data-i18n="timer.pomodoro">بومودورو</button>
+                        <button class="mode-btn" data-mode="short" data-i18n="timer.shortBreak">استراحة قصيرة</button>
+                        <button class="mode-btn" data-mode="long" data-i18n="timer.longBreak">استراحة طويلة</button>
+                    </div>
+                    <div class="timer-controls">
+                        <button class="timer-btn primary" id="timerStartBtn" onclick="app.toggleTimer()">
+                            <i class="fas fa-play"></i>
+                            <span data-i18n="timer.start">بدء</span>
+                        </button>
+                        <button class="timer-btn" id="timerPauseBtn" onclick="app.pauseTimer()" style="display:none;">
+                            <i class="fas fa-pause"></i>
+                            <span data-i18n="timer.pause">إيقاف مؤقت</span>
+                        </button>
+                        <button class="timer-btn secondary" onclick="app.resetTimer()">
+                            <i class="fas fa-redo"></i>
+                            <span data-i18n="timer.reset">إعادة</span>
+                        </button>
+                    </div>
+                    <div class="timer-task" id="timerTaskInfo">
+                        <p data-i18n="timer.noTaskSelected">لم يتم اختيار مهمة</p>
+                    </div>
+                </div>
+                <div class="focus-stats-card">
+                    <h3><i class="fas fa-chart-pie"></i> <span data-i18n="focus.sessionStats">إحصائيات الجلسة</span></h3>
+                    <div class="focus-stats-grid">
+                        <div class="fs-item">
+                            <span class="fs-value" id="sessionCount">0</span>
+                            <span class="fs-label" data-i18n="focus.sessions">جلسات</span>
+                        </div>
+                        <div class="fs-item">
+                            <span class="fs-value" id="sessionFocusTime">0h</span>
+                            <span class="fs-label" data-i18n="focus.focus">تركيز</span>
+                        </div>
+                        <div class="fs-item">
+                            <span class="fs-value" id="sessionBreakTime">0m</span>
+                            <span class="fs-label" data-i18n="focus.break">استراحة</span>
+                        </div>
+                    </div>
+                    <div class="focus-grade">
+                        <h4 data-i18n="focus.productivityGrade">درجة الإنتاجية</h4>
+                        <div class="grade-display" id="productivityGrade">
+                            <span class="grade-value" data-i18n="focus.excellent">ممتاز</span>
+                            <div class="grade-bar">
+                                <div class="grade-fill" id="gradeFill" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Calendar Section -->
+        <section class="section" id="calendarSection">
+            <div class="calendar-container">
+                <div class="calendar-header">
+                    <button class="cal-nav" onclick="app.prevMonth()"><i class="fas fa-chevron-right"></i></button>
+                    <h2 id="calendarMonthYear">--</h2>
+                    <button class="cal-nav" onclick="app.nextMonth()"><i class="fas fa-chevron-left"></i></button>
+                </div>
+                <div class="calendar-grid">
+                    <div class="cal-day-name" data-i18n="days.sun">أحد</div>
+                    <div class="cal-day-name" data-i18n="days.mon">إثنين</div>
+                    <div class="cal-day-name" data-i18n="days.tue">ثلاثاء</div>
+                    <div class="cal-day-name" data-i18n="days.wed">أربعاء</div>
+                    <div class="cal-day-name" data-i18n="days.thu">خميس</div>
+                    <div class="cal-day-name" data-i18n="days.fri">جمعة</div>
+                    <div class="cal-day-name" data-i18n="days.sat">سبت</div>
+                    <div class="cal-days" id="calendarDays"></div>
+                </div>
+                <div class="calendar-tasks" id="calendarTasks">
+                    <h3 data-i18n="calendar.todayTasks">مهام اليوم</h3>
+                    <div class="cal-tasks-list" id="calTasksList"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Reports Section -->
+        <section class="section" id="reportsSection">
+            <div class="reports-grid">
+                <div class="report-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-clock"></i> <span data-i18n="reports.focusHours">ساعات التركيز</span></h3>
+                        <select id="reportPeriod" onchange="app.updateReports()">
+                            <option value="week" data-i18n="reports.thisWeek">هذا الأسبوع</option>
+                            <option value="month" data-i18n="reports.thisMonth">هذا الشهر</option>
+                        </select>
+                    </div>
+                    <div class="report-chart">
+                        <canvas id="focusHoursChart"></canvas>
+                    </div>
+                </div>
+                <div class="report-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-check-circle"></i> <span data-i18n="reports.completedTasks">المهام المكتملة</span></h3>
+                    </div>
+                    <div class="report-chart">
+                        <canvas id="completedTasksChart"></canvas>
+                    </div>
+                </div>
+                <div class="report-card wide">
+                    <div class="card-header">
+                        <h3><i class="fas fa-map"></i> <span data-i18n="reports.activityMap">خريطة النشاط</span></h3>
+                    </div>
+                    <div class="activity-map" id="activityMap"></div>
+                </div>
+                <div class="report-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-calendar-alt"></i> <span data-i18n="reports.monthlyOverview">نظرة شهرية</span></h3>
+                    </div>
+                    <div class="monthly-overview" id="monthlyOverview">
+                        <div class="mo-stat">
+                            <span class="mo-value" id="moTotalTasks">0</span>
+                            <span class="mo-label" data-i18n="reports.totalTasks">إجمالي المهام</span>
+                        </div>
+                        <div class="mo-stat">
+                            <span class="mo-value" id="moCompleted">0</span>
+                            <span class="mo-label" data-i18n="reports.completed">مكتملة</span>
+                        </div>
+                        <div class="mo-stat">
+                            <span class="mo-value" id="moFocusHours">0</span>
+                            <span class="mo-label" data-i18n="reports.focusHoursLabel">ساعات تركيز</span>
+                        </div>
+                        <div class="mo-stat">
+                            <span class="mo-value" id="moAvgProductivity">0%</span>
+                            <span class="mo-label" data-i18n="reports.avgProductivity">متوسط الإنتاجية</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+                <!-- Sleep Tracker Section -->
+        <section class="section" id="sleepSection">
+            <div class="sleep-container">
+                <div class="sleep-header">
+                    <h2 data-i18n="sleep.title">تتبع النوم</h2>
+                    <button class="btn-new-task" onclick="app.openSleepModal()">
+                        <i class="fas fa-plus"></i>
+                        <span data-i18n="sleep.addRecord">تسجيل نوم</span>
+                    </button>
+                </div>
+
+                <div class="sleep-stats-row">
+                    <div class="sleep-stat-card">
+                        <div class="sleep-stat-icon"><i class="fas fa-moon"></i></div>
+                        <div class="sleep-stat-info">
+                            <span class="sleep-stat-value" id="sleepAvgHours">0h</span>
+                            <span class="sleep-stat-label" data-i18n="sleep.avgHours">متوسط النوم</span>
+                        </div>
+                    </div>
+                    <div class="sleep-stat-card">
+                        <div class="sleep-stat-icon"><i class="fas fa-star"></i></div>
+                        <div class="sleep-stat-info">
+                            <span class="sleep-stat-value" id="sleepQualityAvg">0%</span>
+                            <span class="sleep-stat-label" data-i18n="sleep.avgQuality">جودة النوم</span>
+                        </div>
+                    </div>
+                    <div class="sleep-stat-card">
+                        <div class="sleep-stat-icon"><i class="fas fa-calendar-week"></i></div>
+                        <div class="sleep-stat-info">
+                            <span class="sleep-stat-value" id="sleepTotalNights">0</span>
+                            <span class="sleep-stat-label" data-i18n="sleep.totalNights">ليالي مسجلة</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sleep-chart-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-chart-bar"></i> <span data-i18n="sleep.weeklyChart">نوم الأسبوع</span></h3>
+                    </div>
+                    <div class="sleep-chart" id="sleepChart"></div>
+                </div>
+
+                <div class="sleep-list" id="sleepList"></div>
+                
+                <div class="sleep-empty" id="sleepEmpty">
+                    <i class="fas fa-bed"></i>
+                    <h3 data-i18n="sleep.noRecords">لا توجد سجلات</h3>
+                    <p data-i18n="sleep.createFirst">سجل أول ليلة نوم</p>
+                    <button class="btn-primary" onclick="app.openSleepModal()">
+                        <i class="fas fa-plus"></i> <span data-i18n="sleep.addRecord">تسجيل نوم</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Water Tracker Section -->
+        <section class="section" id="waterSection">
+            <div class="water-container">
+                <div class="water-header">
+                    <h2 data-i18n="water.title">تتبع شرب الماء</h2>
+                    <div class="water-settings">
+                        <label data-i18n="water.dailyGoal">الهدف اليومي:</label>
+                        <input type="number" id="waterGoalInput" value="8" min="4" max="20" onchange="app.updateWaterGoal(this.value)">
+                        <span data-i18n="water.glasses">كوب</span>
+                    </div>
+                </div>
+
+                <div class="water-main">
+                    <div class="water-visual">
+                        <div class="water-bottle">
+                            <div class="water-level" id="waterLevel"></div>
+                            <div class="water-bubbles">
+                                <span></span><span></span><span></span>
+                            </div>
+                        </div>
+                        <div class="water-count">
+                            <span id="waterCurrent">0</span>
+                            <span>/</span>
+                            <span id="waterGoal">8</span>
+                        </div>
+                        <p class="water-percent" id="waterPercent">0%</p>
+                    </div>
+
+                    <div class="water-controls">
+                        <button class="water-btn add" onclick="app.addWaterGlass()">
+                            <i class="fas fa-plus"></i>
+                            <span data-i18n="water.addGlass">كوب</span>
+                        </button>
+                        <button class="water-btn remove" onclick="app.removeWaterGlass()">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="water-weekly" id="waterWeekly"></div>
+
+                <div class="water-reminder">
+                    <label class="toggle">
+                        <input type="checkbox" id="waterReminderToggle" onchange="app.toggleWaterReminder()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span data-i18n="water.reminder">تذكير كل ساعة</span>
+                </div>
+            </div>
+        </section>
+        <!-- Notes Section -->
+        <section class="section" id="notesSection">
+            <div class="notes-container">
+                <div class="notes-header">
+                    <div class="notes-search">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="notesSearch" data-i18n-placeholder="notes.searchPlaceholder" placeholder="ابحث في مذكراتك..." oninput="app.searchNotes()">
+                    </div>
+                    <button class="btn-new-task" onclick="app.openNoteModal()">
+                        <i class="fas fa-plus"></i>
+                        <span data-i18n="notes.newNote">مذكرة جديدة</span>
+                    </button>
+                </div>
+
+                <div class="notes-tags-filter" id="notesTagsFilter"></div>
+
+                <div class="notes-grid" id="notesGrid"></div>
+                
+                <div class="notes-empty" id="notesEmpty">
+                    <i class="fas fa-sticky-note"></i>
+                    <h3 data-i18n="notes.noNotes">لا توجد مذكرات</h3>
+                    <p data-i18n="notes.createFirst">اكتب أول مذكرة</p>
+                    <button class="btn-primary" onclick="app.openNoteModal()">
+                        <i class="fas fa-plus"></i> <span data-i18n="notes.newNote">مذكرة جديدة</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+        <!-- Settings Section -->
+        <section class="section" id="settingsSection">
+            <div class="settings-container">
+                <div class="settings-card">
+                    <div class="setting-group">
+                        <h3><i class="fas fa-palette"></i> <span data-i18n="settings.appearance">المظهر</span></h3>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label" data-i18n="settings.darkMode">الوضع الداكن</span>
+                                <span class="setting-desc" data-i18n="settings.darkModeDesc">تفعيل الوضع الداكن للواجهة</span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="darkModeToggle" checked onchange="app.toggleDarkMode()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="setting-group">
+                        <h3><i class="fas fa-language"></i> <span data-i18n="settings.language">اللغة</span></h3>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label" data-i18n="settings.appLanguage">لغة التطبيق</span>
+                                <span class="setting-desc" data-i18n="settings.languageDesc">اختر لغة التطبيق</span>
+                            </div>
+                            <select id="languageSelect" onchange="app.changeLanguage()">
+                                <option value="ar">العربية</option>
+                                <option value="en">English</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="setting-group">
+                        <h3><i class="fas fa-stopwatch"></i> <span data-i18n="settings.timer">إعدادات المؤقت</span></h3>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label" data-i18n="settings.pomodoroDuration">مدة البومودورو</span>
+                                <span class="setting-desc" data-i18n="settings.pomodoroDesc">مدة جلسة التركيز</span>
+                            </div>
+                            <div class="setting-input">
+                                <input type="number" id="pomodoroDuration" value="25" min="1" max="120" onchange="app.updateTimerSetting('pomodoroDuration', this.value)">
+                                <span data-i18n="settings.minutes">د</span>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label" data-i18n="settings.shortBreak">استراحة قصيرة</span>
+                                <span class="setting-desc" data-i18n="settings.shortBreakDesc">مدة الاستراحة القصيرة</span>
+                            </div>
+                            <div class="setting-input">
+                                <input type="number" id="shortBreakDuration" value="5" min="1" max="60" onchange="app.updateTimerSetting('shortBreakDuration', this.value)">
+                                <span data-i18n="settings.minutes">د</span>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label" data-i18n="settings.longBreak">استراحة طويلة</span>
+                                <span class="setting-desc" data-i18n="settings.longBreakDesc">مدة الاستراحة الطويلة</span>
+                            </div>
+                            <div class="setting-input">
+                                <input type="number" id="longBreakDuration" value="15" min="1" max="120" onchange="app.updateTimerSetting('longBreakDuration', this.value)">
+                                <span data-i18n="settings.minutes">د</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-group">
+                        <h3><i class="fas fa-bell"></i> <span data-i18n="settings.notifications">الإشعارات</span></h3>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label" data-i18n="settings.timerNotif">انتهاء المؤقت</span>
+                                <span class="setting-desc" data-i18n="settings.timerNotifDesc">إشعار عند انتهاء المؤقت</span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="timerNotification" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label" data-i18n="settings.taskReminder">تذكير المهام</span>
+                                <span class="setting-desc" data-i18n="settings.taskReminderDesc">تذكير بالمهام المعلقة</span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="taskReminderEnabled" checked onchange="app.toggleTaskReminder()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="setting-group">
+                        <h3><i class="fas fa-database"></i> <span data-i18n="settings.dataManagement">إدارة البيانات</span></h3>
+                        <div class="setting-actions">
+                            <button class="btn-outline" onclick="app.exportData()">
+                                <i class="fas fa-download"></i> <span data-i18n="actions.exportData">تصدير البيانات</span>
+                            </button>
+                            <button class="btn-outline" onclick="app.importData()">
+                                <i class="fas fa-upload"></i> <span data-i18n="actions.importData">استيراد البيانات</span>
+                            </button>
+                            <button class="btn-danger" onclick="app.clearAllData()">
+                                <i class="fas fa-trash"></i> <span data-i18n="actions.clearAll">مسح كل البيانات</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="setting-group">
+                        <h3><i class="fas fa-user-shield"></i> <span data-i18n="settings.account">الحساب</span></h3>
+                        <div class="setting-item account-setting">
+                            <div class="setting-info">
+                                <span class="setting-label" data-i18n="settings.logout">تسجيل الخروج</span>
+                                <span class="setting-desc" data-i18n="settings.logoutDesc">الخروج من حسابك على هذا الجهاز</span>
+                            </div>
+                            <button class="btn-danger logout-btn" id="logoutButton" onclick="app.signOut()">
+                                <i class="fas fa-right-from-bracket"></i>
+                                <span data-i18n="settings.logout">تسجيل الخروج</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="setting-group about">
+                        <h3><i class="fas fa-info-circle"></i> <span data-i18n="settings.about">عن التطبيق</span></h3>
+                        <div class="about-content">
+                            <div class="about-logo">
+                                <div class="logo-icon large">
+  <img src="./assets/layer-group.svg" alt="N" style="width:100%;height:100%;object-fit:cover;border-radius:16px;">
+</div>
+                                <h4>Nuvio</h4>
+                                <p data-i18n="settings.personalOS"></p>
+                            </div>
+                            <p class="about-version">v2.0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    
+        <!-- AI Section -->
+        <section class="section ai-section" id="aiSection">
+            <div class="integrated-ai">
+                <aside class="ai-sidebar" id="aiSidebar">
+                    <div class="ai-brand"><span class="ai-brand-mark"><i class="fas fa-sparkles"></i></span><span>AI Nuvio</span></div>
+                    <button class="ai-new-chat" id="newChat">محادثة جديدة</button>
+                    <div class="ai-history">
+                        <div class="ai-history-title">المحادثات السابقة</div>
+                        <div id="historyList"></div>
+                    </div>
+                    <button class="ai-settings-button" id="openAISettings"><i class="fas fa-sliders"></i><span>إعدادات AI Nuvio</span></button>
+                </aside>
+                <main class="ai-main">
+                    <header class="ai-header">
+                        <button class="ai-mobile-menu" id="mobileMenu" aria-label="قائمة المحادثات">☰</button>
+                        <strong id="chatTitle">محادثة جديدة</strong>
+                        <button class="ai-clear" id="clearChat"><i class="fas fa-trash-can"></i><span>مسح المحادثة</span></button>
+                    </header>
+                    <section class="ai-messages" id="messages" aria-live="polite"></section>
+                    <footer class="ai-composer-wrap">
+                        <div class="ai-composer">
+                            <textarea id="prompt" rows="1" placeholder="اسأل AI Nuvio أو اطلب تنفيذ مهمة..."></textarea>
+                            <button class="ai-send" id="sendPrompt" aria-label="إرسال"><i class="fas fa-arrow-up"></i></button>
+                        </div>
+                        <div class="ai-hint">يتحكم في مهامك وأقسام الموقع مباشرة.</div>
+                    </footer>
+                </main>
+            </div>
+            <div class="ai-settings-backdrop" id="aiSettingsBackdrop"></div>
+            <aside class="ai-settings-panel" id="aiSettingsPanel" aria-label="إعدادات AI Nuvio">
+                <div class="ai-settings-header">
+                    <strong>إعدادات AI Nuvio</strong>
+                    <button id="closeAISettings" aria-label="إغلاق"><i class="fas fa-times"></i></button>
+                </div>
+                <label class="ai-setting-row">
+                    <span><strong>أسلوب الرد</strong><small>اختر طريقة تواصل المساعد</small></span>
+                    <select id="aiResponseTone">
+                        <option value="concise">مختصر ومباشر</option>
+                        <option value="friendly">ودود وشرح بسيط</option>
+                        <option value="detailed">تفصيلي</option>
+                    </select>
+                </label>
+                <label class="ai-setting-row">
+                    <span><strong>تنفيذ الإجراءات</strong><small>السماح للمساعد بتعديل مهامك</small></span>
+                    <input type="checkbox" id="aiAutoActions" checked>
+                </label>
+                <button class="ai-settings-reset" id="resetAISettings">استعادة الإعدادات الافتراضية</button>
+            </aside>
+        </section>
+
+        <!-- Habits Section -->
+        <section class="section" id="habitsSection">
+            <div class="habits-container">
+                <div class="habits-header">
+                    <div class="habits-stats-row">
+                        <div class="habit-stat-card">
+                            <div class="habit-stat-icon"><i class="fas fa-fire"></i></div>
+                            <div class="habit-stat-info">
+                                <span class="habit-stat-value" id="habitsStreak">0</span>
+                                <span class="habit-stat-label" data-i18n="habits.currentStreak">أطول سلسلة</span>
+                            </div>
+                        </div>
+                        <div class="habit-stat-card">
+                            <div class="habit-stat-icon"><i class="fas fa-check-circle"></i></div>
+                            <div class="habit-stat-info">
+                                <span class="habit-stat-value" id="habitsCompletedToday">0</span>
+                                <span class="habit-stat-label" data-i18n="habits.completedToday">منجزة اليوم</span>
+                            </div>
+                        </div>
+                        <div class="habit-stat-card">
+                            <div class="habit-stat-icon"><i class="fas fa-percentage"></i></div>
+                            <div class="habit-stat-info">
+                                <span class="habit-stat-value" id="habitsRate">0%</span>
+                                <span class="habit-stat-label" data-i18n="habits.successRate">نسبة النجاح</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn-new-task" onclick="app.openHabitModal()">
+                        <i class="fas fa-plus"></i>
+                        <span data-i18n="habits.newHabit">عادة جديدة</span>
+                    </button>
+                </div>
+
+                <div class="habits-list" id="habitsList"></div>
+                <div class="habits-empty" id="habitsEmpty">
+                    <i class="fas fa-leaf"></i>
+                    <h3 data-i18n="habits.noHabits">لا توجد عادات</h3>
+                    <p data-i18n="habits.createFirst">أنشئ أول عادة للبدء</p>
+                    <button class="btn-primary" onclick="app.openHabitModal()">
+                        <i class="fas fa-plus"></i> <span data-i18n="habits.newHabit">عادة جديدة</span>
+                    </button>
+                </div>
+
+                <div class="habits-weekly-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-calendar-week"></i> <span data-i18n="habits.weeklyOverview">نظرة أسبوعية</span></h3>
+                    </div>
+                    <div class="habits-weekly-grid" id="habitsWeeklyGrid"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Prayer Times Section -->
+        <section class="section" id="prayerSection">
+            <div class="prayer-container">
+                <div class="prayer-location-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-map-marker-alt"></i> <span data-i18n="prayer.location">الموقع</span></h3>
+                    </div>
+                    <div class="prayer-location-form">
+                        <div class="form-group">
+                            <label for="prayerCity" data-i18n="prayer.selectCity">اختر المدينة</label>
+                            <select id="prayerCity" onchange="app.loadPrayerTimes()">
+                                <option value="Cairo">القاهرة</option>
+                                <option value="Alexandria">الإسكندرية</option>
+                                <option value="Giza">الجيزة</option>
+                                <option value="Mansoura">المنصورة</option>
+                                <option value="Tanta">طنطا</option>
+                                <option value="Port%20Said">بورسعيد</option>
+                                <option value="Suez">السويس</option>
+                                <option value="Asyut">أسيوط</option>
+                                <option value="Luxor">الأقصر</option>
+                                <option value="Aswan">أسوان</option>
+                                <option value="Damietta">دمياط</option>
+                                <option value="Zagazig">الزقازيق</option>
+                                <option value="Minya">المنيا</option>
+                                <option value="Sohag">سوهاج</option>
+                                <option value="Qena">قنا</option>
+                                <option value="Beni%20Suef">بني سويف</option>
+                                <option value="Fayoum">الفيوم</option>
+                                <option value="Ismailia">الإسماعيلية</option>
+                                <option value="Kafr%20El%20Sheikh">كفر الشيخ</option>
+                                <option value="Damanhur">دمنهور</option>
+                                <option value="Marsa%20Matruh">مرسى مطروح</option>
+                                <option value="Hurghada">الغردقة</option>
+                                <option value="Sharm%20El%20Sheikh">شرم الشيخ</option>
+                                <option value="Riyadh">الرياض</option>
+                                <option value="Jeddah">جدة</option>
+                                <option value="Mecca">مكة المكرمة</option>
+                                <option value="Medina">المدينة المنورة</option>
+                                <option value="Dammam">الدمام</option>
+                                <option value="Kuwait%20City">الكويت</option>
+                                <option value="Dubai">دبي</option>
+                                <option value="Abu%20Dhabi">أبوظبي</option>
+                                <option value="Doha">الدوحة</option>
+                                <option value="Manama">المنامة</option>
+                                <option value="Muscat">مسقط</option>
+                                <option value="Amman">عمان</option>
+                                <option value="Baghdad">بغداد</option>
+                                <option value="Beirut">بيروت</option>
+                                <option value="Damascus">دمشق</option>
+                                <option value="Jerusalem">القدس</option>
+                                <option value="Gaza">غزة</option>
+                                <option value="Khartoum">الخرطوم</option>
+                                <option value="Tripoli">طرابلس</option>
+                                <option value="Tunis">تونس</option>
+                                <option value="Algiers">الجزائر</option>
+                                <option value="Casablanca">الدار البيضاء</option>
+                                <option value="Rabat">الرباط</option>
+                                <option value="Istanbul">إسطنبول</option>
+                                <option value="Ankara">أنقرة</option>
+                                <option value="Tehran">طهران</option>
+                                <option value="Kuala%20Lumpur">كوالالمبور</option>
+                                <option value="Jakarta">جاكرتا</option>
+                                <option value="Karachi">كراتشي</option>
+                                <option value="Lahore">لاهور</option>
+                                <option value="Dhaka">داكا</option>
+                                <option value="Cairo">القاهرة</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="prayerMethod" data-i18n="prayer.calcMethod">طريقة الحساب</label>
+                            <select id="prayerMethod" onchange="app.loadPrayerTimes()">
+                                <option value="5">الهيئة المصرية</option>
+                                <option value="2">رابطة العالم الإسلامي</option>
+                                <option value="1">جامعة العلوم الإسلامية</option>
+                                <option value="3">الرابطة الإسلامية بأمريكا الشمالية</option>
+                                <option value="4">أم القرى</option>
+                                <option value="7">الوزارة الأوقاف الجزائرية</option>
+                                <option value="8">الوزارة الأوقاف التونسية</option>
+                                <option value="9">الوزارة الأوقاف المغربية</option>
+                                <option value="10">الوزارة الأوقاف الجهاد الليبي</option>
+                                <option value="11">الوزارة الأوقاف الكويتية</option>
+                                <option value="12">الوزارة الأوقاف القطرية</option>
+                                <option value="13">الوزارة الأوقاف الإماراتية</option>
+                                <option value="14">الوزارة الأوقاف السingaporeية</option>
+                                <option value="15">الهيئة العامة للشؤون الإسلامية تركيا</option>
+                                <option value="16">الوزارة الأوقاف الألمانية</option>
+                                <option value="17">الوزارة الأوقاف الفرنسية</option>
+                                <option value="18">الوزارة الأوقاف الروسية</option>
+                            </select>
+                        </div>
+                        <button class="btn-primary" onclick="app.getCurrentLocation()">
+                            <i class="fas fa-location-arrow"></i> <span data-i18n="prayer.useLocation">استخدام موقعي</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="prayer-countdown-card">
+                    <div class="countdown-display">
+                        <div class="countdown-icon">
+                            <i class="fas fa-mosque"></i>
+                        </div>
+                        <div class="countdown-info">
+                            <span class="countdown-label" id="nextPrayerLabel" data-i18n="prayer.nextPrayer">الصلاة القادمة</span>
+                            <span class="countdown-name" id="nextPrayerName">--</span>
+                            <span class="countdown-time" id="nextPrayerCountdown">--:--:--</span>
+                        </div>
+                    </div>
+                    <div class="countdown-progress">
+                        <div class="countdown-progress-bar" id="prayerProgressBar"></div>
+                    </div>
+                </div>
+
+                <div class="prayer-times-grid" id="prayerTimesGrid">
+                    <div class="prayer-time-card" data-prayer="Fajr">
+                        <div class="prayer-icon"><i class="fas fa-sun"></i></div>
+                        <div class="prayer-info">
+                            <span class="prayer-name" data-i18n="prayer.fajr">الفجر</span>
+                            <span class="prayer-time" id="timeFajr">--:--</span>
+                        </div>
+                    </div>
+                    <div class="prayer-time-card" data-prayer="Sunrise">
+                        <div class="prayer-icon"><i class="fas fa-cloud-sun"></i></div>
+                        <div class="prayer-info">
+                            <span class="prayer-name" data-i18n="prayer.sunrise">الشروق</span>
+                            <span class="prayer-time" id="timeSunrise">--:--</span>
+                        </div>
+                    </div>
+                    <div class="prayer-time-card" data-prayer="Dhuhr">
+                        <div class="prayer-icon"><i class="fas fa-sun"></i></div>
+                        <div class="prayer-info">
+                            <span class="prayer-name" data-i18n="prayer.dhuhr">الظهر</span>
+                            <span class="prayer-time" id="timeDhuhr">--:--</span>
+                        </div>
+                    </div>
+                    <div class="prayer-time-card" data-prayer="Asr">
+                        <div class="prayer-icon"><i class="fas fa-cloud"></i></div>
+                        <div class="prayer-info">
+                            <span class="prayer-name" data-i18n="prayer.asr">العصر</span>
+                            <span class="prayer-time" id="timeAsr">--:--</span>
+                        </div>
+                    </div>
+                    <div class="prayer-time-card" data-prayer="Maghrib">
+                        <div class="prayer-icon"><i class="fas fa-moon"></i></div>
+                        <div class="prayer-info">
+                            <span class="prayer-name" data-i18n="prayer.maghrib">المغرب</span>
+                            <span class="prayer-time" id="timeMaghrib">--:--</span>
+                        </div>
+                    </div>
+                    <div class="prayer-time-card" data-prayer="Isha">
+                        <div class="prayer-icon"><i class="fas fa-star"></i></div>
+                        <div class="prayer-info">
+                            <span class="prayer-name" data-i18n="prayer.isha">العشاء</span>
+                            <span class="prayer-time" id="timeIsha">--:--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="prayer-hijri-card">
+                    <div class="hijri-date" id="hijriDate">--</div>
+                    <div class="gregorian-date" id="gregorianDate">--</div>
+                </div>
+            </div>
+        </section>
+</main>
+
+    <!-- Task Modal -->
+    <div class="modal-overlay" id="taskModalOverlay" onclick="app.closeTaskModal()"></div>
+    <div class="modal-slide" id="taskModal">
+        <div class="modal-header">
+            <h2 id="taskModalTitle" data-i18n="modal.newTask">مهمة جديدة</h2>
+            <button class="modal-close" onclick="app.closeTaskModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <form id="taskForm" onsubmit="app.saveTask(event)">
+                <input type="hidden" id="taskId">
+                <div class="form-group">
+                    <label for="taskTitle" data-i18n="form.taskTitle">عنوان المهمة *</label>
+                    <input type="text" id="taskTitle" data-i18n-placeholder="form.taskTitlePlaceholder" placeholder="أدخل عنوان المهمة" required>
+                </div>
+                <div class="form-group">
+                    <label for="taskDescription" data-i18n="form.description">الوصف</label>
+                    <textarea id="taskDescription" rows="3" data-i18n-placeholder="form.descPlaceholder" placeholder="وصف تفصيلي للمهمة..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="taskCategory" data-i18n="form.category">الفئة *</label>
+                        <select id="taskCategory" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskPriority" data-i18n="form.priority">الأولوية</label>
+                        <select id="taskPriority"></select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="taskDueDate" data-i18n="form.dueDate">موعد النهاية</label>
+                        <input type="datetime-local" id="taskDueDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="taskEstimatedTime" data-i18n="form.estimatedTime">الوقت المقدر (دقيقة) *</label>
+                        <input type="number" id="taskEstimatedTime" min="1" max="480" value="25" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="taskRepeat" data-i18n="form.repeat">التكرار</label>
+                        <select id="taskRepeat"></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskReminderSelect" data-i18n="form.reminder">تذكير قبل</label>
+                        <select id="taskReminderSelect"></select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="taskTags" data-i18n="form.tags">التصنيفات (مفصولة بفاصلة)</label>
+                    <input type="text" id="taskTags" data-i18n-placeholder="form.tagsPlaceholder" placeholder="مثال: مهم، عاجل، مشروع">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="app.closeTaskModal()" data-i18n="actions.cancel">إلغاء</button>
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-save"></i> <span data-i18n="actions.saveTask">حفظ المهمة</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Task Details Modal -->
+    <div class="modal-overlay" id="taskDetailsOverlay" onclick="app.closeTaskDetails()"></div>
+    <div class="modal-slide" id="taskDetailsModal">
+        <div class="modal-header">
+            <h2 data-i18n="modal.taskDetails">تفاصيل المهمة</h2>
+            <button class="modal-close" onclick="app.closeTaskDetails()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" id="taskDetailsContent"></div>
+    </div>
+
+    <!-- Notifications Panel -->
+    <div class="notifications-panel" id="notificationsPanel">
+        <div class="notifications-header">
+            <h3 data-i18n="notifications.title">الإشعارات</h3>
+            <button class="btn-text" onclick="app.clearNotifications()" data-i18n="actions.clearAll">مسح الكل</button>
+        </div>
+        <div class="notifications-list" id="notificationsList"></div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Import File Input -->
+    <input type="file" id="importFileInput" accept=".json" style="display:none;" onchange="app.handleImport(event)">
+        <!-- Sleep Modal -->
+    <div class="modal-overlay" id="sleepModalOverlay" onclick="app.closeSleepModal()"></div>
+    <div class="modal-slide" id="sleepModal">
+        <div class="modal-header">
+            <h2 data-i18n="sleep.addRecord">تسجيل نوم</h2>
+            <button class="modal-close" onclick="app.closeSleepModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <form id="sleepForm" onsubmit="app.saveSleepRecord(event)">
+                <input type="hidden" id="sleepId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="sleepBedTime" data-i18n="sleep.bedTime">وقت النوم</label>
+                        <input type="datetime-local" id="sleepBedTime" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="sleepWakeTime" data-i18n="sleep.wakeTime">وقت الاستيقاظ</label>
+                        <input type="datetime-local" id="sleepWakeTime" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="sleep.quality">جودة النوم</label>
+                    <div class="sleep-quality-selector" id="sleepQualitySelector">
+                        <label class="sleep-quality-option">
+                            <input type="radio" name="sleepQuality" value="1" required>
+                            <span><i class="fas fa-frown"></i></span>
+                            <small data-i18n="sleep.poor">سيء</small>
+                        </label>
+                        <label class="sleep-quality-option">
+                            <input type="radio" name="sleepQuality" value="2">
+                            <span><i class="fas fa-meh"></i></span>
+                            <small data-i18n="sleep.fair">مقبول</small>
+                        </label>
+                        <label class="sleep-quality-option">
+                            <input type="radio" name="sleepQuality" value="3" checked>
+                            <span><i class="fas fa-smile"></i></span>
+                            <small data-i18n="sleep.good">جيد</small>
+                        </label>
+                        <label class="sleep-quality-option">
+                            <input type="radio" name="sleepQuality" value="4">
+                            <span><i class="fas fa-grin"></i></span>
+                            <small data-i18n="sleep.excellent">ممتاز</small>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="sleepNotes" data-i18n="sleep.notes">ملاحظات (اختياري)</label>
+                    <textarea id="sleepNotes" rows="2" data-i18n-placeholder="sleep.notesPlaceholder" placeholder="مثال: استيقظت مرة..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="app.closeSleepModal()" data-i18n="actions.cancel">إلغاء</button>
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-save"></i> <span data-i18n="actions.save">حفظ</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+        <!-- Note Modal -->
+    <div class="modal-overlay" id="noteModalOverlay" onclick="app.closeNoteModal()"></div>
+    <div class="modal-slide" id="noteModal">
+        <div class="modal-header">
+            <h2 id="noteModalTitle" data-i18n="notes.newNote">مذكرة جديدة</h2>
+            <button class="modal-close" onclick="app.closeNoteModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <form id="noteForm" onsubmit="app.saveNote(event)">
+                <input type="hidden" id="noteId">
+                <div class="form-group">
+                    <label for="noteTitle" data-i18n="notes.title">العنوان</label>
+                    <input type="text" id="noteTitle" data-i18n-placeholder="notes.titlePlaceholder" placeholder="عنوان المذكرة" required>
+                </div>
+                <div class="form-group">
+                    <label for="noteContent" data-i18n="notes.content">المحتوى</label>
+                    <textarea id="noteContent" rows="10" data-i18n-placeholder="notes.contentPlaceholder" placeholder="اكتب مذكرتك هنا..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="noteTags" data-i18n="notes.tags">التصنيفات (مفصولة بفاصلة)</label>
+                    <input type="text" id="noteTags" data-i18n-placeholder="notes.tagsPlaceholder" placeholder="مثال: أفكار، مشروع، يوميات">
+                </div>
+                <div class="form-group">
+                    <label for="noteColor" data-i18n="notes.color">لون المذكرة</label>
+                    <div class="note-colors" id="noteColors">
+                        <label class="note-color-option"><input type="radio" name="noteColor" value="#fef3c7" checked><span style="background:#fef3c7"></span></label>
+                        <label class="note-color-option"><input type="radio" name="noteColor" value="#dbeafe"><span style="background:#dbeafe"></span></label>
+                        <label class="note-color-option"><input type="radio" name="noteColor" value="#d1fae5"><span style="background:#d1fae5"></span></label>
+                        <label class="note-color-option"><input type="radio" name="noteColor" value="#fce7f3"><span style="background:#fce7f3"></span></label>
+                        <label class="note-color-option"><input type="radio" name="noteColor" value="#e5e7eb"><span style="background:#e5e7eb"></span></label>
+                        <label class="note-color-option"><input type="radio" name="noteColor" value="#fee2e2"><span style="background:#fee2e2"></span></label>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="app.closeNoteModal()" data-i18n="actions.cancel">إلغاء</button>
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-save"></i> <span data-i18n="actions.save">حفظ</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+        <!-- Help / Onboarding Modal -->
+    <div class="modal-overlay" id="helpModalOverlay" onclick="app.closeHelp()"></div>
+    <div class="modal-slide" id="helpModal">
+        <div class="modal-header">
+            <h2 data-i18n="help.title">كيف تستخدم Nuvio</h2>
+            <button class="modal-close" onclick="app.closeHelp()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="help-steps" id="helpSteps">
+                <!-- Steps will be injected by JS -->
+            </div>
+            <div class="help-nav">
+                <button class="btn-secondary" id="helpPrev" onclick="app.prevHelpStep()" style="display:none;">
+                    <i class="fas fa-arrow-right"></i> <span data-i18n="help.prev">السابق</span>
+                </button>
+                <div class="help-dots" id="helpDots"></div>
+                <button class="btn-primary" id="helpNext" onclick="app.nextHelpStep()">
+                    <span data-i18n="help.next">التالي</span> <i class="fas fa-arrow-left"></i>
+                </button>
+                <button class="btn-primary" id="helpFinish" onclick="app.closeHelp()" style="display:none;">
+                    <span data-i18n="help.finish">ابدأ الاستخدام</span> <i class="fas fa-check"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Habit Modal -->
+    <div class="modal-overlay" id="habitModalOverlay" onclick="app.closeHabitModal()"></div>
+    <div class="modal-slide" id="habitModal">
+        <div class="modal-header">
+            <h2 id="habitModalTitle" data-i18n="habits.newHabit">عادة جديدة</h2>
+            <button class="modal-close" onclick="app.closeHabitModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <form id="habitForm" onsubmit="app.saveHabit(event)">
+                <input type="hidden" id="habitId">
+                <div class="form-group">
+                    <label for="habitTitle" data-i18n="habits.habitTitle">اسم العادة *</label>
+                    <input type="text" id="habitTitle" data-i18n-placeholder="habits.habitTitlePlaceholder" placeholder="مثال: قراءة 10 صفحات" required>
+                </div>
+                <div class="form-group">
+                    <label for="habitDescription" data-i18n="habits.description">الوصف</label>
+                    <textarea id="habitDescription" rows="2" data-i18n-placeholder="habits.descPlaceholder" placeholder="وصف مختصر..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="habitIcon" data-i18n="habits.icon">الأيقونة</label>
+                        <select id="habitIcon">
+                            <option value="fa-book">📖 كتاب</option>
+                            <option value="fa-running">🏃 رياضة</option>
+                            <option value="fa-pray">🤲 صلاة</option>
+                            <option value="fa-tint">💧 ماء</option>
+                            <option value="fa-apple-alt">🍎 صحة</option>
+                            <option value="fa-bed">😴 نوم</option>
+                            <option value="fa-code">💻 برمجة</option>
+                            <option value="fa-pen">✍️ كتابة</option>
+                            <option value="fa-music">🎵 موسيقى</option>
+                            <option value="fa-language">🗣️ لغة</option>
+                            <option value="fa-heart">❤️ صحة نفسية</option>
+                            <option value="fa-leaf">🌿 طبيعة</option>
+                            <option value="fa-moon">🌙 قرآن</option>
+                            <option value="fa-sun">☀️ صباح</option>
+                            <option value="fa-star">⭐ تحفيز</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="habitColor" data-i18n="habits.color">اللون</label>
+                        <select id="habitColor">
+                            <option value="#dc2626">أحمر</option>
+                            <option value="#10b981">أخضر</option>
+                            <option value="#3b82f6">أزرق</option>
+                            <option value="#f59e0b">برتقالي</option>
+                            <option value="#8b5cf6">بنفسجي</option>
+                            <option value="#ec4899">وردي</option>
+                            <option value="#06b6d4">سماوي</option>
+                            <option value="#84cc16">ليموني</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="habitTarget" data-i18n="habits.target">الهدف اليومي</label>
+                        <input type="number" id="habitTarget" min="1" max="100" value="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="habitUnit" data-i18n="habits.unit">الوحدة</label>
+                        <input type="text" id="habitUnit" data-i18n-placeholder="habits.unitPlaceholder" placeholder="مرة / صفحة / دقيقة" value="مرة">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="habitReminderTime" data-i18n="habits.reminderTime">تذكير يومي (اختياري)</label>
+                    <input type="time" id="habitReminderTime">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="habits.repeatDays">أيام التكرار</label>
+                    <div class="habit-days-selector" id="habitDaysSelector">
+                        <label class="day-checkbox"><input type="checkbox" value="0" checked><span data-i18n="days.sunShort">ح</span></label>
+                        <label class="day-checkbox"><input type="checkbox" value="1" checked><span data-i18n="days.monShort">ن</span></label>
+                        <label class="day-checkbox"><input type="checkbox" value="2" checked><span data-i18n="days.tueShort">ث</span></label>
+                        <label class="day-checkbox"><input type="checkbox" value="3" checked><span data-i18n="days.wedShort">ر</span></label>
+                        <label class="day-checkbox"><input type="checkbox" value="4" checked><span data-i18n="days.thuShort">خ</span></label>
+                        <label class="day-checkbox"><input type="checkbox" value="5" checked><span data-i18n="days.friShort">ج</span></label>
+                        <label class="day-checkbox"><input type="checkbox" value="6" checked><span data-i18n="days.satShort">س</span></label>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="app.closeHabitModal()" data-i18n="actions.cancel">إلغاء</button>
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-save"></i> <span data-i18n="actions.save">حفظ</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./js/supabase-config.js"></script>
+    <script src="./js/supabase-client.js"></script>
+    <script src="./js/app.js"></script>
+    <script src="./js/auth.js"></script>
+    <script src="./js/i18n.js"></script>
+    <script src="./js/storage.js"></script>
+    <script src="./js/ui.js"></script>
+    <script src="./js/dashboard.js"></script>
+    <script src="./js/tasks.js"></script>
+    <script src="./js/focus.js"></script>
+    <script src="./js/habits.js"></script>
+    <script src="./js/tracking.js"></script>
+    <script src="./js/prayer-reports.js"></script>
+    <script src="./js/main.js"></script>
+    <script src="./js/ai-page.js?v=7"></script>
+    <!-- زر عائم لفتح الشات بالذكاء الاصطناعي -->
+<button onclick="app.showSection('ai')" id="ai-chat-btn" class="ai-chat-fab" aria-label="فتح AI Nuvio"><i class="fas fa-robot"></i></button>
+
+</body>
+</html>

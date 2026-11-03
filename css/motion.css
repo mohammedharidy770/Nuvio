@@ -1,0 +1,263 @@
+/* Nuvio shared motion - keeps the site consistent with the login screen */
+:root {
+    --nuvio-red-glow: rgba(220, 38, 38, .16);
+    --nuvio-red-soft: rgba(220, 38, 38, .08);
+}
+
+body {
+    isolation: isolate;
+    background:
+        radial-gradient(circle at 96% 8%, var(--nuvio-red-soft), transparent 23rem),
+        radial-gradient(circle at 2% 92%, var(--nuvio-red-soft), transparent 26rem),
+        var(--bg-primary);
+}
+
+body::before,
+body::after {
+    content: '';
+    position: fixed;
+    z-index: -1;
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+body::before {
+    width: 190px;
+    height: 190px;
+    left: -115px;
+    top: 18%;
+    border: 1px solid rgba(248, 113, 113, .18);
+}
+
+body::after {
+    width: 280px;
+    height: 280px;
+    right: -180px;
+    bottom: -170px;
+    background: var(--nuvio-red-soft);
+}
+
+@keyframes nuvioPageEnter {
+    from {
+        opacity: 0;
+        transform: translateY(18px) scale(.992);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes nuvioCardEnter {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes nuvioFloat {
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+.section.active {
+    animation: nuvioPageEnter .55s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.section.active [class*="-card"],
+.section.active .stat-box,
+.section.active .setting-group,
+.section.active .cal-day {
+    border-color: rgba(220, 38, 38, .13);
+    box-shadow: 0 10px 34px rgba(0, 0, 0, .035);
+    backdrop-filter: blur(5px);
+}
+
+[data-theme="dark"] .section.active [class*="-card"],
+[data-theme="dark"] .section.active .stat-box,
+[data-theme="dark"] .section.active .setting-group,
+[data-theme="dark"] .section.active .cal-day {
+    border-color: rgba(248, 113, 113, .14);
+    box-shadow: 0 18px 45px rgba(0, 0, 0, .18);
+}
+
+.sidebar {
+    background:
+        radial-gradient(circle at 100% 100%, var(--nuvio-red-soft), transparent 240px),
+        var(--bg-secondary);
+}
+
+.top-header {
+    border-bottom-color: rgba(220, 38, 38, .12);
+    backdrop-filter: blur(16px);
+}
+
+.logo-icon,
+.nuvio-accent-mark {
+    background: linear-gradient(135deg, #ef4444, #991b1b);
+    box-shadow: 0 10px 28px var(--nuvio-red-glow);
+}
+
+.section.active > * {
+    animation: nuvioPageEnter .45s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.section.active > *:nth-child(2) {
+    animation-delay: .05s;
+}
+
+.section.active > *:nth-child(3) {
+    animation-delay: .09s;
+}
+
+.section.active [class*="-card"],
+.section.active .stat-box,
+.section.active .setting-group,
+.section.active .task-item,
+.section.active .habit-item,
+.section.active .prayer-time-card,
+.section.active .sleep-card,
+.section.active .water-card {
+    animation: nuvioCardEnter .5s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.section.active [class*="-card"]:nth-child(2n),
+.section.active .setting-group:nth-child(2n),
+.section.active .stat-box:nth-child(2n) {
+    animation-delay: .07s;
+}
+
+.section.active [class*="-card"]:nth-child(3n),
+.section.active .setting-group:nth-child(3n),
+.section.active .stat-box:nth-child(3n) {
+    animation-delay: .12s;
+}
+
+.sidebar {
+    animation: nuvioPageEnter .5s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.nav-item {
+    position: relative;
+    transition: transform .2s ease, background .2s ease, color .2s ease;
+}
+
+.nav-item::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    width: 3px;
+    height: 0;
+    border-radius: 4px;
+    background: var(--primary);
+    transform: translateY(-50%);
+    transition: height .2s ease;
+}
+
+[dir="ltr"] .nav-item::before {
+    right: auto;
+    left: 0;
+}
+
+.nav-item:hover,
+.nav-item.active {
+    transform: translateX(-3px);
+}
+
+.nav-item.active::before {
+    height: 22px;
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-outline,
+.btn-danger,
+.header-btn,
+.theme-toggle,
+.lang-toggle,
+.btn-new-task,
+.menu-toggle {
+    transition: transform .2s ease, box-shadow .2s ease, filter .2s ease,
+        background-color .2s ease, border-color .2s ease;
+}
+
+.btn-primary:not(:disabled):hover,
+.btn-secondary:not(:disabled):hover,
+.btn-outline:not(:disabled):hover,
+.btn-danger:not(:disabled):hover,
+.header-btn:not(:disabled):hover,
+.theme-toggle:not(:disabled):hover,
+.lang-toggle:not(:disabled):hover,
+.btn-new-task:not(:disabled):hover,
+.menu-toggle:not(:disabled):hover {
+    transform: translateY(-2px);
+}
+
+.btn-primary:not(:disabled):hover,
+.btn-new-task:not(:disabled):hover {
+    box-shadow: 0 12px 28px rgba(220, 38, 38, .22);
+}
+
+.logo-icon {
+    animation: nuvioFloat 4s ease-in-out infinite;
+}
+
+.toast {
+    animation: nuvioCardEnter .35s ease-out both;
+}
+
+@media (max-width: 768px) {
+    .section.active {
+        animation-duration: .38s;
+    }
+
+    .section.active [class*="-card"],
+    .section.active .setting-group,
+    .section.active .stat-box,
+    .section.active .task-item,
+    .section.active .habit-item,
+    .section.active .prayer-time-card {
+        animation-delay: 0s;
+        animation-duration: .38s;
+    }
+
+    .nav-item:hover,
+    .nav-item.active {
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .section.active,
+    .section.active > *,
+    .section.active [class*="-card"],
+    .section.active .stat-box,
+    .section.active .setting-group,
+    .section.active .task-item,
+    .section.active .habit-item,
+    .section.active .prayer-time-card,
+    .sidebar,
+    .logo-icon,
+    .toast {
+        animation: none !important;
+    }
+
+    .nav-item,
+    .btn-primary,
+    .btn-secondary,
+    .btn-outline,
+    .btn-danger,
+    .header-btn,
+    .theme-toggle,
+    .lang-toggle,
+    .btn-new-task,
+    .menu-toggle {
+        transition-duration: .01ms !important;
+    }
+}

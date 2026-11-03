@@ -1,0 +1,846 @@
+@media (max-width: 768px) {
+    .help-step-features {
+        grid-template-columns: 1fr;
+    }
+    
+    .help-step-icon {
+        width: 64px;
+        height: 64px;
+        font-size: 28px;
+    }
+    
+    .help-step h3 {
+        font-size: 18px;
+    }
+}
+/* ===== Responsive for new sections ===== */
+/* ===== RESPONSIVE FIXES ===== */
+
+@media (max-width: 1024px) {
+    .focus-container {
+        grid-template-columns: 1fr;
+    }
+
+    .reports-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .report-card.wide {
+        grid-column: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    html,
+    body {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    img,
+    video,
+    canvas {
+        max-width: 100%;
+    }
+
+    .sidebar {
+        transform: translateX(100%);
+        width: 280px;
+    }
+
+    [dir="ltr"] .sidebar {
+        transform: translateX(-100%);
+    }
+
+    .sidebar.active {
+        transform: translateX(0) !important;
+    }
+
+    .main-content {
+        margin-right: 0 !important;
+        margin-left: 0 !important;
+    }
+
+    .menu-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .sidebar-close {
+        display: block;
+    }
+
+    /* Header fixes */
+    .top-header {
+        padding: 0 16px;
+        gap: 8px;
+    }
+
+    .header-title {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .header-title h1 {
+        font-size: 15px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .header-actions {
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    .btn-new-task {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    .btn-new-task span {
+        display: none;
+    }
+
+    .header-btn,
+    .theme-toggle,
+    .lang-toggle {
+        width: 36px;
+        height: 36px;
+        flex: 0 0 36px;
+    }
+}
+
+@media (max-width: 768px) {
+    .welcome-banner {
+        flex-direction: column;
+        text-align: center;
+        gap: 16px;
+        padding: 20px;
+    }
+
+    .welcome-time {
+        text-align: center;
+    }
+
+    .welcome-time span:first-child {
+        font-size: 28px;
+    }
+
+    /* Quick actions */
+    .quick-actions-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    /* Stats grid */
+    .stats-grid {
+        gap: 10px;
+    }
+
+    .stat-box {
+        padding: 12px;
+    }
+
+    /* Focus section */
+    .focus-container {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .focus-timer-card {
+        padding: 20px;
+    }
+
+    .timer-circle {
+        width: 220px;
+        height: 220px;
+    }
+
+    .timer-text span {
+        font-size: 42px;
+    }
+
+    .timer-mode {
+        flex-wrap: wrap;
+    }
+
+    .mode-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .timer-controls {
+        flex-wrap: wrap;
+    }
+
+    .timer-btn {
+        padding: 10px 18px;
+        font-size: 13px;
+    }
+
+    .focus-stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    /* Tasks section */
+    .tasks-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .tasks-filters {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 4px;
+        gap: 6px;
+    }
+
+    .filter-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+
+    .task-item {
+        padding: 12px 14px;
+        gap: 10px;
+    }
+
+    .task-title {
+        font-size: 14px;
+    }
+
+    .task-meta {
+        gap: 4px;
+    }
+
+    .task-tag {
+        padding: 2px 8px;
+        font-size: 11px;
+    }
+
+    .task-actions {
+        opacity: 1;
+        gap: 4px;
+    }
+
+    .task-action-btn {
+        width: 28px;
+        height: 28px;
+    }
+
+    /* Calendar */
+    .calendar-container {
+        padding: 16px;
+    }
+
+    .cal-day {
+        font-size: 12px;
+    }
+
+    .cal-day-name {
+        padding: 6px 2px;
+        font-size: 11px;
+    }
+
+    /* Reports */
+    .reports-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .report-card.wide {
+        grid-column: 1;
+    }
+
+    .activity-map {
+        grid-template-columns: repeat(26, 1fr);
+    }
+
+    /* Settings */
+    .settings-container {
+        padding: 0;
+    }
+
+    .setting-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .setting-actions {
+        flex-direction: column;
+    }
+
+    .setting-actions .btn-outline,
+    .setting-actions .btn-danger {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Modal */
+    .modal-slide {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .modal-body {
+        padding: 16px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    /* Notifications panel */
+    .notifications-panel {
+        left: 12px;
+        right: 12px;
+        width: auto;
+        top: 56px;
+    }
+
+    /* Toast */
+    .toast-container {
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+    }
+
+    .toast {
+        min-width: auto;
+        width: 100%;
+    }
+
+    /* Habits */
+    .habits-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .habits-stats-row {
+        justify-content: stretch;
+        width: 100%;
+    }
+
+    .habit-stat-card {
+        flex: 1;
+        min-width: 0;
+        padding: 12px;
+    }
+
+    .habit-stat-value {
+        font-size: 18px;
+    }
+
+    .habit-item {
+        padding: 12px 14px;
+        flex-wrap: wrap;
+    }
+
+    .habit-progress-wrap {
+        order: 3;
+        width: 100%;
+        margin-top: 8px;
+    }
+
+    .habit-check {
+        order: 2;
+    }
+
+    .habit-actions {
+        opacity: 1;
+        gap: 4px;
+    }
+
+    .habit-weekly-name {
+        width: 60px;
+        font-size: 11px;
+    }
+
+    .habit-day-dot {
+        width: 24px;
+        height: 24px;
+        font-size: 10px;
+    }
+
+    .day-checkbox span {
+        width: 36px;
+        height: 36px;
+        font-size: 12px;
+    }
+
+    /* Prayer */
+    .prayer-location-form {
+        grid-template-columns: 1fr;
+    }
+
+    .prayer-location-form .btn-primary {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .prayer-times-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .prayer-time-card {
+        padding: 14px;
+    }
+
+    .prayer-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+    }
+
+    .prayer-name {
+        font-size: 13px;
+    }
+
+    .prayer-time {
+        font-size: 18px;
+    }
+
+    .countdown-display {
+        flex-direction: column;
+        text-align: center;
+        gap: 12px;
+    }
+
+    .countdown-icon {
+        width: 52px;
+        height: 52px;
+        font-size: 22px;
+    }
+
+    .countdown-name {
+        font-size: 22px;
+    }
+
+    .countdown-time {
+        font-size: 28px;
+    }
+}
+
+@media (max-width: 480px) {
+    .prayer-times-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .focus-stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+
+    .fs-item {
+        padding: 8px;
+    }
+
+    .fs-value {
+        font-size: 16px;
+    }
+
+    .timer-circle {
+        width: 180px;
+        height: 180px;
+    }
+
+    .timer-text span {
+        font-size: 36px;
+    }
+
+    .habit-stat-card {
+        padding: 10px;
+        gap: 8px;
+    }
+
+    .habit-stat-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+    }
+
+    .habit-stat-value {
+        font-size: 16px;
+    }
+
+    .habit-stat-label {
+        font-size: 11px;
+    }
+}
+
+@media (max-width: 360px) {
+    .header-title h1 {
+        font-size: 13px;
+    }
+
+    .btn-new-task {
+        padding: 6px 10px;
+    }
+
+    .theme-toggle, .lang-toggle, .header-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+    }
+
+    .welcome-text h2 {
+        font-size: 18px;
+    }
+
+    .progress-circle {
+        width: 120px;
+        height: 120px;
+    }
+
+    .progress-percent {
+        font-size: 22px;
+    }
+
+    .timer-text span {
+        font-size: 30px;
+    }
+
+    .timer-circle {
+        width: 160px;
+        height: 160px;
+    }
+}
+
+/* Fix modal animation for RTL/LTR */
+[dir="rtl"] .modal-slide {
+    right: 0;
+    left: auto;
+    transform: translateX(100%);
+}
+
+[dir="rtl"] .modal-slide.active {
+    transform: translateX(0);
+}
+
+[dir="ltr"] .modal-slide {
+    left: 0;
+    right: auto;
+    transform: translateX(-100%);
+}
+
+[dir="ltr"] .modal-slide.active {
+    transform: translateX(0);
+}
+
+/* Fix sidebar for RTL/LTR */
+[dir="rtl"] .sidebar {
+    right: 0;
+    left: auto;
+}
+
+[dir="ltr"] .sidebar {
+    left: 0;
+    right: auto;
+}
+
+[dir="rtl"] .main-content {
+    margin-right: var(--sidebar-width);
+    margin-left: 0;
+}
+
+[dir="ltr"] .main-content {
+    margin-left: var(--sidebar-width);
+    margin-right: 0;
+}
+
+@media (max-width: 768px) {
+    [dir="rtl"] .main-content,
+    [dir="ltr"] .main-content {
+        margin-right: 0 !important;
+        margin-left: 0 !important;
+    }
+}
+@media (max-width: 480px) {
+    .welcome-card {
+        padding: 28px 20px;
+    }
+    
+    .welcome-logo .logo-icon.large {
+        width: 60px;
+        height: 60px;
+        font-size: 26px;
+    }
+    
+    .welcome-logo h1 {
+        font-size: 24px;
+    }
+    
+    .avatar-preview {
+        width: 80px;
+        height: 80px;
+    }
+}
+
+.user-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.user-edit-btn {
+    width: 22px;
+    height: 22px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+    opacity: 0;
+}
+
+.user-info:hover .user-edit-btn {
+    opacity: 1;
+}
+
+.user-edit-btn:hover {
+    color: var(--primary);
+    background: var(--bg-hover);
+}
+/* ===== Responsive ===== */
+@media (max-width: 1024px) {
+    .focus-container {
+        grid-template-columns: 1fr;
+    }
+
+    .reports-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .report-card.wide {
+        grid-column: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(100%);
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
+    }
+
+    .main-content {
+        margin-right: 0;
+    }
+
+    .menu-toggle {
+        display: block;
+    }
+
+    .sidebar-close {
+        display: block;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .welcome-banner {
+        flex-direction: column;
+        text-align: center;
+        gap: 16px;
+    }
+
+    .welcome-time {
+        text-align: center;
+    }
+
+    .tasks-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .tasks-filters {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 4px;
+    }
+
+    .modal-slide {
+        width: 100%;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .notifications-panel {
+        left: 12px;
+        right: 12px;
+        width: auto;
+    }
+
+    .toast-container {
+        left: 12px;
+        right: 12px;
+    }
+
+    .toast {
+        min-width: auto;
+    }
+
+    .activity-map {
+        grid-template-columns: repeat(26, 1fr);
+    }
+
+    .header-title h1 {
+        font-size: 16px;
+    }
+
+    .btn-new-task span {
+        display: none;
+    }
+
+    .btn-new-task {
+        padding: 10px 14px;
+    }
+
+    .theme-toggle, .lang-toggle {
+        width: 36px;
+        height: 36px;
+    }
+}
+
+@media (max-width: 768px) {
+    .notes-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .notes-search {
+        min-width: auto;
+    }
+    
+    .notes-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .note-card-actions {
+        opacity: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .sleep-stats-row {
+        flex-direction: column;
+    }
+    
+    .sleep-stat-card {
+        min-width: auto;
+    }
+    
+    .sleep-quality-selector {
+        gap: 8px;
+    }
+    
+    .sleep-quality-option span {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+    }
+    
+    .water-main {
+        padding: 24px;
+    }
+    
+    .water-bottle {
+        width: 100px;
+        height: 160px;
+    }
+    
+    .water-count {
+        font-size: 36px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .reports-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .section {
+        min-width: 0;
+        padding: 16px;
+    }
+
+    .welcome-banner {
+        align-items: stretch;
+        padding: 20px;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+    }
+
+    .dashboard-grid > .dash-card {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .weekly-chart {
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .tasks-header,
+    .tasks-header > * {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .tasks-filters {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .calendar-container,
+    .calendar-grid {
+        min-width: 0;
+    }
+
+    .calendar-grid {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+
+    .stats-grid,
+    .quick-actions-grid,
+    .focus-stats-grid,
+    .habits-stats-row,
+    .dashboard-grid,
+    .reports-grid,
+    .sleep-stats-row,
+    .prayer-times-grid {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
