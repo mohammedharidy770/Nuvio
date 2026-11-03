@@ -155,7 +155,7 @@
         const welcome = document.createElement('div');
         welcome.className = 'ai-welcome';
         welcome.innerHTML = `
-            <div class="ai-welcome-mark"><i class="fas fa-sparkles"></i></div>
+            <div class="ai-welcome-mark" aria-hidden="true">N</div>
             <h1>كيف يمكنني مساعدتك؟</h1>
             <p>خطط ليومك، نظّم مهامك، أو اسأل عن أي شيء في Nuvio.</p>
             <div class="ai-suggestions">
