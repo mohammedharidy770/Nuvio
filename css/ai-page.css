@@ -308,3 +308,37 @@ body:not(.ai-page-body) .integrated-ai * { box-sizing:border-box; }
 .ai-section .ai-copy-message:hover {
   color: var(--ai-accent) !important;
 }
+
+
+/* AI Nuvio: restore the site's red/black palette and move chat scrollbar left */
+.ai-section {
+  --ai-brand: #dc2626;
+  --ai-brand-deep: #991b1b;
+  --ai-brand-gold: transparent;
+  --ai-brand-glow: rgba(220,38,38,.16);
+}
+.ai-section .ai-nav-icon,
+.ai-nav-item .ai-nav-icon {
+  color: #fff !important;
+  background: #dc2626 !important;
+  border: 0 !important;
+}
+.ai-section .ai-send,
+.ai-section .ai-new-chat,
+.ai-section .ai-message-user {
+  background: #dc2626 !important;
+  color: #fff !important;
+}
+.ai-section .ai-send:hover,
+.ai-section .ai-new-chat:hover { background: #b91c1c !important; }
+.ai-section .ai-suggestions button:hover { border-color: rgba(220,38,38,.5) !important; }
+.ai-section .ai-suggestions button i,
+.ai-section .ai-history-row:hover,
+.ai-section .ai-history-row.active,
+.ai-section .ai-copy-message:hover { color: #dc2626 !important; }
+.ai-section .ai-messages {
+  direction: ltr;
+  scrollbar-gutter: stable;
+}
+.ai-section .ai-messages > * { direction: rtl; }
+.ai-section .ai-message { direction: rtl; }
