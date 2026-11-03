@@ -80,3 +80,28 @@
         bottom: 12px;
     }
 }
+
+
+/* Floating AI button: restore robot icon and original site placement */
+.ai-chat-fab {
+    left: auto !important;
+    right: 20px !important;
+    border: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    background: var(--danger, #dc2626) !important;
+    color: #fff !important;
+    border-radius: 50%;
+    font-size: 25px;
+}
+.ai-chat-fab:hover,
+.ai-chat-fab:focus-visible,
+.ai-chat-fab:active {
+    background: #b91c1c !important;
+    color: #fff !important;
+    box-shadow: none !important;
+}
+.ai-chat-fab i { font-size: 25px; }
+@media (max-width: 480px) {
+    .ai-chat-fab { left: auto !important; right: 12px !important; }
+}
