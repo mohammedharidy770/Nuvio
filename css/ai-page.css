@@ -342,3 +342,36 @@ body:not(.ai-page-body) .integrated-ai * { box-sizing:border-box; }
 }
 .ai-section .ai-messages > * { direction: rtl; }
 .ai-section .ai-message { direction: rtl; }
+
+
+/* Chat alignment and readable message flow */
+.ai-section .ai-messages {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+.ai-section .ai-message {
+    direction: rtl;
+    text-align: right;
+    unicode-bidi: plaintext;
+    max-width: min(88%, 760px);
+    line-height: 1.85;
+    white-space: pre-wrap;
+    word-break: normal;
+    overflow-wrap: break-word;
+}
+.ai-section .ai-message-user {
+    align-self: flex-end;
+    margin-inline: 0;
+    margin-left: 0;
+    margin-right: 0;
+}
+.ai-section .ai-message-assistant {
+    align-self: flex-start;
+    margin-inline: 0;
+    margin-left: 0;
+    margin-right: 0;
+}
+@media (max-width: 768px) {
+    .ai-section .ai-message { max-width: 94%; }
+}
