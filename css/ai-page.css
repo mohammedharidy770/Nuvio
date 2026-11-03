@@ -264,3 +264,47 @@ body:not(.ai-page-body) .integrated-ai * { box-sizing:border-box; }
   .ai-section .ai-message,
   .ai-section .ai-suggestions button { transition: none; animation: none; }
 }
+
+
+/* Final AI Nuvio identity: original red and black palette, simple N monogram */
+.ai-section {
+  --ai-brand: var(--primary);
+  --ai-brand-deep: var(--primary-dark);
+  --ai-brand-gold: transparent;
+  --ai-brand-glow: rgba(220,38,38,.16);
+}
+.ai-section .ai-brand-mark,
+.ai-section .ai-welcome-mark {
+  background: linear-gradient(135deg,var(--primary),var(--primary-dark)) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 22px rgba(220,38,38,.20) !important;
+  border: 0 !important;
+  font-family: Inter, Arial, sans-serif;
+  font-weight: 800;
+}
+.ai-section .ai-brand-mark {
+  font-size: 22px !important;
+  border-radius: 12px;
+}
+.ai-section .ai-welcome-mark {
+  font-size: 25px !important;
+}
+.ai-section .ai-send,
+.ai-section .ai-new-chat {
+  background: var(--ai-accent) !important;
+  color: #fff !important;
+}
+.ai-section .ai-message-user {
+  background: var(--ai-accent) !important;
+  color: #fff !important;
+}
+.ai-section .ai-suggestions button:hover {
+  border-color: color-mix(in srgb, var(--ai-accent) 55%, transparent) !important;
+  box-shadow: 0 10px 24px rgba(220,38,38,.08) !important;
+}
+.ai-section .ai-suggestions button i,
+.ai-section .ai-history-row:hover,
+.ai-section .ai-history-row.active,
+.ai-section .ai-copy-message:hover {
+  color: var(--ai-accent) !important;
+}
