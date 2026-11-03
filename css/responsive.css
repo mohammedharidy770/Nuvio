@@ -844,3 +844,32 @@
         -webkit-overflow-scrolling: touch;
     }
 }
+
+
+/* Mobile navigation drawer: keep section links hidden until the menu is opened. */
+@media (max-width: 768px) {
+    [dir="rtl"] .sidebar {
+        right: 0;
+        left: auto;
+        transform: translate3d(110%, 0, 0) !important;
+        visibility: hidden;
+        pointer-events: none;
+        transition: transform 0.28s ease, visibility 0.28s ease;
+    }
+
+    [dir="ltr"] .sidebar {
+        left: 0;
+        right: auto;
+        transform: translate3d(-110%, 0, 0) !important;
+        visibility: hidden;
+        pointer-events: none;
+        transition: transform 0.28s ease, visibility 0.28s ease;
+    }
+
+    [dir="rtl"] .sidebar.active,
+    [dir="ltr"] .sidebar.active {
+        transform: translate3d(0, 0, 0) !important;
+        visibility: visible;
+        pointer-events: auto;
+    }
+}
