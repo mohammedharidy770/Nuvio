@@ -638,7 +638,7 @@
                 body: JSON.stringify({
                     message: text,
                     context: getAppContext(),
-                    history: chat.messages.slice(-10),
+                    history: chat.messages.slice(-11, -1),
                     preferences: settings
                 })
             });
