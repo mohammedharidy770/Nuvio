@@ -25,6 +25,7 @@ Object.assign(NuvioApp.prototype, {
             console.error('Error saving data:', e);
             this.showToast(this.t('error.saveData') || 'Error saving data', 'error');
         }
+        window.NuvioSync?.scheduleSave();
     },
 
     addDemoData() {
@@ -183,6 +184,7 @@ Object.assign(NuvioApp.prototype, {
         } catch (e) {
             console.error('Error saving habits:', e);
         }
+        window.NuvioSync?.scheduleSave();
     },
 
     loadUserProfile() {
@@ -219,6 +221,7 @@ Object.assign(NuvioApp.prototype, {
         if (sub) sub.textContent = this.t('welcome.subtitle');
         
         this.showToast(this.settings.language === 'ar' ? 'تم تحديث البروفايل!' : 'Profile updated!', 'success');
+        window.NuvioSync?.scheduleSave();
     },
 
     loadSleepRecords() {
@@ -236,6 +239,7 @@ Object.assign(NuvioApp.prototype, {
         } catch (e) {
             console.error('Error saving sleep:', e);
         }
+        window.NuvioSync?.scheduleSave();
     },
 
     loadWaterData() {
@@ -265,6 +269,7 @@ Object.assign(NuvioApp.prototype, {
         } catch (e) {
             console.error('Error saving water:', e);
         }
+        window.NuvioSync?.scheduleSave();
     },
 
     loadNotes() {
@@ -282,6 +287,7 @@ Object.assign(NuvioApp.prototype, {
         } catch (e) {
             console.error('Error saving notes:', e);
         }
+        window.NuvioSync?.scheduleSave();
     },
 
     loadPrayerSettings() {
@@ -299,5 +305,6 @@ Object.assign(NuvioApp.prototype, {
         } catch (e) {
             console.error('Error saving prayer settings:', e);
         }
+        window.NuvioSync?.scheduleSave();
     },
 });
