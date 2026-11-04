@@ -275,10 +275,33 @@
         }
     }
 
+    function localDateTimeForOffset(days = 0) {
+        const date = new Date(); date.setDate(date.getDate() + days); date.setHours(12, 0, 0, 0); return date.toISOString();
+    }
+    function inferRelativeTaskDateAction(message) {
+        const text = String(message || '').toLowerCase();
+        const asks = /(خلي|خلّي|غير|غيّر|عدل|عدّل|انقل|اجعل|موعد|التاريخ|التوقيت)/.test(text);
+        const offset = /(النهارده|النهاردة|اليوم|النهار)/.test(text) ? 0 : /(بكره|بكرة|غدا|غداً)/.test(text) ? 1 : null;
+        if (!asks || offset === null) return null;
+        const tasks = getTasks();
+        const norm = v => String(v || '').toLowerCase().replace(/[ًٌٍَُِّْـ]/g,'').replace(/[أإآ]/g,'ا').replace(/[ىي]/g,'ي').replace(/[^\\p{L}\\p{N}\\s]/gu,' ').replace(/\\s+/g,' ').trim();
+        const msg = norm(text);
+        const mentioned = tasks.filter(t => { const title = norm(t.title); return title.length >= 3 && msg.includes(title); });
+        let target = mentioned.length === 1 ? mentioned[0] : null;
+        if (!target && mentioned.length === 0) {
+            const d = new Date(); d.setDate(d.getDate()+1); const key = [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+            const tomorrow = tasks.filter(t => { if(!t.dueDate) return false; const x=new Date(t.dueDate); return !Number.isNaN(x.getTime()) && [x.getFullYear(),String(x.getMonth()+1).padStart(2,'0'),String(x.getDate()).padStart(2,'0')].join('-')===key; });
+            if (tomorrow.length === 1) target = tomorrow[0];
+        }
+        if (!target) return null;
+        return { type:'update_task', task:target.id, changes:{ dueDate:localDateTimeForOffset(offset) } };
+    }
     function getAppContext() {
         const tasks = getTasks();
         return {
             currentDate: new Date().toISOString(),
+            localDate: (() => { const d = new Date(); return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'); })(),
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
             currentSection: window.app?.currentSection || '',
             theme: window.app?.settings?.darkMode ? 'dark' : 'light',
             language: window.app?.settings?.language || 'ar',
@@ -564,11 +587,13 @@
                 if (changes.category) task.category = changes.category;
                 if (changes.priority) task.priority = changes.priority;
                 if (changes.estimatedTime) task.estimatedTime = Math.min(1440, Math.max(1, parseInt(changes.estimatedTime, 10)));
-                if (changes.dueDate && !Number.isNaN(Date.parse(changes.dueDate))) {
-                    task.dueDate = new Date(changes.dueDate).toISOString();
+                if (Object.prototype.hasOwnProperty.call(changes, 'dueDate')) {
+                    const nextDate = changes.dueDate === null ? null : new Date(changes.dueDate);
+                    if (changes.dueDate === null || !Number.isNaN(nextDate.getTime())) task.dueDate = nextDate ? nextDate.toISOString() : null;
+                    else return;
                 }
-                count++;
-                changedTasks = true;
+                const hasOtherChange = Boolean(changes.title || changes.description !== undefined || changes.category || changes.priority || changes.estimatedTime);
+                if (hasOtherChange || Object.prototype.hasOwnProperty.call(changes, 'dueDate')) { count++; changedTasks = true; }
             }
         });
 
@@ -648,6 +673,8 @@
             typing.remove();
 
             const result = parseJSON(data.reply);
+            const relativeDateAction = inferRelativeTaskDateAction(text);
+            if (relativeDateAction) { result.actions = [relativeDateAction]; result.reply = 'تم تحديث موعد المهمة إلى التاريخ المطلوب.'; }
             if (!Array.isArray(result.actions) || !result.actions.length) {
                 const direct = inferDirectActions(text);
                 if (direct.length) {
@@ -659,9 +686,12 @@
             }
             const actions = settings.actionsEnabled ? result.actions : [];
             const count = executeActions(actions);
+            const requestedTaskUpdate = actions.some(action => action?.type === 'update_task');
             const reply = count
-                ? `${result.reply || 'تم تنفيذ الطلب.'}\nنفذت ${count} إجراءات داخل الموقع.`
-                : result.reply || escapeText(data.reply);
+                ? `${result.reply || 'تم تنفيذ الطلب.'}\nتم حفظ ${count} تعديل داخل الموقع.`
+                : requestedTaskUpdate
+                    ? 'لم يتم تعديل أي مهمة. لم أجد مهمة واحدة محددة تنطبق عليها الرسالة، أو تعذر حفظ التاريخ. حدّد اسم المهمة حتى لا أغيّر موعد مهمة أخرى بالخطأ.'
+                    : result.reply || escapeText(data.reply);
             await animateReply(reply);
             chat.messages.push({ role: 'assistant', content: reply });
             saveHistory();
