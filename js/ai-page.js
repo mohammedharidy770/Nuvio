@@ -278,23 +278,41 @@
     function localDateTimeForOffset(days = 0) {
         const date = new Date(); date.setDate(date.getDate() + days); date.setHours(12, 0, 0, 0); return date.toISOString();
     }
-    function inferRelativeTaskDateAction(message) {
+    function inferRelativeTaskDateActions(message) {
         const text = String(message || '').toLowerCase();
-        const asks = /(خلي|خلّي|غير|غيّر|عدل|عدّل|انقل|اجعل|موعد|التاريخ|التوقيت)/.test(text);
+        const asks = /(خلي|خلّي|غير|غيّر|عدل|عدّل|انقل|اجعل|حوّل|حول|موعد|التاريخ|التوقيت)/.test(text);
         const offset = /(النهارده|النهاردة|اليوم|النهار)/.test(text) ? 0 : /(بكره|بكرة|غدا|غداً)/.test(text) ? 1 : null;
-        if (!asks || offset === null) return null;
+        if (!asks || offset === null) return [];
         const tasks = getTasks();
-        const norm = v => String(v || '').toLowerCase().replace(/[ًٌٍَُِّْـ]/g,'').replace(/[أإآ]/g,'ا').replace(/[ىي]/g,'ي').replace(/[^\\p{L}\\p{N}\\s]/gu,' ').replace(/\\s+/g,' ').trim();
+        const norm = v => String(v || '').toLowerCase()
+            .replace(/[ًٌٍَُِّْـ]/g,'').replace(/[أإآ]/g,'ا').replace(/[ىي]/g,'ي')
+            .replace(/[^\p{L}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim();
         const msg = norm(text);
-        const mentioned = tasks.filter(t => { const title = norm(t.title); return title.length >= 3 && msg.includes(title); });
-        let target = mentioned.length === 1 ? mentioned[0] : null;
-        if (!target && mentioned.length === 0) {
-            const d = new Date(); d.setDate(d.getDate()+1); const key = [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
-            const tomorrow = tasks.filter(t => { if(!t.dueDate) return false; const x=new Date(t.dueDate); return !Number.isNaN(x.getTime()) && [x.getFullYear(),String(x.getMonth()+1).padStart(2,'0'),String(x.getDate()).padStart(2,'0')].join('-')===key; });
-            if (tomorrow.length === 1) target = tomorrow[0];
+        const named = tasks.filter(t => {
+            const title = norm(t.title);
+            return title.length >= 3 && msg.includes(title);
+        });
+        if (named.length === 1) {
+            return [{ type:'update_task', task:named[0].id, changes:{ dueDate:localDateTimeForOffset(offset) } }];
         }
-        if (!target) return null;
-        return { type:'update_task', task:target.id, changes:{ dueDate:localDateTimeForOffset(offset) } };
+        if (named.length > 1) return [];
+        const asksAll = /(كل المهام|جميع المهام|كل المهمات|جميع المهمات|المهام كلها|كل التاسكات)/i.test(text);
+        if (asksAll) {
+            const active = tasks.filter(task => task.status !== 'completed');
+            return active.map(task => ({
+                type:'update_task', task:task.id, changes:{ dueDate:localDateTimeForOffset(offset) }
+            }));
+        }
+        const d = new Date(); d.setDate(d.getDate()+1);
+        const key = [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+        const tomorrow = tasks.filter(t => {
+            if(!t.dueDate || t.status === 'completed') return false;
+            const x=new Date(t.dueDate);
+            return !Number.isNaN(x.getTime()) && [x.getFullYear(),String(x.getMonth()+1).padStart(2,'0'),String(x.getDate()).padStart(2,'0')].join('-')===key;
+        });
+        return tomorrow.map(task => ({
+            type:'update_task', task:task.id, changes:{ dueDate:localDateTimeForOffset(offset) }
+        }));
     }
     function getAppContext() {
         const tasks = getTasks();
@@ -673,8 +691,13 @@
             typing.remove();
 
             const result = parseJSON(data.reply);
-            const relativeDateAction = inferRelativeTaskDateAction(text);
-            if (relativeDateAction) { result.actions = [relativeDateAction]; result.reply = 'تم تحديث موعد المهمة إلى التاريخ المطلوب.'; }
+            const relativeDateActions = inferRelativeTaskDateActions(text);
+            if (relativeDateActions.length) {
+                result.actions = relativeDateActions;
+                result.reply = relativeDateActions.length === 1
+                    ? 'تم تحديث موعد المهمة إلى التاريخ المطلوب.'
+                    : `تم تحديث مواعيد ${relativeDateActions.length} مهمة نشطة إلى التاريخ المطلوب.`;
+            }
             if (!Array.isArray(result.actions) || !result.actions.length) {
                 const direct = inferDirectActions(text);
                 if (direct.length) {
@@ -690,7 +713,7 @@
             const reply = count
                 ? `${result.reply || 'تم تنفيذ الطلب.'}\nتم حفظ ${count} تعديل داخل الموقع.`
                 : requestedTaskUpdate
-                    ? 'لم يتم تعديل أي مهمة. لم أجد مهمة واحدة محددة تنطبق عليها الرسالة، أو تعذر حفظ التاريخ. حدّد اسم المهمة حتى لا أغيّر موعد مهمة أخرى بالخطأ.'
+                    ? 'لم يتم تعديل أي مهمة. لم أجد مهامًا مطابقة أو تعذر حفظ التواريخ. راجع المهام وحاول مرة أخرى.'
                     : result.reply || escapeText(data.reply);
             await animateReply(reply);
             chat.messages.push({ role: 'assistant', content: reply });
