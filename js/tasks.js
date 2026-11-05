@@ -3,12 +3,21 @@ Object.assign(NuvioApp.prototype, {
         const list = document.getElementById('tasksList');
         const empty = document.getElementById('tasksEmpty');
 
+        const dateKey = value => {
+            if (!value) return '';
+            const match = /^(\d{4}-\d{2}-\d{2})/.exec(String(value));
+            if (match) return match[1];
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? '' : [date.getFullYear(), String(date.getMonth()+1).padStart(2,'0'), String(date.getDate()).padStart(2,'0')].join('-');
+        };
+        const today = dateKey(new Date());
+
         let filtered = [...this.tasks];
 
         if (this.currentFilter !== 'all') {
             filtered = filtered.filter(t => {
                 if (this.currentFilter === 'overdue') {
-                    return t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'completed';
+                    return t.dueDate && dateKey(t.dueDate) < today && t.status !== 'completed';
                 }
                 return t.status === this.currentFilter;
             });
@@ -44,19 +53,37 @@ Object.assign(NuvioApp.prototype, {
     },
 
     renderTaskItem(task) {
-        const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'completed';
+        const dateKey = value => {
+            if (!value) return '';
+            const match = /^(\d{4}-\d{2}-\d{2})/.exec(String(value));
+            if (match) return match[1];
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? '' : [date.getFullYear(), String(date.getMonth()+1).padStart(2,'0'), String(date.getDate()).padStart(2,'0')].join('-');
+        };
+        const todayDate = new Date();
+        const todayKey = dateKey(todayDate);
+        const tomorrowDate = new Date(todayDate);
+        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+        const tomorrowKey = dateKey(tomorrowDate);
+        const taskDateKey = dateKey(task.dueDate);
+        const isOverdue = Boolean(task.dueDate && taskDateKey < todayKey && task.status !== 'completed');
 
         let dueText = '';
-        if (task.dueDate) {
-            const due = new Date(task.dueDate);
-            const now = new Date();
-            const diff = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+        if (task.dueDate && taskDateKey) {
             const isAr = this.settings.language === 'ar';
-
-            if (diff < 0) dueText = isAr ? 'متأخر ' + Math.abs(diff) + ' يوم' : Math.abs(diff) + ' days overdue';
-            else if (diff === 0) dueText = isAr ? 'اليوم' : 'Today';
-            else if (diff === 1) dueText = isAr ? 'غداً' : 'Tomorrow';
-            else dueText = isAr ? 'بعد ' + diff + ' يوم' : 'In ' + diff + ' days';
+            if (taskDateKey < todayKey) {
+                const due = new Date(taskDateKey + 'T12:00:00');
+                const today = new Date(todayKey + 'T12:00:00');
+                const days = Math.round((today - due) / 86400000);
+                dueText = isAr ? 'متأخر ' + days + ' يوم' : days + ' days overdue';
+            } else if (taskDateKey === todayKey) dueText = isAr ? 'اليوم' : 'Today';
+            else if (taskDateKey === tomorrowKey) dueText = isAr ? 'غداً' : 'Tomorrow';
+            else {
+                const due = new Date(taskDateKey + 'T12:00:00');
+                const today = new Date(todayKey + 'T12:00:00');
+                const days = Math.round((due - today) / 86400000);
+                dueText = isAr ? 'بعد ' + days + ' يوم' : 'In ' + days + ' days';
+            }
         }
 
         return `
@@ -122,7 +149,11 @@ Object.assign(NuvioApp.prototype, {
                 const tp = document.getElementById('taskPriority');
                 if (tp) tp.value = task.priority;
                 const tdd = document.getElementById('taskDueDate');
-                if (tdd) tdd.value = task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : '';
+                if (tdd)  tdd.value = task.dueDate ? (() => {
+                    const due = new Date(task.dueDate);
+                    const pad = value => String(value).padStart(2, '0');
+                    return due.getFullYear() + '-' + pad(due.getMonth() + 1) + '-' + pad(due.getDate()) + 'T' + pad(due.getHours()) + ':' + pad(due.getMinutes());
+                })() : '';
                 const tet = document.getElementById('taskEstimatedTime');
                 if (tet) tet.value = task.estimatedTime;
                 const tr = document.getElementById('taskRepeat');
