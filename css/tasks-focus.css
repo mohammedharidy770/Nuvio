@@ -548,3 +548,12 @@
 .focus-stats-card .fs-value { color: var(--primary); }
 .focus-stats-card .grade-value { color: var(--primary); }
 .focus-stats-card .grade-fill { background: linear-gradient(90deg, var(--primary-dark), var(--primary-light)); }
+
+/* Highlight tasks due today with the primary Nuvio red accent. */
+.task-due.today {
+    color: var(--primary);
+    font-weight: 700;
+}
+.task-due.today i {
+    color: var(--primary);
+}
