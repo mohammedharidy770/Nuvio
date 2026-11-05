@@ -529,3 +529,22 @@
     border-radius: 4px;
     transition: width 0.5s ease;
 }
+
+/* Focus controls: retain Nuvio red accent for active and primary actions. */
+.mode-btn.active,
+.timer-btn.primary,
+.timer-btn:not(.secondary) {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: #fff;
+    border-color: var(--primary);
+}
+.timer-btn:not(.secondary) {
+    box-shadow: 0 4px 14px rgba(220, 38, 38, .22);
+}
+.timer-btn:not(.secondary):hover,
+.mode-btn.active:hover {
+    filter: brightness(1.08);
+}
+.focus-stats-card .fs-value { color: var(--primary); }
+.focus-stats-card .grade-value { color: var(--primary); }
+.focus-stats-card .grade-fill { background: linear-gradient(90deg, var(--primary-dark), var(--primary-light)); }
