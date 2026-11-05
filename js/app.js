@@ -29,7 +29,8 @@ class NuvioApp {
             timeLeft: 25 * 60,
             totalTime: 25 * 60,
             interval: null,
-            currentTask: null
+            currentTask: null,
+            endAt: null
         };
 
         this.categories = {
@@ -82,6 +83,7 @@ class NuvioApp {
 
     init() {
         this.loadData();
+        this.restoreTimerState?.();
         this.loadHabits();
         this.loadPrayerSettings();
         this.populateTimerSettings();
