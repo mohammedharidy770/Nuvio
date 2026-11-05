@@ -97,7 +97,7 @@ Object.assign(NuvioApp.prototype, {
                     <div class="task-meta">
                         <span class="task-tag category-${task.category}">${this.getCategoryLabel(task.category)}</span>
                         <span class="task-tag priority-${task.priority}">${this.getPriorityLabel(task.priority)}</span>
-                        ${dueText ? `<span class="task-due ${isOverdue ? 'overdue' : ''} ${taskDateKey === todayKey ? 'today' : ''}`><i class="fas fa-calendar"></i> ${dueText}</span>` : ''}
+                        ${dueText ? `<span class="task-due ${isOverdue ? 'overdue' : ''} ${taskDateKey === todayKey ? 'today' : ''}"><i class="fas fa-calendar"></i> ${dueText}</span>` : ''}
                         <span class="task-estimated"><i class="fas fa-clock"></i> ${task.estimatedTime} ${this.t('settings.minutes')}</span>
                         ${task.tags.map(tag => `<span class="task-tag" style="background: var(--bg-tertiary); color: var(--text-muted);">${tag}</span>`).join('')}
                     </div>
