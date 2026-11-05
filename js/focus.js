@@ -25,8 +25,11 @@ Object.assign(NuvioApp.prototype, {
             long: this.settings.longBreakDuration
         };
 
+        if (this.timerState.running) this.pauseTimer();
+        this.timerState.mode = mode;
         this.timerState.totalTime = durations[mode] * 60;
         this.timerState.timeLeft = this.timerState.totalTime;
+        this.timerState.endAt = null;
         this.resetTimer();
     },
 
@@ -43,26 +46,30 @@ Object.assign(NuvioApp.prototype, {
 
         this.timerState.running = true;
         this.timerState.paused = false;
+        this.timerState.endAt = Date.now() + this.timerState.timeLeft * 1000;
+        this.persistTimerState();
 
         const tsb = document.getElementById('timerStartBtn');
         const tpb = document.getElementById('timerPauseBtn');
         if (tsb) tsb.style.display = 'none';
         if (tpb) tpb.style.display = 'flex';
 
+        clearInterval(this.timerState.interval);
         this.timerState.interval = setInterval(() => {
-            this.timerState.timeLeft--;
+            this.timerState.timeLeft = Math.max(0, Math.ceil((this.timerState.endAt - Date.now()) / 1000));
             this.updateTimerDisplay();
-
-            if (this.timerState.timeLeft <= 0) {
-                this.timerComplete();
-            }
-        }, 1000);
+            this.persistTimerState();
+            if (this.timerState.timeLeft <= 0) this.timerComplete();
+        }, 250);
+        this.updateTimerDisplay();
     },
 
     pauseTimer() {
         this.timerState.running = false;
         this.timerState.paused = true;
+        this.timerState.endAt = null;
         clearInterval(this.timerState.interval);
+        this.persistTimerState();
 
         const tsb = document.getElementById('timerStartBtn');
         const tpb = document.getElementById('timerPauseBtn');
@@ -79,6 +86,8 @@ Object.assign(NuvioApp.prototype, {
         clearInterval(this.timerState.interval);
 
         this.timerState.timeLeft = this.timerState.totalTime;
+        this.timerState.endAt = null;
+        this.persistTimerState();
         this.updateTimerDisplay();
 
         const tsb = document.getElementById('timerStartBtn');
@@ -88,6 +97,70 @@ Object.assign(NuvioApp.prototype, {
             tsb.innerHTML = '<i class="fas fa-play"></i><span>' + this.t('timer.start') + '</span>';
         }
         if (tpb) tpb.style.display = 'none';
+    },
+
+    persistTimerState() {
+        const state = {
+            mode: this.timerState.mode,
+            timeLeft: this.timerState.timeLeft,
+            totalTime: this.timerState.totalTime,
+            running: this.timerState.running,
+            paused: this.timerState.paused,
+            endAt: this.timerState.endAt || null,
+            currentTask: this.timerState.currentTask || null
+        };
+        try { localStorage.setItem('nuvio_timer_state', JSON.stringify(state)); } catch (error) {}
+    },
+
+    restoreTimerState() {
+        try {
+            const saved = JSON.parse(localStorage.getItem('nuvio_timer_state') || 'null');
+            if (!saved || !saved.mode) return;
+            this.timerState.mode = saved.mode;
+            this.timerState.totalTime = Number(saved.totalTime) || this.settings.pomodoroDuration * 60;
+            this.timerState.timeLeft = Number(saved.timeLeft) || this.timerState.totalTime;
+            this.timerState.currentTask = saved.currentTask || null;
+            if (saved.running && saved.endAt) {
+                this.timerState.endAt = saved.endAt;
+                this.timerState.timeLeft = Math.max(0, Math.ceil((saved.endAt - Date.now()) / 1000));
+                this.timerState.running = false;
+                this.timerState.paused = false;
+                if (this.timerState.timeLeft > 0) this.startTimer();
+                else this.timerComplete();
+            } else {
+                this.timerState.running = false;
+                this.timerState.paused = Boolean(saved.paused);
+                this.timerState.endAt = null;
+                this.updateTimerDisplay();
+                this.syncTimerButtons();
+            }
+        } catch (error) { console.warn('Could not restore focus timer:', error); }
+    },
+
+    syncTimerButtons() {
+        const start = document.getElementById('timerStartBtn');
+        const pause = document.getElementById('timerPauseBtn');
+        if (start) start.style.display = this.timerState.running ? 'none' : 'flex';
+        if (pause) pause.style.display = this.timerState.running ? 'flex' : 'none';
+    },
+
+    renderFocusStats() {
+        const today = new Date().toDateString();
+        const sessions = (this.focusSessions || []).filter(s => new Date(s.date).toDateString() === today);
+        const focus = sessions.filter(s => s.type === 'pomodoro').reduce((sum,s) => sum + (Number(s.duration)||0),0);
+        const breaks = sessions.filter(s => s.type !== 'pomodoro').reduce((sum,s) => sum + (Number(s.duration)||0),0);
+        const count = sessions.filter(s => s.type === 'pomodoro').length;
+        const countEl = document.getElementById('sessionCount');
+        const focusEl = document.getElementById('sessionFocusTime');
+        const breakEl = document.getElementById('sessionBreakTime');
+        if (countEl) countEl.textContent = count;
+        if (focusEl) focusEl.textContent = focus >= 60 ? (focus / 60).toFixed(1).replace(/\\.0$/,'') + 'h' : focus + 'm';
+        if (breakEl) breakEl.textContent = breaks + 'm';
+        const grade = Math.min(100, Math.round(focus / Math.max(1, this.settings.pomodoroDuration * 4) * 100));
+        const fill = document.getElementById('gradeFill');
+        if (fill) fill.style.width = grade + '%';
+        const value = document.querySelector('#productivityGrade .grade-value');
+        if (value) value.textContent = grade >= 75 ? (this.settings.language === 'ar' ? 'ممتاز' : 'Excellent') : grade >= 40 ? (this.settings.language === 'ar' ? 'جيد' : 'Good') : (this.settings.language === 'ar' ? 'ابدأ جلسة' : 'Start a session');
     },
 
     updateTimerDisplay() {
@@ -137,11 +210,14 @@ Object.assign(NuvioApp.prototype, {
             this.saveData();
             this.showToast(this.settings.language === 'ar' ? 'أحسنت! أكملت جلسة تركيز' : 'Great! Focus session completed', 'success');
         } else {
+            this.focusSessions.push({ date: new Date().toISOString(), duration: this.timerState.totalTime / 60, type: this.timerState.mode, taskId: this.timerState.currentTask || null });
+            this.saveData();
             this.showToast(this.settings.language === 'ar' ? 'انتهت الاستراحة!' : 'Break ended!', 'info');
         }
 
         this.resetTimer();
         this.renderAll();
+        this.renderFocusStats();
         document.title = 'Nuvio';
     },
 
