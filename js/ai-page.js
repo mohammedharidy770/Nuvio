@@ -275,45 +275,57 @@
         }
     }
 
-    function localDateTimeForOffset(days = 0) {
-        const date = new Date(); date.setDate(date.getDate() + days); date.setHours(12, 0, 0, 0); return date.toISOString();
+    function localDateKey(value) {
+        if (!value) return '';
+        const match = /^(\d{4}-\d{2}-\d{2})/.exec(String(value));
+        if (match) return match[1];
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '';
+        return [date.getFullYear(), String(date.getMonth()+1).padStart(2,'0'), String(date.getDate()).padStart(2,'0')].join('-');
     }
+
+    function localDateTimeForOffset(days = 0) {
+        const date = new Date();
+        date.setDate(date.getDate() + days);
+        date.setHours(12, 0, 0, 0);
+        return date.toISOString();
+    }
+
     function inferRelativeTaskDateActions(message) {
         const text = String(message || '').toLowerCase();
-        const asks = /(خلي|خلّي|غير|غيّر|عدل|عدّل|انقل|اجعل|حوّل|حول|موعد|التاريخ|التوقيت)/.test(text);
+        const asks = /(خلي|خلّي|غير|غيّر|يغير|يغيّر|عدل|عدّل|انقل|اجعل|حوّل|حول|ميعاد|المعاد|موعد|التاريخ|التوقيت)/.test(text);
         const offset = /(النهارده|النهاردة|اليوم|النهار)/.test(text) ? 0 : /(بكره|بكرة|غدا|غداً)/.test(text) ? 1 : null;
         if (!asks || offset === null) return [];
         const tasks = getTasks();
-        const norm = v => String(v || '').toLowerCase()
-            .replace(/[ًٌٍَُِّْـ]/g,'').replace(/[أإآ]/g,'ا').replace(/[ىي]/g,'ي')
-            .replace(/[^\p{L}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim();
+        const norm = value => String(value || '').toLowerCase()
+            .replace(/[ًٌٍَُِّْـ]/g, '')
+            .replace(/[أإآ]/g, 'ا').replace(/[ىي]/g, 'ي')
+            .replace(/[^\u0600-\u06FF\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
         const msg = norm(text);
-        const named = tasks.filter(t => {
-            const title = norm(t.title);
+        const named = tasks.filter(task => {
+            const title = norm(task.title);
             return title.length >= 3 && msg.includes(title);
         });
-        if (named.length === 1) {
-            return [{ type:'update_task', task:named[0].id, changes:{ dueDate:localDateTimeForOffset(offset) } }];
+        let targets = [];
+        if (named.length === 1) targets = named;
+        else if (named.length > 1) return [];
+        else {
+            const asksAll = /(كل المهام|جميع المهام|كل المهمات|جميع المهمات|المهام كلها|كل التاسكات)/.test(msg);
+            if (asksAll) targets = tasks.filter(task => task.status !== 'completed');
+            else {
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                const tomorrowKey = localDateKey(tomorrow);
+                targets = tasks.filter(task => task.status !== 'completed' && localDateKey(task.dueDate) === tomorrowKey);
+            }
         }
-        if (named.length > 1) return [];
-        const asksAll = /(كل المهام|جميع المهام|كل المهمات|جميع المهمات|المهام كلها|كل التاسكات)/i.test(text);
-        if (asksAll) {
-            const active = tasks.filter(task => task.status !== 'completed');
-            return active.map(task => ({
-                type:'update_task', task:task.id, changes:{ dueDate:localDateTimeForOffset(offset) }
-            }));
-        }
-        const d = new Date(); d.setDate(d.getDate()+1);
-        const key = [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
-        const tomorrow = tasks.filter(t => {
-            if(!t.dueDate || t.status === 'completed') return false;
-            const x=new Date(t.dueDate);
-            return !Number.isNaN(x.getTime()) && [x.getFullYear(),String(x.getMonth()+1).padStart(2,'0'),String(x.getDate()).padStart(2,'0')].join('-')===key;
-        });
-        return tomorrow.map(task => ({
-            type:'update_task', task:task.id, changes:{ dueDate:localDateTimeForOffset(offset) }
+        return targets.map(task => ({
+            type: 'update_task',
+            task: task.id,
+            changes: { dueDate: localDateTimeForOffset(offset) }
         }));
     }
+
     function getAppContext() {
         const tasks = getTasks();
         return {
