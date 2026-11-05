@@ -148,12 +148,11 @@ Object.assign(NuvioApp.prototype, {
         if (section === 'habits') this.renderHabits();
                 if (section === 'notes') this.renderNotes();
         if (section === 'prayer') { this.renderPrayerTimes(); this.updatePrayerCountdown(); }
-                if (section === 'focus') {
-            this.timerState.totalTime = this.settings.pomodoroDuration * 60;
-            if (!this.timerState.running && !this.timerState.paused) {
-                this.timerState.timeLeft = this.timerState.totalTime;
-            }
-            this.setTimerMode(this.timerState.mode || 'pomodoro');
+        if (section === 'focus') {
+            this.restoreTimerState();
+            this.updateTimerDisplay();
+            this.syncTimerButtons();
+            this.renderFocusStats();
         }
 
         window.scrollTo(0, 0);
