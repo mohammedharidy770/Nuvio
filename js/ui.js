@@ -149,7 +149,11 @@ Object.assign(NuvioApp.prototype, {
                 if (section === 'notes') this.renderNotes();
         if (section === 'prayer') { this.renderPrayerTimes(); this.updatePrayerCountdown(); }
         if (section === 'focus') {
-            this.restoreTimerState();
+            if (this.timerState.running && this.timerState.endAt) {
+                this.timerState.timeLeft = Math.max(0, Math.ceil((this.timerState.endAt - Date.now()) / 1000));
+            } else {
+                this.restoreTimerState();
+            }
             this.updateTimerDisplay();
             this.syncTimerButtons();
             this.renderFocusStats();

@@ -125,8 +125,11 @@ Object.assign(NuvioApp.prototype, {
                 this.timerState.timeLeft = Math.max(0, Math.ceil((saved.endAt - Date.now()) / 1000));
                 this.timerState.running = false;
                 this.timerState.paused = false;
-                if (this.timerState.timeLeft > 0) this.startTimer();
-                else this.timerComplete();
+                if (this.timerState.timeLeft > 0) {
+                    this.startTimer();
+                } else {
+                    this.timerComplete();
+                }
             } else {
                 this.timerState.running = false;
                 this.timerState.paused = Boolean(saved.paused);

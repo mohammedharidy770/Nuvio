@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="./css/ai-chat.css?v=2">
     <link rel="stylesheet" href="./css/ai-page.css?v=7">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
 <base target="_blank">
 </head>
 <body>
@@ -37,7 +37,7 @@
                     <div class="avatar-preview" id="avatarPreview">
                         <i class="fas fa-user"></i>
                     </div>
-                    <input type="file" id="avatarInput" accept="image/*" onchange="app.handleAvatarUpload(event)" style="display:none;">
+                    <input type="file" id="avatarInput" accept="image/*" onchange="app.handleAvatarUpload(event)" style="display:none;" aria-label="اختيار صورة الملف الشخصي">
                     <button type="button" class="btn-outline" onclick="document.getElementById('avatarInput').click()">
                         <i class="fas fa-camera"></i> <span data-i18n="welcome.choosePhoto">اختر صورة</span>
                     </button>
@@ -53,7 +53,7 @@
         </div>
     </div>
     <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar" id="sidebar" aria-label="القائمة الرئيسية">
         <div class="sidebar-header">
             <div class="logo">
 <div class="logo-icon">
@@ -330,7 +330,7 @@
                     <button class="filter-btn" data-filter="overdue" data-i18n="filters.overdue">متأخرة</button>
                 </div>
                 <div class="tasks-sort">
-                    <select id="sortTasks" onchange="app.sortTasks()">
+                    <select id="sortTasks" onchange="app.sortTasks()" aria-label="ترتيب المهام">
                         <option value="newest" data-i18n="sort.newest">الأحدث</option>
                         <option value="priority" data-i18n="sort.priority">الأولوية</option>
                         <option value="due-date" data-i18n="sort.dueDate">موعد النهاية</option>
@@ -449,7 +449,7 @@
                 <div class="report-card">
                     <div class="card-header">
                         <h3><i class="fas fa-clock"></i> <span data-i18n="reports.focusHours">ساعات التركيز</span></h3>
-                        <select id="reportPeriod" onchange="app.updateReports()">
+                        <select id="reportPeriod" onchange="app.updateReports()" aria-label="فترة التقرير">
                             <option value="week" data-i18n="reports.thisWeek">هذا الأسبوع</option>
                             <option value="month" data-i18n="reports.thisMonth">هذا الشهر</option>
                         </select>
@@ -558,7 +558,7 @@
                 <div class="water-header">
                     <h2 data-i18n="water.title">تتبع شرب الماء</h2>
                     <div class="water-settings">
-                        <label data-i18n="water.dailyGoal">الهدف اليومي:</label>
+                        <label for="waterGoalInput" data-i18n="water.dailyGoal">الهدف اليومي:</label>
                         <input type="number" id="waterGoalInput" value="8" min="4" max="20" onchange="app.updateWaterGoal(this.value)">
                         <span data-i18n="water.glasses">كوب</span>
                     </div>
@@ -595,7 +595,7 @@
 
                 <div class="water-reminder">
                     <label class="toggle">
-                        <input type="checkbox" id="waterReminderToggle" onchange="app.toggleWaterReminder()">
+                        <input type="checkbox" id="waterReminderToggle" onchange="app.toggleWaterReminder()" aria-label="تذكير شرب الماء كل ساعة">
                         <span class="toggle-slider"></span>
                     </label>
                     <span data-i18n="water.reminder">تذكير كل ساعة</span>
@@ -608,7 +608,7 @@
                 <div class="notes-header">
                     <div class="notes-search">
                         <i class="fas fa-search"></i>
-                        <input type="text" id="notesSearch" data-i18n-placeholder="notes.searchPlaceholder" placeholder="ابحث في مذكراتك..." oninput="app.searchNotes()">
+                        <input type="text" id="notesSearch" data-i18n-placeholder="notes.searchPlaceholder" placeholder="ابحث في مذكراتك..." oninput="app.searchNotes()" aria-label="البحث في المذكرات">
                     </div>
                     <button class="btn-new-task" onclick="app.openNoteModal()">
                         <i class="fas fa-plus"></i>
@@ -642,7 +642,7 @@
                                 <span class="setting-desc" data-i18n="settings.darkModeDesc">تفعيل الوضع الداكن للواجهة</span>
                             </div>
                             <label class="toggle">
-                                <input type="checkbox" id="darkModeToggle" checked onchange="app.toggleDarkMode()">
+                                <input type="checkbox" id="darkModeToggle" checked onchange="app.toggleDarkMode()" aria-label="تفعيل الوضع الداكن">
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
@@ -654,7 +654,7 @@
                                 <span class="setting-label" data-i18n="settings.appLanguage">لغة التطبيق</span>
                                 <span class="setting-desc" data-i18n="settings.languageDesc">اختر لغة التطبيق</span>
                             </div>
-                            <select id="languageSelect" onchange="app.changeLanguage()">
+                            <select id="languageSelect" onchange="app.changeLanguage()" aria-label="لغة التطبيق">
                                 <option value="ar">العربية</option>
                                 <option value="en">English</option>
                             </select>
@@ -668,7 +668,7 @@
                                 <span class="setting-desc" data-i18n="settings.pomodoroDesc">مدة جلسة التركيز</span>
                             </div>
                             <div class="setting-input">
-                                <input type="number" id="pomodoroDuration" value="25" min="1" max="120" onchange="app.updateTimerSetting('pomodoroDuration', this.value)">
+                                <input type="number" id="pomodoroDuration" value="25" min="1" max="120" onchange="app.updateTimerSetting('pomodoroDuration', this.value)" aria-label="مدة جلسة التركيز بالدقائق">
                                 <span data-i18n="settings.minutes">د</span>
                             </div>
                         </div>
@@ -678,7 +678,7 @@
                                 <span class="setting-desc" data-i18n="settings.shortBreakDesc">مدة الاستراحة القصيرة</span>
                             </div>
                             <div class="setting-input">
-                                <input type="number" id="shortBreakDuration" value="5" min="1" max="60" onchange="app.updateTimerSetting('shortBreakDuration', this.value)">
+                                <input type="number" id="shortBreakDuration" value="5" min="1" max="60" onchange="app.updateTimerSetting('shortBreakDuration', this.value)" aria-label="مدة الاستراحة القصيرة بالدقائق">
                                 <span data-i18n="settings.minutes">د</span>
                             </div>
                         </div>
@@ -688,7 +688,7 @@
                                 <span class="setting-desc" data-i18n="settings.longBreakDesc">مدة الاستراحة الطويلة</span>
                             </div>
                             <div class="setting-input">
-                                <input type="number" id="longBreakDuration" value="15" min="1" max="120" onchange="app.updateTimerSetting('longBreakDuration', this.value)">
+                                <input type="number" id="longBreakDuration" value="15" min="1" max="120" onchange="app.updateTimerSetting('longBreakDuration', this.value)" aria-label="مدة الاستراحة الطويلة بالدقائق">
                                 <span data-i18n="settings.minutes">د</span>
                             </div>
                         </div>
@@ -701,7 +701,7 @@
                                 <span class="setting-desc" data-i18n="settings.timerNotifDesc">إشعار عند انتهاء المؤقت</span>
                             </div>
                             <label class="toggle">
-                                <input type="checkbox" id="timerNotification" checked>
+                                <input type="checkbox" id="timerNotification" checked aria-label="إشعار انتهاء المؤقت">
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
@@ -711,7 +711,7 @@
                                 <span class="setting-desc" data-i18n="settings.taskReminderDesc">تذكير بالمهام المعلقة</span>
                             </div>
                             <label class="toggle">
-                                <input type="checkbox" id="taskReminderEnabled" checked onchange="app.toggleTaskReminder()">
+                                <input type="checkbox" id="taskReminderEnabled" checked onchange="app.toggleTaskReminder()" aria-label="تفعيل تذكير المهام">
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
@@ -763,7 +763,7 @@
         <!-- AI Section -->
         <section class="section ai-section" id="aiSection">
             <div class="integrated-ai">
-                <aside class="ai-sidebar" id="aiSidebar">
+                <aside class="ai-sidebar" id="aiSidebar" aria-label="محادثات الذكاء الاصطناعي">
                     <div class="ai-brand"><span class="ai-brand-mark" aria-hidden="true">N</span><span>AI Nuvio</span></div>
                     <button class="ai-new-chat" id="newChat">محادثة جديدة</button>
                     <div class="ai-history">
@@ -781,7 +781,7 @@
                     <section class="ai-messages" id="messages" aria-live="polite"></section>
                     <footer class="ai-composer-wrap">
                         <div class="ai-composer">
-                            <textarea id="prompt" rows="1" placeholder="اسأل AI Nuvio أو اطلب تنفيذ مهمة..."></textarea>
+                            <textarea id="prompt" rows="1" placeholder="اسأل AI Nuvio أو اطلب تنفيذ مهمة..." aria-label="رسالة الذكاء الاصطناعي"></textarea>
                             <button class="ai-send" id="sendPrompt" aria-label="إرسال"><i class="fas fa-arrow-up"></i></button>
                         </div>
                         <div class="ai-hint">يتحكم في مهامك وأقسام الموقع مباشرة.</div>
@@ -1028,7 +1028,7 @@
 </main>
 
     <!-- Task Modal -->
-    <div class="modal-overlay" id="taskModalOverlay" onclick="app.closeTaskModal()"></div>
+    <button type="button" class="modal-overlay" id="taskModalOverlay" onclick="app.closeTaskModal()" aria-label="إغلاق نافذة المهمة"></button>
     <div class="modal-slide" id="taskModal">
         <div class="modal-header">
             <h2 id="taskModalTitle" data-i18n="modal.newTask">مهمة جديدة</h2>
@@ -1090,7 +1090,7 @@
     </div>
 
     <!-- Task Details Modal -->
-    <div class="modal-overlay" id="taskDetailsOverlay" onclick="app.closeTaskDetails()"></div>
+    <button type="button" class="modal-overlay" id="taskDetailsOverlay" onclick="app.closeTaskDetails()" aria-label="إغلاق تفاصيل المهمة"></button>
     <div class="modal-slide" id="taskDetailsModal">
         <div class="modal-header">
             <h2 data-i18n="modal.taskDetails">تفاصيل المهمة</h2>
@@ -1112,9 +1112,9 @@
     <div class="toast-container" id="toastContainer"></div>
 
     <!-- Import File Input -->
-    <input type="file" id="importFileInput" accept=".json" style="display:none;" onchange="app.handleImport(event)">
+    <input type="file" id="importFileInput" accept=".json" style="display:none;" onchange="app.handleImport(event)" aria-label="استيراد بيانات التطبيق">
         <!-- Sleep Modal -->
-    <div class="modal-overlay" id="sleepModalOverlay" onclick="app.closeSleepModal()"></div>
+    <button type="button" class="modal-overlay" id="sleepModalOverlay" onclick="app.closeSleepModal()" aria-label="إغلاق نافذة النوم"></button>
     <div class="modal-slide" id="sleepModal">
         <div class="modal-header">
             <h2 data-i18n="sleep.addRecord">تسجيل نوم</h2>
@@ -1134,8 +1134,8 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label data-i18n="sleep.quality">جودة النوم</label>
-                    <div class="sleep-quality-selector" id="sleepQualitySelector">
+                    <span class="form-label" id="sleepQualityLabel" data-i18n="sleep.quality">جودة النوم</span>
+                    <div class="sleep-quality-selector" id="sleepQualitySelector" role="radiogroup" aria-labelledby="sleepQualityLabel">
                         <label class="sleep-quality-option">
                             <input type="radio" name="sleepQuality" value="1" required>
                             <span><i class="fas fa-frown"></i></span>
@@ -1172,7 +1172,7 @@
         </div>
     </div>
         <!-- Note Modal -->
-    <div class="modal-overlay" id="noteModalOverlay" onclick="app.closeNoteModal()"></div>
+    <button type="button" class="modal-overlay" id="noteModalOverlay" onclick="app.closeNoteModal()" aria-label="إغلاق نافذة المذكرة"></button>
     <div class="modal-slide" id="noteModal">
         <div class="modal-header">
             <h2 id="noteModalTitle" data-i18n="notes.newNote">مذكرة جديدة</h2>
@@ -1196,12 +1196,12 @@
                 <div class="form-group">
                     <label for="noteColor" data-i18n="notes.color">لون المذكرة</label>
                     <div class="note-colors" id="noteColors">
-                        <label class="note-color-option"><input type="radio" name="noteColor" value="#fef3c7" checked><span style="background:#fef3c7"></span></label>
-                        <label class="note-color-option"><input type="radio" name="noteColor" value="#dbeafe"><span style="background:#dbeafe"></span></label>
-                        <label class="note-color-option"><input type="radio" name="noteColor" value="#d1fae5"><span style="background:#d1fae5"></span></label>
-                        <label class="note-color-option"><input type="radio" name="noteColor" value="#fce7f3"><span style="background:#fce7f3"></span></label>
-                        <label class="note-color-option"><input type="radio" name="noteColor" value="#e5e7eb"><span style="background:#e5e7eb"></span></label>
-                        <label class="note-color-option"><input type="radio" name="noteColor" value="#fee2e2"><span style="background:#fee2e2"></span></label>
+                        <label class="note-color-option"><input type="radio" name="noteColor" value="#fef3c7" checked aria-label="لون أصفر"><span style="background:#fef3c7"></span></label>
+                        <label class="note-color-option"><input type="radio" name="noteColor" value="#dbeafe" aria-label="لون أزرق"><span style="background:#dbeafe"></span></label>
+                        <label class="note-color-option"><input type="radio" name="noteColor" value="#d1fae5" aria-label="لون أخضر"><span style="background:#d1fae5"></span></label>
+                        <label class="note-color-option"><input type="radio" name="noteColor" value="#fce7f3" aria-label="لون وردي"><span style="background:#fce7f3"></span></label>
+                        <label class="note-color-option"><input type="radio" name="noteColor" value="#e5e7eb" aria-label="لون رمادي"><span style="background:#e5e7eb"></span></label>
+                        <label class="note-color-option"><input type="radio" name="noteColor" value="#fee2e2" aria-label="لون أحمر"><span style="background:#fee2e2"></span></label>
                     </div>
                 </div>
                 <div class="form-actions">
@@ -1214,7 +1214,7 @@
         </div>
     </div>
         <!-- Help / Onboarding Modal -->
-    <div class="modal-overlay" id="helpModalOverlay" onclick="app.closeHelp()"></div>
+    <button type="button" class="modal-overlay" id="helpModalOverlay" onclick="app.closeHelp()" aria-label="إغلاق التعليمات"></button>
     <div class="modal-slide" id="helpModal">
         <div class="modal-header">
             <h2 data-i18n="help.title">كيف تستخدم Nuvio</h2>
@@ -1240,7 +1240,7 @@
     </div>
 
     <!-- Habit Modal -->
-    <div class="modal-overlay" id="habitModalOverlay" onclick="app.closeHabitModal()"></div>
+    <button type="button" class="modal-overlay" id="habitModalOverlay" onclick="app.closeHabitModal()" aria-label="إغلاق نافذة العادة"></button>
     <div class="modal-slide" id="habitModal">
         <div class="modal-header">
             <h2 id="habitModalTitle" data-i18n="habits.newHabit">عادة جديدة</h2>
@@ -1307,7 +1307,7 @@
                     <input type="time" id="habitReminderTime">
                 </div>
                 <div class="form-group">
-                    <label data-i18n="habits.repeatDays">أيام التكرار</label>
+                    <span class="form-label" data-i18n="habits.repeatDays">أيام التكرار</span>
                     <div class="habit-days-selector" id="habitDaysSelector">
                         <label class="day-checkbox"><input type="checkbox" value="0" checked><span data-i18n="days.sunShort">ح</span></label>
                         <label class="day-checkbox"><input type="checkbox" value="1" checked><span data-i18n="days.monShort">ن</span></label>
@@ -1327,14 +1327,14 @@
             </form>
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0" integrity="sha384-gnyZit14c5lnGcarmA166QQjjJXpucw25ogZXuwH3HxxY904zHkBqmxVpelsPorb" crossorigin="anonymous"></script>
     <script src="./js/supabase-config.js"></script>
     <script src="./js/supabase-client.js"></script>
     <script src="./js/app.js"></script>
     <script src="./js/auth.js"></script>
     <script src="./js/i18n.js"></script>
     <script src="./js/storage.js"></script>
-    <script src="./js/ui.js"></script>
+    <script src="./js/ui.js?v=3"></script>
     <script src="./js/dashboard.js"></script>
     <script src="./js/tasks.js"></script>
     <script src="./js/focus.js?v=2"></script>
