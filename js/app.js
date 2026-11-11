@@ -1,3 +1,15 @@
+// Escape untrusted text before placing it inside HTML templates.
+window.NuvioSecurity = window.NuvioSecurity || {};
+window.NuvioSecurity.escapeHTML = function (value) {
+    return String(value ?? '').replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[character]);
+};
+window.NuvioSecurity.safeId = function (value) {
+    const id = String(value ?? '');
+    return /^[a-zA-Z0-9_-]{1,100}$/.test(id) ? id : '';
+};
+
 // ===== Nuvio - Personal Operating System =====
 // Version 2.0 - Red/Black/White Theme + Bilingual
 
