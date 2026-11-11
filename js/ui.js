@@ -326,6 +326,12 @@ Object.assign(NuvioApp.prototype, {
         const file = event.target.files[0];
         if (!file) return;
 
+        if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type)) {
+            this.showToast(this.settings.language === 'ar' ? 'صيغة الصورة غير مدعومة' : 'Unsupported image format', 'warning');
+            event.target.value = '';
+            return;
+        }
+
         if (file.size > 2 * 1024 * 1024) {
             this.showToast(this.settings.language === 'ar' ? 'الصورة كبيرة جداً (أقصى 2 ميجا)' : 'Image too large (max 2MB)', 'warning');
             return;
@@ -333,8 +339,13 @@ Object.assign(NuvioApp.prototype, {
 
         const reader = new FileReader();
         reader.onload = (e) => {
-            this.userProfile.avatar = e.target.result;
-            this.updateAvatarPreview(e.target.result);
+            const imageData = e.target?.result;
+            if (typeof imageData !== 'string' || !/^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+=*$/.test(imageData)) {
+                this.showToast(this.settings.language === 'ar' ? 'تعذر قراءة الصورة' : 'Could not read image', 'warning');
+                return;
+            }
+            this.userProfile.avatar = imageData;
+            this.updateAvatarPreview(imageData);
         };
         reader.readAsDataURL(file);
     },
@@ -343,7 +354,16 @@ Object.assign(NuvioApp.prototype, {
         const preview = document.getElementById('avatarPreview');
         if (!preview) return;
         
-        preview.innerHTML = `<img src="${imageData}" alt="avatar">`;
+        if (typeof imageData !== 'string' || imageData.length > 3_000_000 ||
+            !/^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+=*$/.test(imageData)) {
+            preview.replaceChildren();
+            preview.classList.remove('has-image');
+            return;
+        }
+        const image = document.createElement('img');
+        image.alt = 'avatar';
+        image.src = imageData;
+        preview.replaceChildren(image);
         preview.classList.add('has-image');
     },
 
@@ -357,7 +377,16 @@ Object.assign(NuvioApp.prototype, {
         }
         
         if (avatarEl && this.userProfile.avatar) {
-            avatarEl.innerHTML = `<img src="${this.userProfile.avatar}" alt="${this.userProfile.name}">`;
+            const imageData = this.userProfile.avatar;
+            if (typeof imageData === 'string' && imageData.length <= 3_000_000 &&
+                /^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+=*$/.test(imageData)) {
+                const image = document.createElement('img');
+                image.alt = String(this.userProfile.name || 'avatar').slice(0, 80);
+                image.src = imageData;
+                avatarEl.replaceChildren(image);
+            } else {
+                avatarEl.replaceChildren();
+            }
         }
     },
 
@@ -392,8 +421,7 @@ Object.assign(NuvioApp.prototype, {
         
         if (preview) {
             if (this.userProfile.avatar) {
-                preview.innerHTML = `<img src="${this.userProfile.avatar}" alt="avatar">`;
-                preview.classList.add('has-image');
+                this.updateAvatarPreview(this.userProfile.avatar);
             } else {
                 preview.innerHTML = '<i class="fas fa-user"></i>';
                 preview.classList.remove('has-image');
