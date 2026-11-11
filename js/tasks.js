@@ -53,6 +53,9 @@ Object.assign(NuvioApp.prototype, {
     },
 
     renderTaskItem(task) {
+        const escapeHTML = window.NuvioSecurity.escapeHTML;
+        const safeId = window.NuvioSecurity.safeId(task.id);
+        const category = this.categories[task.category] ? task.category : 'personal';
         const dateKey = value => {
             if (!value) return '';
             const match = /^(\d{4}-\d{2}-\d{2})/.exec(String(value));
@@ -87,31 +90,31 @@ Object.assign(NuvioApp.prototype, {
         }
 
         return `
-            <div class="task-item" onclick="app.showTaskDetails('${task.id}')">
+            <div class="task-item" onclick="app.showTaskDetails('${safeId}')">
                 <div class="task-checkbox ${task.status === 'completed' ? 'checked' : ''}" 
-                     onclick="event.stopPropagation(); app.toggleTaskComplete('${task.id}')">
+                     onclick="event.stopPropagation(); app.toggleTaskComplete('${safeId}')">
                     ${task.status === 'completed' ? '<i class="fas fa-check"></i>' : ''}
                 </div>
                 <div class="task-content">
-                    <div class="task-title ${task.status === 'completed' ? 'completed' : ''}">${task.title}</div>
+                    <div class="task-title ${task.status === 'completed' ? 'completed' : ''}">${escapeHTML(task.title)}</div>
                     <div class="task-meta">
-                        <span class="task-tag category-${task.category}">${this.getCategoryLabel(task.category)}</span>
+                        <span class="task-tag category-${category}">${this.getCategoryLabel(task.category)}</span>
                         <span class="task-tag priority-${task.priority}">${this.getPriorityLabel(task.priority)}</span>
                         ${dueText ? `<span class="task-due ${isOverdue ? 'overdue' : ''} ${taskDateKey === todayKey ? 'today' : ''}"><i class="fas fa-calendar"></i> ${dueText}</span>` : ''}
                         <span class="task-estimated"><i class="fas fa-clock"></i> ${task.estimatedTime} ${this.t('settings.minutes')}</span>
-                        ${task.tags.map(tag => `<span class="task-tag" style="background: var(--bg-tertiary); color: var(--text-muted);">${tag}</span>`).join('')}
+                        ${task.tags.map(tag => `<span class="task-tag" style="background: var(--bg-tertiary); color: var(--text-muted);">${escapeHTML(tag)}</span>`).join('')}
                     </div>
                 </div>
                 <div class="task-actions">
                     ${task.status !== 'completed' ? `
-                        <button class="task-action-btn" onclick="event.stopPropagation(); app.startTask('${task.id}')" title="${this.t('timer.start')}">
+                        <button class="task-action-btn" onclick="event.stopPropagation(); app.startTask('${safeId}')" title="${this.t('timer.start')}">
                             <i class="fas fa-play"></i>
                         </button>
                     ` : ''}
-                    <button class="task-action-btn" onclick="event.stopPropagation(); app.editTask('${task.id}')" title="${this.t('actions.cancel')}">
+                    <button class="task-action-btn" onclick="event.stopPropagation(); app.editTask('${safeId}')" title="${this.t('actions.cancel')}">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="task-action-btn delete" onclick="event.stopPropagation(); app.deleteTask('${task.id}')" title="${this.t('actions.clearAll')}">
+                    <button class="task-action-btn delete" onclick="event.stopPropagation(); app.deleteTask('${safeId}')" title="${this.t('actions.clearAll')}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -296,6 +299,8 @@ Object.assign(NuvioApp.prototype, {
     },
 
     showTaskDetails(taskId) {
+        const escapeHTML = window.NuvioSecurity.escapeHTML;
+        const safeId = window.NuvioSecurity.safeId(taskId);
         const task = this.tasks.find(t => t.id === taskId);
         if (!task) return;
 
@@ -307,11 +312,11 @@ Object.assign(NuvioApp.prototype, {
         content.innerHTML = `
             <div class="detail-row">
                 <span class="detail-label">${this.t('form.taskTitle')}</span>
-                <span class="detail-value">${task.title}</span>
+                <span class="detail-value">${escapeHTML(task.title)}</span>
             </div>
             <div class="detail-row">
                 <span class="detail-label">${this.t('form.description')}</span>
-                <span class="detail-value">${task.description || '—'}</span>
+                <span class="detail-value">${escapeHTML(task.description || '—')}</span>
             </div>
             <div class="detail-row">
                 <span class="detail-label">${this.t('form.category')}</span>
@@ -346,22 +351,22 @@ Object.assign(NuvioApp.prototype, {
             ${task.tags.length > 0 ? `
             <div class="detail-row">
                 <span class="detail-label">${this.t('form.tags')}</span>
-                <span class="detail-value">${task.tags.join(', ')}</span>
+                <span class="detail-value">${escapeHTML(task.tags.join(', '))}</span>
             </div>
             ` : ''}
             <div class="detail-actions">
                 ${task.status !== 'completed' ? `
-                    <button class="btn-primary" onclick="app.startTask('${task.id}'); app.closeTaskDetails();">
+                    <button class="btn-primary" onclick="app.startTask('${safeId}'); app.closeTaskDetails();">
                         <i class="fas fa-play"></i> ${this.t('timer.start')}
                     </button>
-                    <button class="btn-primary" onclick="app.completeTask('${task.id}'); app.closeTaskDetails();">
+                    <button class="btn-primary" onclick="app.completeTask('${safeId}'); app.closeTaskDetails();">
                         <i class="fas fa-check"></i> ${this.t('status.completed')}
                     </button>
                 ` : ''}
-                <button class="btn-secondary" onclick="app.editTask('${task.id}'); app.closeTaskDetails();">
+                <button class="btn-secondary" onclick="app.editTask('${safeId}'); app.closeTaskDetails();">
                     <i class="fas fa-edit"></i> ${isAr ? 'تعديل' : 'Edit'}
                 </button>
-                <button class="btn-danger" onclick="app.deleteTask('${task.id}'); app.closeTaskDetails();">
+                <button class="btn-danger" onclick="app.deleteTask('${safeId}'); app.closeTaskDetails();">
                     <i class="fas fa-trash"></i> ${isAr ? 'حذف' : 'Delete'}
                 </button>
             </div>
@@ -451,6 +456,7 @@ Object.assign(NuvioApp.prototype, {
     },
 
     renderCalendarTasks() {
+        const escapeHTML = window.NuvioSecurity.escapeHTML;
         const list = document.getElementById('calTasksList');
         if (!list) return;
 
@@ -469,7 +475,7 @@ Object.assign(NuvioApp.prototype, {
         list.innerHTML = dayTasks.map(task => `
             <div class="cal-task-item">
                 <span class="task-dot" style="background: ${this.categories[task.category].color};"></span>
-                <span class="task-title">${task.title}</span>
+                <span class="task-title">${escapeHTML(task.title)}</span>
                 <span class="task-time">${task.dueDate ? new Date(task.dueDate).toLocaleTimeString(this.settings.language === 'ar' ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
             </div>
         `).join('');
