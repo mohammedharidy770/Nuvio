@@ -1,6 +1,6 @@
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wkibabbjsqtbvfjwoqec.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_boztGEiHFM1rKp7gGySpOA_ea9hge-R';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
 const ALLOWED_ORIGINS = new Set([
     'https://nuvio-blue.vercel.app',
     'https://mohammedharidy770.github.io',
@@ -213,6 +213,11 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     try {
+        if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+            console.error('Nuvio AI is missing Supabase server configuration.');
+            return res.status(500).json({ error: 'AI authentication is not configured.' });
+        }
+
         const user = await authenticateRequest(req);
         if (!user) return res.status(401).json({ error: 'سجّل الدخول لاستخدام Nuvio AI.' });
 
