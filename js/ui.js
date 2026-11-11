@@ -248,9 +248,11 @@ Object.assign(NuvioApp.prototype, {
         const icons = { task: 'fa-tasks', focus: 'fa-clock', reminder: 'fa-bell' };
 
         const escapeHTML = window.NuvioSecurity.escapeHTML;
-        list.innerHTML = this.notifications.map(n => `
+        list.innerHTML = this.notifications.map(n => {
+            const safeType = ['task', 'focus', 'reminder'].includes(n.type) ? n.type : 'reminder';
+            return `
             <div class="notification-item ${n.read ? '' : 'unread'}" onclick="app.markNotificationRead('${window.NuvioSecurity.safeId(n.id)}')">
-                <div class="notification-icon ${n.type}">
+                <div class="notification-icon ${safeType}">
                     <i class="fas ${icons[n.type] || 'fa-bell'}"></i>
                 </div>
                 <div class="notification-content">
@@ -258,7 +260,8 @@ Object.assign(NuvioApp.prototype, {
                     <span>${new Date(n.time).toLocaleString(this.settings.language === 'ar' ? 'ar-SA' : 'en-US')}</span>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
     },
 
     markNotificationRead(id) {
