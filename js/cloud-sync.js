@@ -202,6 +202,13 @@
             };
 
             if (row) {
+                if ((Number(row.version) || 0) !== lastRemoteVersion) {
+                    dirty = true;
+                    emit('nuvio:sync-conflict', {
+                        message: 'هناك نسخة أحدث على السحابة. احتفظنا بالتعديلات المحلية ولم نستبدلها.'
+                    });
+                    return;
+                }
                 const { data, error } = await client
                     .from(TABLE)
                     .update(payload)
@@ -335,6 +342,7 @@
             if (startGeneration !== generation || userId !== nextUserId) return;
 
             if (row) {
+                if (!ownerId && hasLocalData()) archiveAndClearLocalData(null);
                 applySnapshot(row.data);
                 lastRemoteVersion = Number(row.version) || 0;
                 localStorage.setItem(OWNER_KEY, nextUserId);
