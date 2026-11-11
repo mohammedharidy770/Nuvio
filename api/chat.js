@@ -3,11 +3,16 @@ const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wkibabbjsqtbvfjwoqec.s
 const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_boztGEiHFM1rKp7gGySpOA_ea9hge-R';
 const ALLOWED_ORIGINS = new Set([
     'https://nuvio-blue.vercel.app',
-    'https://mohammedharidy770.github.io'
+    'https://mohammedharidy770.github.io',
+    'https://nuvio-mohammedharidy770.vercel.app',
+    'https://nuvio-git-main-mohammedharidy770.vercel.app'
 ]);
 const rateBuckets = new Map();
 const RATE_LIMIT = 30;
 const RATE_WINDOW_MS = 60_000;
+const isAllowedOrigin = origin => ALLOWED_ORIGINS.has(origin)
+    || /^https:\/\/nuvio-[a-z0-9-]+-mohammedharidy770\.vercel\.app$/i.test(origin)
+    || /^http:\/\/(localhost|127\.0\.0\.1):\d+$/i.test(origin);
 
 async function authenticateRequest(req) {
     const header = req.headers.authorization || '';
@@ -119,7 +124,7 @@ function sanitizeAction(action) {
 
 export default async function handler(req, res) {
     const origin = req.headers.origin;
-    if (origin && !ALLOWED_ORIGINS.has(origin) && !/^http:\/\/localhost:\d+$/.test(origin)) {
+    if (origin && !isAllowedOrigin(origin)) {
         return res.status(403).json({ error: 'Origin not allowed.' });
     }
     if (origin) {
@@ -130,7 +135,7 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.setHeader('Cache-Control', 'no-store');
     if (req.method === 'OPTIONS') {
-        if (!origin || (!ALLOWED_ORIGINS.has(origin) && !/^http:\/\/localhost:\d+$/.test(origin))) {
+        if (!origin || (!isAllowedOrigin(origin))) {
             return res.status(403).end();
         }
         return res.status(204).end();
