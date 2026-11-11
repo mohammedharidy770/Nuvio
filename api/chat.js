@@ -11,7 +11,7 @@ const RATE_WINDOW_MS = 60_000;
 
 async function authenticateRequest(req) {
     const header = req.headers.authorization || '';
-    const match = /^Bearer\\s+(.+)$/i.exec(header);
+    const match = /^Bearer\s+(.+)$/i.exec(header);
     if (!match) return null;
 
     const response = await fetch(SUPABASE_URL + '/auth/v1/user', {
@@ -27,7 +27,7 @@ async function authenticateRequest(req) {
 
 function isRateLimited(userId) {
     const now = Date.now();
-    const current = rateBuckets.get(userId);
+    if (rateBuckets.size > 5000) {\n        for (const [key, bucket] of rateBuckets) {\n            if (now - bucket.startedAt >= RATE_WINDOW_MS) rateBuckets.delete(key);\n        }\n    }\n    const current = rateBuckets.get(userId);
     if (!current || now - current.startedAt >= RATE_WINDOW_MS) {
         rateBuckets.set(userId, { startedAt: now, count: 1 });
         return false;
@@ -113,13 +113,33 @@ function sanitizeAction(action) {
 }
 
 export default async function handler(req, res) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    const origin = req.headers.origin;
+    if (origin && !ALLOWED_ORIGINS.has(origin) && !/^http:\/\/localhost:\d+$/.test(origin)) {
+        return res.status(403).json({ error: 'Origin not allowed.' });
+    }
+    if (origin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Vary', 'Origin');
+    }
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') return res.status(204).end();
+    res.setHeader('Cache-Control', 'no-store');
+    if (req.method === 'OPTIONS') {
+        if (!origin || (!ALLOWED_ORIGINS.has(origin) && !/^http:\/\/localhost:\d+$/.test(origin))) {
+            return res.status(403).end();
+        }
+        return res.status(204).end();
+    }
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     try {
+        const user = await authenticateRequest(req);
+        if (!user) return res.status(401).json({ error: 'سجّل الدخول لاستخدام Nuvio AI.' });
+        if (isRateLimited(user.id)) {
+            res.setHeader('Retry-After', '60');
+            return res.status(429).json({ error: 'وصلت إلى حد الاستخدام المؤقت. حاول بعد دقيقة.' });
+        }
+
         const user = await authenticateRequest(req);
         if (!user) return res.status(401).json({ error: 'سجّل الدخول لاستخدام Nuvio AI.' });
         if (isRateLimited(user.id)) {
