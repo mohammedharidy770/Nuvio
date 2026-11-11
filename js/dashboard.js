@@ -75,6 +75,8 @@ Object.assign(NuvioApp.prototype, {
         if (ftt) ftt.textContent = `${Math.floor(totalFocusTime / 60)}h ${totalFocusTime % 60}m`;
 
         const escapeHTML = window.NuvioSecurity.escapeHTML;
+        const safeCategoryClass = value => this.categories[value] ? value : 'personal';
+        const safePriorityClass = value => ['low', 'medium', 'high', 'urgent'].includes(value) ? value : 'medium';
         const activeTask = this.tasks.find(t => t.status === 'in-progress');
         const currentTaskContent = document.getElementById('currentTaskContent');
 
@@ -83,8 +85,8 @@ Object.assign(NuvioApp.prototype, {
                 <div class="current-task-info">
                     <h4 style="font-size: 18px; margin-bottom: 8px; color: var(--text-primary);">${escapeHTML(activeTask.title)}</h4>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
-                        <span class="task-tag category-${activeTask.category}">${this.getCategoryLabel(activeTask.category)}</span>
-                        <span class="task-tag priority-${activeTask.priority}">${this.getPriorityLabel(activeTask.priority)}</span>
+                        <span class="task-tag category-${safeCategoryClass(activeTask.category)}">${this.getCategoryLabel(activeTask.category)}</span>
+                        <span class="task-tag priority-${safePriorityClass(activeTask.priority)}">${this.getPriorityLabel(activeTask.priority)}</span>
                     </div>
                     <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px;">${escapeHTML(activeTask.description || '')}</p>
                     <div style="display: flex; gap: 12px; font-size: 13px; color: var(--text-muted);">
@@ -110,7 +112,7 @@ Object.assign(NuvioApp.prototype, {
                         <h4 style="font-size: 16px; margin-bottom: 8px; color: var(--text-secondary);">${this.t('dashboard.currentTask')}</h4>
                         <h4 style="font-size: 18px; margin-bottom: 8px; color: var(--text-primary);">${escapeHTML(nextTask.title)}</h4>
                         <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                            <span class="task-tag category-${nextTask.category}">${this.getCategoryLabel(nextTask.category)}</span>
+                            <span class="task-tag category-${safeCategoryClass(nextTask.category)}">${this.getCategoryLabel(nextTask.category)}</span>
                         </div>
                         <button class="btn-primary" onclick="app.startTask('${window.NuvioSecurity.safeId(nextTask.id)}')">
                             <i class="fas fa-play"></i> ${this.t('timer.start')}
