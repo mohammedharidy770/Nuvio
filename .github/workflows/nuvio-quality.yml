@@ -1,0 +1,27 @@
+name: Nuvio quality checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches:
+      - hardening/security-data-sync-2026-11
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            echo "Checking $file"
+            node --check "$file"
+          done < <(find js api -type f -name '*.js' -print0)
