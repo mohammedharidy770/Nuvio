@@ -7,12 +7,28 @@ const ALLOWED_ORIGINS = new Set([
     'https://nuvio-mohammedharidy770.vercel.app',
     'https://nuvio-git-main-mohammedharidy770.vercel.app'
 ]);
-const rateBuckets = new Map();
-const RATE_LIMIT = 30;
-const RATE_WINDOW_MS = 60_000;
 const isAllowedOrigin = origin => ALLOWED_ORIGINS.has(origin)
     || /^https:\/\/nuvio-[a-z0-9-]+-mohammedharidy770\.vercel\.app$/i.test(origin)
     || /^http:\/\/(localhost|127\.0\.0\.1):\d+$/i.test(origin);
+
+async function consumeUserQuota(req) {
+    const authorization = req.headers.authorization;
+    const response = await fetch(SUPABASE_URL + '/rest/v1/rpc/consume_nuvio_ai_quota', {
+        method: 'POST',
+        headers: {
+            apikey: SUPABASE_PUBLISHABLE_KEY,
+            Authorization: authorization,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ p_limit: 30, p_window_seconds: 60 })
+    });
+    if (!response.ok) {
+        const detail = await response.text().catch(() => '');
+        console.error('Nuvio quota check failed:', response.status, detail.slice(0, 300));
+        throw new Error('AI quota service unavailable');
+    }
+    return response.json();
+}
 
 async function authenticateRequest(req) {
     const header = req.headers.authorization || '';
@@ -145,7 +161,8 @@ export default async function handler(req, res) {
     try {
         const user = await authenticateRequest(req);
         if (!user) return res.status(401).json({ error: 'سجّل الدخول لاستخدام Nuvio AI.' });
-        if (isRateLimited(user.id)) {
+        const quotaAllowed = await consumeUserQuota(req);
+        if (quotaAllowed !== true) {
             res.setHeader('Retry-After', '60');
             return res.status(429).json({ error: 'وصلت إلى حد الاستخدام المؤقت. حاول بعد دقيقة.' });
         }
@@ -218,12 +235,17 @@ ${actionsEnabled
 استخدم priority من: low, medium, high, urgent.
 لا تستخدم إجراءات غير القائمة أعلاه.`;
 
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 25_000);
+        let response;
+        try {
+            response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: {
                 Authorization: 'Bearer ' + apiKey,
                 'Content-Type': 'application/json'
             },
+            signal: controller.signal,
             body: JSON.stringify({
                 model: 'openai/gpt-oss-20b',
                 temperature: 0.2,
@@ -241,7 +263,10 @@ ${actionsEnabled
                     }
                 ]
             })
-        });
+            });
+        } finally {
+            clearTimeout(timeout);
+        }
 
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
