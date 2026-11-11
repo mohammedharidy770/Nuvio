@@ -74,27 +74,28 @@ Object.assign(NuvioApp.prototype, {
         const ftt = document.getElementById('focusTotalTime');
         if (ftt) ftt.textContent = `${Math.floor(totalFocusTime / 60)}h ${totalFocusTime % 60}m`;
 
+        const escapeHTML = window.NuvioSecurity.escapeHTML;
         const activeTask = this.tasks.find(t => t.status === 'in-progress');
         const currentTaskContent = document.getElementById('currentTaskContent');
 
         if (activeTask && currentTaskContent) {
             currentTaskContent.innerHTML = `
                 <div class="current-task-info">
-                    <h4 style="font-size: 18px; margin-bottom: 8px; color: var(--text-primary);">${activeTask.title}</h4>
+                    <h4 style="font-size: 18px; margin-bottom: 8px; color: var(--text-primary);">${escapeHTML(activeTask.title)}</h4>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
                         <span class="task-tag category-${activeTask.category}">${this.getCategoryLabel(activeTask.category)}</span>
                         <span class="task-tag priority-${activeTask.priority}">${this.getPriorityLabel(activeTask.priority)}</span>
                     </div>
-                    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px;">${activeTask.description || ''}</p>
+                    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px;">${escapeHTML(activeTask.description || '')}</p>
                     <div style="display: flex; gap: 12px; font-size: 13px; color: var(--text-muted);">
                         <span><i class="fas fa-clock"></i> ${activeTask.estimatedTime} ${this.t('settings.minutes')}</span>
                         <span><i class="fas fa-hourglass-half"></i> ${activeTask.actualTime} ${this.t('settings.minutes')}</span>
                     </div>
                     <div style="margin-top: 16px; display: flex; gap: 8px;">
-                        <button class="btn-primary" onclick="app.startTaskFocus('${activeTask.id}')">
+                        <button class="btn-primary" onclick="app.startTaskFocus('${window.NuvioSecurity.safeId(activeTask.id)}')">
                             <i class="fas fa-play"></i> ${this.t('timer.start')}
                         </button>
-                        <button class="btn-outline" onclick="app.completeTask('${activeTask.id}')">
+                        <button class="btn-outline" onclick="app.completeTask('${window.NuvioSecurity.safeId(activeTask.id)}')">
                             <i class="fas fa-check"></i> ${this.t('status.completed')}
                         </button>
                     </div>
@@ -107,11 +108,11 @@ Object.assign(NuvioApp.prototype, {
                 currentTaskContent.innerHTML = `
                     <div class="current-task-info">
                         <h4 style="font-size: 16px; margin-bottom: 8px; color: var(--text-secondary);">${this.t('dashboard.currentTask')}</h4>
-                        <h4 style="font-size: 18px; margin-bottom: 8px; color: var(--text-primary);">${nextTask.title}</h4>
+                        <h4 style="font-size: 18px; margin-bottom: 8px; color: var(--text-primary);">${escapeHTML(nextTask.title)}</h4>
                         <div style="display: flex; gap: 8px; margin-bottom: 12px;">
                             <span class="task-tag category-${nextTask.category}">${this.getCategoryLabel(nextTask.category)}</span>
                         </div>
-                        <button class="btn-primary" onclick="app.startTask('${nextTask.id}')">
+                        <button class="btn-primary" onclick="app.startTask('${window.NuvioSecurity.safeId(nextTask.id)}')">
                             <i class="fas fa-play"></i> ${this.t('timer.start')}
                         </button>
                     </div>
