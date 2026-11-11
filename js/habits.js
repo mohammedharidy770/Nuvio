@@ -116,13 +116,16 @@ Object.assign(NuvioApp.prototype, {
         if (!habit) return;
 
         const today = new Date().toDateString();
-        const todayLog = habit.logs[today];
+        if (!habit.logs || typeof habit.logs !== 'object' || Array.isArray(habit.logs)) habit.logs = {};
+        const target = Number.isFinite(Number(habit.target)) && Number(habit.target) > 0 ? Number(habit.target) : 1;
+        habit.target = target;
+        const todayLog = Number(habit.logs[today]) || 0;
 
-        if (todayLog && todayLog >= habit.target) {
+        if (todayLog >= target) {
             delete habit.logs[today];
             this.showToast(this.t('habits.uncheckDone'), 'info');
         } else {
-            habit.logs[today] = habit.target;
+            habit.logs[today] = target;
             this.showToast(this.t('habits.checkDone'), 'success');
         }
 
@@ -132,7 +135,8 @@ Object.assign(NuvioApp.prototype, {
 
     getHabitStreak(habit) {
         const logs = habit.logs && typeof habit.logs === 'object' && !Array.isArray(habit.logs) ? habit.logs : {};
-        const repeatDays = Array.isArray(habit.repeatDays) ? habit.repeatDays : [];
+        const repeatDays = Array.isArray(habit.repeatDays) ? habit.repeatDays.filter(day => Number.isInteger(day) && day >= 0 && day <= 6) : [];
+        if (repeatDays.length === 0) return 0;
         const dates = Object.keys(logs).sort((a, b) => new Date(b) - new Date(a));
         if (dates.length === 0) return 0;
 
@@ -176,7 +180,9 @@ Object.assign(NuvioApp.prototype, {
         const today = new Date().toDateString();
         const logs = habit.logs && typeof habit.logs === 'object' && !Array.isArray(habit.logs) ? habit.logs : {};
         const todayLog = Number(logs[today]) || 0;
-        return Math.min((todayLog / habit.target) * 100, 100);
+        const target = Number(habit.target);
+        if (!Number.isFinite(target) || target <= 0) return 0;
+        return Math.max(0, Math.min((todayLog / target) * 100, 100));
     },
 
     isHabitDoneToday(habit) {
@@ -201,7 +207,8 @@ Object.assign(NuvioApp.prototype, {
             if (this.isHabitDoneToday(h)) completedToday++;
 
             // Calculate success rate
-            const logs = Object.keys(h.logs).length;
+            const habitLogs = h.logs && typeof h.logs === 'object' && !Array.isArray(h.logs) ? h.logs : {};
+            const logs = Object.keys(habitLogs).filter(key => Number(habitLogs[key]) > 0).length;
             const daysSince = Math.ceil((new Date() - new Date(h.createdAt)) / (1000 * 60 * 60 * 24));
             const expectedDays = Math.max(daysSince, 1);
             totalRate += (logs / expectedDays) * 100;
@@ -299,7 +306,7 @@ Object.assign(NuvioApp.prototype, {
             const isToday = i === 0;
             const logs = habit.logs && typeof habit.logs === 'object' && !Array.isArray(habit.logs) ? habit.logs : {};
             const repeatDays = Array.isArray(habit.repeatDays) ? habit.repeatDays : [];
-            const isDone = Number(logs[dateStr]) >= Number(habit.target);
+            const isDone = Number(logs[dateStr]) >= Number(habit.target || 1);
             const isRepeatDay = repeatDays.includes(dayOfWeek);
 
             let cssClass = 'habit-day-dot';
