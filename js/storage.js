@@ -264,7 +264,7 @@ Object.assign(NuvioApp.prototype, {
         this.prayerData = { city: 'Cairo', method: '5', times: null, hijriDate: null, location: null };
         this.userProfile = { name: '', avatar: null };
 
-        this.timerState.currentTask = null;
+        if (this.timerState) this.timerState.currentTask = null;
         this.resetTimer?.();
 
         ['nuvio_ai_history', 'nuvio_ai_settings'].forEach(key => localStorage.removeItem(key));
