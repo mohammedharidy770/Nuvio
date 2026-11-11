@@ -1,4 +1,41 @@
 
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wkibabbjsqtbvfjwoqec.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_boztGEiHFM1rKp7gGySpOA_ea9hge-R';
+const ALLOWED_ORIGINS = new Set([
+    'https://nuvio-blue.vercel.app',
+    'https://mohammedharidy770.github.io'
+]);
+const rateBuckets = new Map();
+const RATE_LIMIT = 30;
+const RATE_WINDOW_MS = 60_000;
+
+async function authenticateRequest(req) {
+    const header = req.headers.authorization || '';
+    const match = /^Bearer\\s+(.+)$/i.exec(header);
+    if (!match) return null;
+
+    const response = await fetch(SUPABASE_URL + '/auth/v1/user', {
+        headers: {
+            apikey: SUPABASE_PUBLISHABLE_KEY,
+            Authorization: 'Bearer ' + match[1]
+        }
+    });
+    if (!response.ok) return null;
+    const user = await response.json().catch(() => null);
+    return user && typeof user.id === 'string' ? user : null;
+}
+
+function isRateLimited(userId) {
+    const now = Date.now();
+    const current = rateBuckets.get(userId);
+    if (!current || now - current.startedAt >= RATE_WINDOW_MS) {
+        rateBuckets.set(userId, { startedAt: now, count: 1 });
+        return false;
+    }
+    current.count += 1;
+    return current.count > RATE_LIMIT;
+}
+
 const SAFE_SECTIONS = ['dashboard','tasks','focus','calendar','reports','habits','prayer','sleep','water','notes','settings','ai'];
 const SAFE_CATEGORIES = ['coding','work','study','health','sport','finance','personal','Islam','development'];
 const SAFE_PRIORITIES = ['low','medium','high','urgent'];
@@ -83,6 +120,13 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     try {
+        const user = await authenticateRequest(req);
+        if (!user) return res.status(401).json({ error: 'سجّل الدخول لاستخدام Nuvio AI.' });
+        if (isRateLimited(user.id)) {
+            res.setHeader('Retry-After', '60');
+            return res.status(429).json({ error: 'وصلت إلى حد الاستخدام المؤقت. حاول بعد دقيقة.' });
+        }
+
         const apiKey = process.env.GROQ_API_KEY;
         if (!apiKey) return res.status(500).json({ error: 'GROQ_API_KEY is missing in the server environment.' });
 
