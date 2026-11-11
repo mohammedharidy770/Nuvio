@@ -338,7 +338,6 @@
             tasks: tasks.slice(0, 80).map(task => ({
                 id: task.id,
                 title: task.title,
-                description: task.description,
                 status: task.status,
                 category: task.category,
                 priority: task.priority,
@@ -347,11 +346,10 @@
             })),
             habits: Array.isArray(window.app?.habits) ? window.app.habits.slice(0, 30).map(habit => ({
                 id: habit.id, title: habit.title, target: habit.target, unit: habit.unit,
-                logs: habit.logs, repeatDays: habit.repeatDays
+                repeatDays: habit.repeatDays
             })) : [],
             notes: Array.isArray(window.app?.notes) ? window.app.notes.slice(0, 40).map(note => ({
-                id: note.id, title: note.title, content: String(note.content || '').slice(0, 500),
-                tags: note.tags, updatedAt: note.updatedAt
+                id: note.id, title: note.title, tags: note.tags, updatedAt: note.updatedAt
             })) : [],
             water: window.app?.waterData ? {
                 today: window.app.waterData.today, goal: window.app.waterData.goal
@@ -688,9 +686,15 @@
 
         const typing = showTyping();
         try {
+            const session = await window.NuvioCloud?.getSession();
+            if (!session?.access_token) throw new Error('سجّل الدخول لاستخدام Nuvio AI.');
+
             const response = await fetch(API_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: 'Bearer ' + session.access_token
+                },
                 body: JSON.stringify({
                     message: text,
                     context: getAppContext(),
