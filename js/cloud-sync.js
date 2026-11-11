@@ -278,6 +278,10 @@
     async function start(session) {
         const nextUserId = session?.user?.id || null;
 
+        // Token refreshes and profile events for the active account must not
+        // restart initialization or clear the pending local-change state.
+        if (nextUserId && nextUserId === userId && ready) return;
+
         if (!nextUserId) {
             userId = null;
             ready = false;
