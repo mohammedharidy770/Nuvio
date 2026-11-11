@@ -28,7 +28,11 @@ async function authenticateRequest(req) {
 function isRateLimited(userId) {
     const now = Date.now();
     if (rateBuckets.size > 5000) {
-        for (const [key, bucket] of rateBuckets) {\n            if (now - bucket.startedAt >= RATE_WINDOW_MS) rateBuckets.delete(key);\n        }\n    }\n    const current = rateBuckets.get(userId);
+        for (const [key, bucket] of rateBuckets) {
+            if (now - bucket.startedAt >= RATE_WINDOW_MS) rateBuckets.delete(key);
+        }
+    }
+    const current = rateBuckets.get(userId);
     if (!current || now - current.startedAt >= RATE_WINDOW_MS) {
         rateBuckets.set(userId, { startedAt: now, count: 1 });
         return false;
