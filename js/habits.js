@@ -230,6 +230,10 @@ Object.assign(NuvioApp.prototype, {
     },
 
     renderHabitItem(habit) {
+        const escapeHTML = window.NuvioSecurity.escapeHTML;
+        const safeId = window.NuvioSecurity.safeId(habit.id);
+        const safeColor = /^#[0-9a-f]{6}$/i.test(habit.color || '') ? habit.color : '#64748b';
+        const safeIcon = /^[a-z0-9-]{1,40}$/i.test(habit.icon || '') ? habit.icon : 'fa-bullseye';
         const streak = this.getHabitStreak(habit);
         const progress = this.getHabitProgress(habit);
         const isDone = this.isHabitDoneToday(habit);
@@ -238,31 +242,31 @@ Object.assign(NuvioApp.prototype, {
 
         return `
             <div class="habit-item" style="${!isActiveDay ? 'opacity: 0.6;' : ''}">
-                <div class="habit-icon-wrap" style="background: ${habit.color}15; color: ${habit.color};">
-                    <i class="fas ${habit.icon}"></i>
+                <div class="habit-icon-wrap" style="background: ${safeColor}15; color: ${safeColor};">
+                    <i class="fas ${safeIcon}"></i>
                 </div>
                 <div class="habit-content">
-                    <div class="habit-title">${habit.title}</div>
+                    <div class="habit-title">${escapeHTML(habit.title)}</div>
                     <div class="habit-meta">
                         ${streak > 0 ? `<span class="habit-streak"><i class="fas fa-fire"></i> ${streak}</span>` : ''}
-                        <span>${habit.target} ${habit.unit}</span>
+                        <span>${habit.target} ${escapeHTML(habit.unit)}</span>
                         ${habit.reminderTime ? `<span><i class="fas fa-bell"></i> ${habit.reminderTime}</span>` : ''}
                     </div>
                 </div>
                 <div class="habit-progress-wrap">
                     <div class="habit-progress-bar">
-                        <div class="habit-progress-fill" style="width: ${progress}%; background: ${habit.color};"></div>
+                        <div class="habit-progress-fill" style="width: ${progress}%; background: ${safeColor};"></div>
                     </div>
                     <span class="habit-progress-text">${Math.round(progress)}%</span>
                 </div>
-                <div class="habit-check ${isDone ? 'checked' : ''}" onclick="event.stopPropagation(); app.toggleHabitToday('${habit.id}')">
+                <div class="habit-check ${isDone ? 'checked' : ''}" onclick="event.stopPropagation(); app.toggleHabitToday('${safeId}')">
                     ${isDone ? '<i class="fas fa-check"></i>' : ''}
                 </div>
                 <div class="habit-actions">
-                    <button class="task-action-btn" onclick="event.stopPropagation(); app.openHabitModal('${habit.id}')" title="${this.t('habits.editHabit')}">
+                    <button class="task-action-btn" onclick="event.stopPropagation(); app.openHabitModal('${safeId}')" title="${this.t('habits.editHabit')}">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="task-action-btn delete" onclick="event.stopPropagation(); app.deleteHabit('${habit.id}')" title="${this.t('actions.clearAll')}">
+                    <button class="task-action-btn delete" onclick="event.stopPropagation(); app.deleteHabit('${safeId}')" title="${this.t('actions.clearAll')}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
