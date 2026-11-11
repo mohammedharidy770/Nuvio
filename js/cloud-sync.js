@@ -129,6 +129,7 @@
         ready = false;
         dirty = false;
         pendingSave = false;
+        lastRemoteVersion = 0;
         generation += 1;
 
         if (channel) {
@@ -318,7 +319,12 @@
             if (startGeneration !== generation || userId !== nextUserId) return;
 
             if (row) {
-                if (!ownerId && hasLocalData()) clearLocalAccountData();
+                if (!ownerId && hasLocalData()) {
+                    clearLocalAccountData();
+                    localStorage.setItem(OWNER_KEY, nextUserId);
+                    window.location.reload();
+                    return;
+                }
                 applySnapshot(row.data);
                 lastRemoteVersion = Number(row.version) || 0;
                 localStorage.setItem(OWNER_KEY, nextUserId);
