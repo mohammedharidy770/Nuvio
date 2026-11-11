@@ -3,6 +3,7 @@ name: Nuvio quality checks
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches:
       - hardening/security-data-sync-2026-11
