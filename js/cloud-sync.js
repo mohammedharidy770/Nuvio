@@ -114,26 +114,14 @@
         });
     }
 
-    function archiveAndClearLocalData(owner) {
-        const backup = {};
-        DATA_KEYS.forEach(key => {
-            const value = localStorage.getItem(key);
-            if (value !== null) backup[key] = value;
-        });
-
-        if (Object.keys(backup).length) {
-            const suffix = owner || 'unclaimed';
-            const backupKey = BACKUP_PREFIX + suffix;
-            if (!localStorage.getItem(backupKey)) {
-                localStorage.setItem(backupKey, JSON.stringify({
-                    createdAt: new Date().toISOString(),
-                    data: backup
-                }));
-            }
-        }
-
+    function clearLocalAccountData() {
         DATA_KEYS.forEach(key => localStorage.removeItem(key));
-        localStorage.setItem(OWNER_KEY, userId);
+        localStorage.removeItem('nuvio_pre_import_backup');
+
+        // Device-only backups are cleared; cloud account rows are not touched.
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith(BACKUP_PREFIX)) localStorage.removeItem(key);
+        });
     }
 
     function resetForDifferentAccount(nextUserId) {
@@ -141,34 +129,18 @@
         ready = false;
         dirty = false;
         pendingSave = false;
+        generation += 1;
+
         if (channel) {
             client.removeChannel(channel);
             channel = null;
         }
 
-        const previousOwner = localStorage.getItem(OWNER_KEY);
-        const backup = {};
-        DATA_KEYS.forEach(key => {
-            const value = localStorage.getItem(key);
-            if (value !== null) backup[key] = value;
-        });
-
-        if (Object.keys(backup).length) {
-            const backupKey = BACKUP_PREFIX + (previousOwner || 'unclaimed');
-            if (!localStorage.getItem(backupKey)) {
-                localStorage.setItem(backupKey, JSON.stringify({
-                    createdAt: new Date().toISOString(),
-                    data: backup
-                }));
-            }
-        }
-
-        DATA_KEYS.forEach(key => localStorage.removeItem(key));
+        // The user approved clearing device-local data on account changes.
+        // Remote data for both accounts remains untouched.
+        clearLocalAccountData();
         localStorage.setItem(OWNER_KEY, nextUserId);
         userId = nextUserId;
-        generation += 1;
-
-        // Reinitialize the app from a clean account-specific local state.
         window.location.reload();
     }
 
@@ -342,7 +314,7 @@
             if (startGeneration !== generation || userId !== nextUserId) return;
 
             if (row) {
-                if (!ownerId && hasLocalData()) archiveAndClearLocalData(null);
+                if (!ownerId && hasLocalData()) clearLocalAccountData();
                 applySnapshot(row.data);
                 lastRemoteVersion = Number(row.version) || 0;
                 localStorage.setItem(OWNER_KEY, nextUserId);
@@ -350,17 +322,10 @@
             } else {
                 const unclaimedLocalData = !ownerId && hasLocalData();
                 if (unclaimedLocalData) {
-                    const adopt = window.confirm(
-                        'وجدنا بيانات محفوظة على هذا الجهاز ولم يتم ربطها بحساب بعد. هل تريد ربطها بالحساب الحالي؟\n\nاختَر "إلغاء" للاحتفاظ بنسخة احتياطية محلية والبدء ببيانات حساب فارغة.'
-                    );
-
-                    if (startGeneration !== generation || userId !== nextUserId) return;
-
-                    if (!adopt) {
-                        archiveAndClearLocalData(null);
-                        window.location.reload();
-                        return;
-                    }
+                    clearLocalAccountData();
+                    localStorage.setItem(OWNER_KEY, nextUserId);
+                    window.location.reload();
+                    return;
                 }
 
                 localStorage.setItem(OWNER_KEY, nextUserId);
