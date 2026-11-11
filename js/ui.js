@@ -247,13 +247,14 @@ Object.assign(NuvioApp.prototype, {
 
         const icons = { task: 'fa-tasks', focus: 'fa-clock', reminder: 'fa-bell' };
 
+        const escapeHTML = window.NuvioSecurity.escapeHTML;
         list.innerHTML = this.notifications.map(n => `
-            <div class="notification-item ${n.read ? '' : 'unread'}" onclick="app.markNotificationRead('${n.id}')">
+            <div class="notification-item ${n.read ? '' : 'unread'}" onclick="app.markNotificationRead('${window.NuvioSecurity.safeId(n.id)}')">
                 <div class="notification-icon ${n.type}">
                     <i class="fas ${icons[n.type] || 'fa-bell'}"></i>
                 </div>
                 <div class="notification-content">
-                    <p>${n.message}</p>
+                    <p>${escapeHTML(n.message)}</p>
                     <span>${new Date(n.time).toLocaleString(this.settings.language === 'ar' ? 'ar-SA' : 'en-US')}</span>
                 </div>
             </div>
@@ -292,11 +293,12 @@ Object.assign(NuvioApp.prototype, {
             info: 'fa-info-circle'
         };
 
+        const escapeHTML = window.NuvioSecurity.escapeHTML;
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
         toast.innerHTML = `
-            <div class="toast-icon"><i class="fas ${icons[type]}"></i></div>
-            <div class="toast-content"><p>${message}</p></div>
+            <div class="toast-icon"><i class="fas ${icons[type] || 'fa-info-circle'}"></i></div>
+            <div class="toast-content"><p>${escapeHTML(message)}</p></div>
             <button class="toast-close" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
         `;
 
