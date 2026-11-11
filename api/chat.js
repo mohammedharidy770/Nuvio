@@ -140,13 +140,6 @@ export default async function handler(req, res) {
             return res.status(429).json({ error: 'وصلت إلى حد الاستخدام المؤقت. حاول بعد دقيقة.' });
         }
 
-        const user = await authenticateRequest(req);
-        if (!user) return res.status(401).json({ error: 'سجّل الدخول لاستخدام Nuvio AI.' });
-        if (isRateLimited(user.id)) {
-            res.setHeader('Retry-After', '60');
-            return res.status(429).json({ error: 'وصلت إلى حد الاستخدام المؤقت. حاول بعد دقيقة.' });
-        }
-
         const apiKey = process.env.GROQ_API_KEY;
         if (!apiKey) return res.status(500).json({ error: 'GROQ_API_KEY is missing in the server environment.' });
 
