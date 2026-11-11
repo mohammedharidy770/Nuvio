@@ -55,14 +55,14 @@ const refValue = value => typeof value === 'string' ? clean(value, 150) : value 
 const validDate = value => typeof value === 'string' && value && !Number.isNaN(Date.parse(value)) ? new Date(value).toISOString() : null;
 
 function safeString(value, max = 120) {
-    return typeof value === 'string' ? value.replace(/[\\u0000-\\u001f\\u007f]/g, ' ').trim().slice(0, max) : '';
+    return typeof value === 'string' ? value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max) : '';
 }
 
 function sanitizeContext(input) {
     if (!input || typeof input !== 'object' || Array.isArray(input)) return {};
     const date = value => typeof value === 'string' && !Number.isNaN(Date.parse(value))
         ? new Date(value).toISOString() : '';
-    const localDate = value => typeof value === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(value) ? value : '';
+    const localDate = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '';
     let timeZone = '';
     const requestedZone = safeString(input.timeZone, 80);
     if (requestedZone) {
