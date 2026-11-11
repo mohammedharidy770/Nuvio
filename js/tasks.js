@@ -72,7 +72,7 @@ Object.assign(NuvioApp.prototype, {
         tomorrowDate.setDate(tomorrowDate.getDate() + 1);
         const tomorrowKey = dateKey(tomorrowDate);
         const taskDateKey = dateKey(task.dueDate);
-        const isOverdue = Boolean(task.dueDate && taskDateKey < todayKey && task.status !== 'completed');
+        const isOverdue = Boolean(task.dueDate && taskDateKey < todayKey && status !== 'completed');
 
         let dueText = '';
         if (task.dueDate && taskDateKey) {
@@ -99,7 +99,7 @@ Object.assign(NuvioApp.prototype, {
                     ${status === 'completed' ? '<i class="fas fa-check"></i>' : ''}
                 </div>
                 <div class="task-content">
-                    <div class="task-title ${task.status === 'completed' ? 'completed' : ''}">${escapeHTML(task.title)}</div>
+                    <div class="task-title ${status === 'completed' ? 'completed' : ''}">${escapeHTML(task.title)}</div>
                     <div class="task-meta">
                         <span class="task-tag category-${category}">${this.getCategoryLabel(task.category)}</span>
                         <span class="task-tag priority-${priority}">${this.getPriorityLabel(task.priority)}</span>
@@ -361,7 +361,7 @@ Object.assign(NuvioApp.prototype, {
             </div>
             ` : ''}
             <div class="detail-actions">
-                ${status !== 'completed' ? `
+                ${safeStatus !== 'completed' ? `
                     <button class="btn-primary" onclick="app.startTask('${safeId}'); app.closeTaskDetails();">
                         <i class="fas fa-play"></i> ${this.t('timer.start')}
                     </button>
