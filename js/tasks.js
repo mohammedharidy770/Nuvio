@@ -263,7 +263,6 @@ Object.assign(NuvioApp.prototype, {
         } else {
             task.status = 'completed';
             task.completedAt = new Date().toISOString();
-            task.actualTime = task.estimatedTime;
             this.showToast(this.settings.language === 'ar' ? 'تم إكمال المهمة! أحسنت' : 'Task completed! Great job', 'success');
             this.addNotification('focus', `${this.settings.language === 'ar' ? 'أحسنت! أكملت' : 'Great! Completed'}: ${task.title}`);
         }
