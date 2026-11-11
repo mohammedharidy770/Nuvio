@@ -46,21 +46,6 @@ async function authenticateRequest(req) {
     return user && typeof user.id === 'string' ? user : null;
 }
 
-function isRateLimited(userId) {
-    const now = Date.now();
-    if (rateBuckets.size > 5000) {
-        for (const [key, bucket] of rateBuckets) {
-            if (now - bucket.startedAt >= RATE_WINDOW_MS) rateBuckets.delete(key);
-        }
-    }
-    const current = rateBuckets.get(userId);
-    if (!current || now - current.startedAt >= RATE_WINDOW_MS) {
-        rateBuckets.set(userId, { startedAt: now, count: 1 });
-        return false;
-    }
-    current.count += 1;
-    return current.count > RATE_LIMIT;
-}
 
 const SAFE_SECTIONS = ['dashboard','tasks','focus','calendar','reports','habits','prayer','sleep','water','notes','settings','ai'];
 const SAFE_CATEGORIES = ['coding','work','study','health','sport','finance','personal','Islam','development'];
@@ -161,18 +146,19 @@ export default async function handler(req, res) {
     try {
         const user = await authenticateRequest(req);
         if (!user) return res.status(401).json({ error: 'سجّل الدخول لاستخدام Nuvio AI.' });
-        const quotaAllowed = await consumeUserQuota(req);
-        if (quotaAllowed !== true) {
-            res.setHeader('Retry-After', '60');
-            return res.status(429).json({ error: 'وصلت إلى حد الاستخدام المؤقت. حاول بعد دقيقة.' });
+
+        const message = req.body?.message;
+        if (typeof message !== 'string' || !message.trim() || message.length > 8000) {
+            return res.status(400).json({ error: 'Message is required.' });
         }
 
         const apiKey = process.env.GROQ_API_KEY;
         if (!apiKey) return res.status(500).json({ error: 'GROQ_API_KEY is missing in the server environment.' });
 
-        const message = req.body?.message;
-        if (typeof message !== 'string' || !message.trim() || message.length > 8000) {
-            return res.status(400).json({ error: 'Message is required.' });
+        const quotaAllowed = await consumeUserQuota(req);
+        if (quotaAllowed !== true) {
+            res.setHeader('Retry-After', '60');
+            return res.status(429).json({ error: 'وصلت إلى حد الاستخدام المؤقت. حاول بعد دقيقة.' });
         }
 
         const preferences = req.body?.preferences || {};
