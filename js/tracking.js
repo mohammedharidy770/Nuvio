@@ -411,6 +411,7 @@ Object.assign(NuvioApp.prototype, {
     },
 
     renderNotes() {
+        const escapeHTML = window.NuvioSecurity.escapeHTML;
         const grid = document.getElementById('notesGrid');
         const empty = document.getElementById('notesEmpty');
         const tagsFilter = document.getElementById('notesTagsFilter');
@@ -424,11 +425,17 @@ Object.assign(NuvioApp.prototype, {
 
         // Render tags filter
         if (tagsFilter) {
-            let tagsHtml = `<button class="note-tag-filter ${this.currentNoteTag === 'all' ? 'active' : ''}" onclick="app.filterNotesByTag('all')">الكل</button>`;
-            Array.from(allTags).sort().forEach(tag => {
-                tagsHtml += `<button class="note-tag-filter ${this.currentNoteTag === tag ? 'active' : ''}" onclick="app.filterNotesByTag('${tag}')">${tag}</button>`;
-            });
-            tagsFilter.innerHTML = tagsHtml;
+            tagsFilter.replaceChildren();
+            const addFilter = (tag, label) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'note-tag-filter' + (this.currentNoteTag === tag ? ' active' : '');
+                button.textContent = label;
+                button.addEventListener('click', () => this.filterNotesByTag(tag));
+                tagsFilter.appendChild(button);
+            };
+            addFilter('all', this.settings.language === 'ar' ? 'الكل' : 'All');
+            Array.from(allTags).sort().forEach(tag => addFilter(tag, tag));
         }
 
         // Filter notes
@@ -461,6 +468,9 @@ Object.assign(NuvioApp.prototype, {
     },
 
     renderNoteCard(note) {
+        const escapeHTML = window.NuvioSecurity.escapeHTML;
+        const safeId = window.NuvioSecurity.safeId(note.id);
+        const noteColor = /^#[0-9a-f]{6}$/i.test(note.color || '') ? note.color : '#fef3c7';
         const isAr = this.settings.language === 'ar';
         const date = new Date(note.updatedAt || note.createdAt);
         const dateStr = date.toLocaleDateString(isAr ? 'ar-SA' : 'en-US', {
@@ -468,18 +478,18 @@ Object.assign(NuvioApp.prototype, {
         });
 
         return `
-            <div class="note-card" style="--note-color: ${note.color};" onclick="app.openNoteModal('${note.id}')">
+            <div class="note-card" style="--note-color: ${noteColor};" onclick="app.openNoteModal('${safeId}')">
                 <div class="note-card-header">
-                    <div class="note-card-title">${note.title}</div>
+                    <div class="note-card-title">${escapeHTML(note.title)}</div>
                     <div class="note-card-date">${dateStr}</div>
                 </div>
-                <div class="note-card-content">${note.content || ''}</div>
+                <div class="note-card-content">${escapeHTML(note.content || '')}</div>
                 <div class="note-card-tags">
-                    ${note.tags.map(tag => `<span class="note-card-tag">${tag}</span>`).join('')}
+                    ${note.tags.map(tag => `<span class="note-card-tag">${escapeHTML(tag)}</span>`).join('')}
                 </div>
                 <div class="note-card-actions" onclick="event.stopPropagation()">
-                    <button onclick="app.openNoteModal('${note.id}')" title="تعديل"><i class="fas fa-edit"></i></button>
-                    <button class="delete" onclick="app.deleteNote('${note.id}')" title="حذف"><i class="fas fa-trash"></i></button>
+                    <button onclick="app.openNoteModal('${safeId}')" title="تعديل"><i class="fas fa-edit"></i></button>
+                    <button class="delete" onclick="app.deleteNote('${safeId}')" title="حذف"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         `;
