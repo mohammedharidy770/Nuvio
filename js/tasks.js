@@ -56,6 +56,7 @@ Object.assign(NuvioApp.prototype, {
         const escapeHTML = window.NuvioSecurity.escapeHTML;
         const safeId = window.NuvioSecurity.safeId(task.id);
         const category = this.categories[task.category] ? task.category : 'personal';
+        const priority = ['low', 'medium', 'high', 'urgent'].includes(task.priority) ? task.priority : 'medium';
         const dateKey = value => {
             if (!value) return '';
             const match = /^(\d{4}-\d{2}-\d{2})/.exec(String(value));
@@ -99,7 +100,7 @@ Object.assign(NuvioApp.prototype, {
                     <div class="task-title ${task.status === 'completed' ? 'completed' : ''}">${escapeHTML(task.title)}</div>
                     <div class="task-meta">
                         <span class="task-tag category-${category}">${this.getCategoryLabel(task.category)}</span>
-                        <span class="task-tag priority-${task.priority}">${this.getPriorityLabel(task.priority)}</span>
+                        <span class="task-tag priority-${priority}">${this.getPriorityLabel(task.priority)}</span>
                         ${dueText ? `<span class="task-due ${isOverdue ? 'overdue' : ''} ${taskDateKey === todayKey ? 'today' : ''}"><i class="fas fa-calendar"></i> ${dueText}</span>` : ''}
                         <span class="task-estimated"><i class="fas fa-clock"></i> ${task.estimatedTime} ${this.t('settings.minutes')}</span>
                         ${task.tags.map(tag => `<span class="task-tag" style="background: var(--bg-tertiary); color: var(--text-muted);">${escapeHTML(tag)}</span>`).join('')}
@@ -302,6 +303,8 @@ Object.assign(NuvioApp.prototype, {
         const safeId = window.NuvioSecurity.safeId(taskId);
         const task = this.tasks.find(t => t.id === taskId);
         if (!task) return;
+        const safeCategory = this.categories[task.category] ? task.category : 'personal';
+        const safePriority = ['low', 'medium', 'high', 'urgent'].includes(task.priority) ? task.priority : 'medium';
 
         const isAr = this.settings.language === 'ar';
 
@@ -473,7 +476,7 @@ Object.assign(NuvioApp.prototype, {
 
         list.innerHTML = dayTasks.map(task => `
             <div class="cal-task-item">
-                <span class="task-dot" style="background: ${this.categories[task.category].color};"></span>
+                <span class="task-dot" style="background: ${(this.categories[task.category] || this.categories.personal).color};"></span>
                 <span class="task-title">${escapeHTML(task.title)}</span>
                 <span class="task-time">${task.dueDate ? new Date(task.dueDate).toLocaleTimeString(this.settings.language === 'ar' ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
             </div>
