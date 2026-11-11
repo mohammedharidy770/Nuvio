@@ -7,9 +7,7 @@ const ALLOWED_ORIGINS = new Set([
     'https://nuvio-mohammedharidy770.vercel.app',
     'https://nuvio-git-main-mohammedharidy770.vercel.app'
 ]);
-const isAllowedOrigin = origin => ALLOWED_ORIGINS.has(origin)
-    || /^https:\/\/nuvio-[a-z0-9-]+-mohammedharidy770\.vercel\.app$/i.test(origin)
-    || /^http:\/\/(localhost|127\.0\.0\.1):\d+$/i.test(origin);
+const isAllowedOrigin = origin => ALLOWED_ORIGINS.has(origin);
 
 async function consumeUserQuota(req) {
     const authorization = req.headers.authorization;
