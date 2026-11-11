@@ -431,12 +431,12 @@
                     id: 'habit-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
                     title: String(input.title).trim().slice(0, 150),
                     description: String(input.description || '').trim().slice(0, 1000),
-                    icon: input.icon || 'fa-bullseye',
-                    color: input.color || '#dc2626',
+                    icon: /^[a-z0-9-]{1,40}$/i.test(String(input.icon || '')) ? String(input.icon) : 'fa-bullseye',
+                    color: /^#[0-9a-f]{6}$/i.test(String(input.color || '')) ? String(input.color) : '#dc2626',
                     target: Math.max(1, parseInt(input.target, 10) || 1),
-                    unit: input.unit || 'مرة',
-                    reminderTime: input.reminderTime || null,
-                    repeatDays: Array.isArray(input.repeatDays) ? input.repeatDays : [0, 1, 2, 3, 4, 5, 6],
+                    unit: String(input.unit || 'مرة').trim().slice(0, 30),
+                    reminderTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(input.reminderTime || '')) ? input.reminderTime : null,
+                    repeatDays: Array.isArray(input.repeatDays) ? input.repeatDays.filter(day => Number.isInteger(day) && day >= 0 && day <= 6) : [0, 1, 2, 3, 4, 5, 6],
                     logs: {},
                     createdAt: new Date().toISOString()
                 });
