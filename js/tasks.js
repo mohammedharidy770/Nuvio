@@ -292,7 +292,7 @@ Object.assign(NuvioApp.prototype, {
 
         task.status = 'completed';
         task.completedAt = new Date().toISOString();
-        task.actualTime = task.estimatedTime;
+        // Actual time is accumulated from completed focus sessions, not estimates.
         this.saveData();
         this.renderAll();
         this.showToast(this.settings.language === 'ar' ? 'تم إكمال المهمة! أحسنت' : 'Task completed! Great job', 'success');
