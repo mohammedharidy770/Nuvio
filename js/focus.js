@@ -58,9 +58,9 @@ Object.assign(NuvioApp.prototype, {
         this.timerState.interval = setInterval(() => {
             this.timerState.timeLeft = Math.max(0, Math.ceil((this.timerState.endAt - Date.now()) / 1000));
             this.updateTimerDisplay();
-            this.persistTimerState();
+            if (this.timerState.timeLeft % 5 === 0 || this.timerState.timeLeft <= 0) this.persistTimerState();
             if (this.timerState.timeLeft <= 0) this.timerComplete();
-        }, 250);
+        }, 1000);
         this.updateTimerDisplay();
     },
 
