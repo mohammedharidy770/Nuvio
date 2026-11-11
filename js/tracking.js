@@ -158,6 +158,7 @@ Object.assign(NuvioApp.prototype, {
         // List
         if (list) {
             list.innerHTML = this.sleepRecords.slice(0, 10).map(r => {
+                const safeId = window.NuvioSecurity.safeId(r.id);
                 const bed = new Date(r.bedTime);
                 const wake = new Date(r.wakeTime);
                 const dateStr = bed.toLocaleDateString(this.settings.language === 'ar' ? 'ar-SA' : 'en-US', {
@@ -176,8 +177,8 @@ Object.assign(NuvioApp.prototype, {
                         </div>
                         <div class="sleep-item-quality">${qualityIcons}</div>
                         <div class="sleep-item-actions">
-                            <button onclick="app.openSleepModal('${r.id}')"><i class="fas fa-edit"></i></button>
-                            <button class="delete" onclick="app.deleteSleepRecord('${r.id}')"><i class="fas fa-trash"></i></button>
+                            <button onclick="app.openSleepModal('${safeId}')"><i class="fas fa-edit"></i></button>
+                            <button class="delete" onclick="app.deleteSleepRecord('${safeId}')"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
                 `;
