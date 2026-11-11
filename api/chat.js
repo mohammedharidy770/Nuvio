@@ -54,6 +54,75 @@ const clean = (value, max = 1000) => typeof value === 'string' ? value.trim().sl
 const refValue = value => typeof value === 'string' ? clean(value, 150) : value && typeof value === 'object' ? (clean(value.title, 150) || clean(value.id, 150)) : '';
 const validDate = value => typeof value === 'string' && value && !Number.isNaN(Date.parse(value)) ? new Date(value).toISOString() : null;
 
+function safeString(value, max = 120) {
+    return typeof value === 'string' ? value.replace(/[\\u0000-\\u001f\\u007f]/g, ' ').trim().slice(0, max) : '';
+}
+
+function sanitizeContext(input) {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) return {};
+    const date = value => typeof value === 'string' && !Number.isNaN(Date.parse(value))
+        ? new Date(value).toISOString() : '';
+    const localDate = value => typeof value === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(value) ? value : '';
+    let timeZone = '';
+    const requestedZone = safeString(input.timeZone, 80);
+    if (requestedZone) {
+        try {
+            new Intl.DateTimeFormat('en-US', { timeZone: requestedZone });
+            timeZone = requestedZone;
+        } catch {}
+    }
+    const tasks = Array.isArray(input.tasks) ? input.tasks.slice(0, 80).map(item => ({
+        id: safeString(item?.id, 100),
+        title: safeString(item?.title, 150),
+        status: ['pending', 'in-progress', 'completed'].includes(item?.status) ? item.status : 'pending',
+        category: SAFE_CATEGORIES.includes(item?.category) ? item.category : 'personal',
+        priority: SAFE_PRIORITIES.includes(item?.priority) ? item.priority : 'medium',
+        dueDate: date(item?.dueDate),
+        estimatedTime: Math.min(1440, Math.max(0, Number(item?.estimatedTime) || 0))
+    })) : [];
+    const habits = Array.isArray(input.habits) ? input.habits.slice(0, 30).map(item => ({
+        id: safeString(item?.id, 100),
+        title: safeString(item?.title, 150),
+        target: Math.min(1000, Math.max(1, Number(item?.target) || 1)),
+        unit: safeString(item?.unit, 30),
+        repeatDays: Array.isArray(item?.repeatDays)
+            ? item.repeatDays.filter(day => Number.isInteger(day) && day >= 0 && day <= 6).slice(0, 7) : []
+    })) : [];
+    const notes = Array.isArray(input.notes) ? input.notes.slice(0, 40).map(item => ({
+        id: safeString(item?.id, 100),
+        title: safeString(item?.title, 150),
+        tags: Array.isArray(item?.tags) ? item.tags.slice(0, 10).map(tag => safeString(tag, 40)) : [],
+        updatedAt: date(item?.updatedAt)
+    })) : [];
+    const numeric = value => Number.isFinite(Number(value)) ? Math.max(0, Math.min(100000, Number(value))) : 0;
+    return {
+        currentDate: date(input.currentDate) || new Date().toISOString(),
+        localDate: localDate(input.localDate),
+        timeZone,
+        currentSection: SAFE_SECTIONS.includes(input.currentSection) ? input.currentSection : '',
+        theme: input.theme === 'dark' ? 'dark' : 'light',
+        language: input.language === 'en' ? 'en' : 'ar',
+        tasks,
+        habits,
+        notes,
+        water: input.water && typeof input.water === 'object' ? {
+            today: numeric(input.water.today),
+            goal: numeric(input.water.goal)
+        } : null,
+        focus: input.focus && typeof input.focus === 'object' ? {
+            running: input.focus.running === true,
+            paused: input.focus.paused === true,
+            mode: ['pomodoro', 'shortBreak', 'longBreak'].includes(input.focus.mode) ? input.focus.mode : 'pomodoro',
+            timeLeft: numeric(input.focus.timeLeft)
+        } : null,
+        counts: {
+            tasks: numeric(input.counts?.tasks),
+            habits: numeric(input.counts?.habits),
+            notes: numeric(input.counts?.notes)
+        }
+    };
+}
+
 function sanitizeAction(action) {
     if (!action || typeof action !== 'object' || typeof action.type !== 'string') return null;
     const type = action.type;
@@ -168,9 +237,7 @@ export default async function handler(req, res) {
                 ? 'كن طبيعيًا وودودًا دون مبالغة.'
                 : 'كن مختصرًا ومباشرًا قدر الإمكان.';
         const actionsEnabled = preferences.actionsEnabled !== false;
-        const rawContext = req.body?.context && typeof req.body.context === 'object' ? req.body.context : {};
-        let context = rawContext;
-        try { if (JSON.stringify(rawContext).length > 30000) context = {}; } catch { context = {}; }
+        const context = sanitizeContext(req.body?.context);
         const history = Array.isArray(req.body?.history)
             ? req.body.history.slice(-10).filter(item =>
                 item && ['user', 'assistant'].includes(item.role) && typeof item.content === 'string'
