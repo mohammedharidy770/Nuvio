@@ -20,7 +20,7 @@ async function consumeUserQuota(req) {
             Authorization: authorization,
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ p_limit: 30, p_window_seconds: 60 })
+        body: JSON.stringify({})
     });
     if (!response.ok) {
         const detail = await response.text().catch(() => '');
