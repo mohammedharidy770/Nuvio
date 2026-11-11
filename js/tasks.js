@@ -57,6 +57,8 @@ Object.assign(NuvioApp.prototype, {
         const safeId = window.NuvioSecurity.safeId(task.id);
         const category = this.categories[task.category] ? task.category : 'personal';
         const priority = ['low', 'medium', 'high', 'urgent'].includes(task.priority) ? task.priority : 'medium';
+        const status = ['pending', 'in-progress', 'completed'].includes(task.status) ? task.status : 'pending';
+        const tags = Array.isArray(task.tags) ? task.tags.filter(tag => typeof tag === 'string').slice(0, 20) : [];
         const dateKey = value => {
             if (!value) return '';
             const match = /^(\d{4}-\d{2}-\d{2})/.exec(String(value));
@@ -92,9 +94,9 @@ Object.assign(NuvioApp.prototype, {
 
         return `
             <div class="task-item" onclick="app.showTaskDetails('${safeId}')">
-                <div class="task-checkbox ${task.status === 'completed' ? 'checked' : ''}" 
+                <div class="task-checkbox ${status === 'completed' ? 'checked' : ''}" 
                      onclick="event.stopPropagation(); app.toggleTaskComplete('${safeId}')">
-                    ${task.status === 'completed' ? '<i class="fas fa-check"></i>' : ''}
+                    ${status === 'completed' ? '<i class="fas fa-check"></i>' : ''}
                 </div>
                 <div class="task-content">
                     <div class="task-title ${task.status === 'completed' ? 'completed' : ''}">${escapeHTML(task.title)}</div>
@@ -103,11 +105,11 @@ Object.assign(NuvioApp.prototype, {
                         <span class="task-tag priority-${priority}">${this.getPriorityLabel(task.priority)}</span>
                         ${dueText ? `<span class="task-due ${isOverdue ? 'overdue' : ''} ${taskDateKey === todayKey ? 'today' : ''}"><i class="fas fa-calendar"></i> ${dueText}</span>` : ''}
                         <span class="task-estimated"><i class="fas fa-clock"></i> ${task.estimatedTime} ${this.t('settings.minutes')}</span>
-                        ${task.tags.map(tag => `<span class="task-tag" style="background: var(--bg-tertiary); color: var(--text-muted);">${escapeHTML(tag)}</span>`).join('')}
+                        ${tags.map(tag => `<span class="task-tag" style="background: var(--bg-tertiary); color: var(--text-muted);">${escapeHTML(tag)}</span>`).join('')}
                     </div>
                 </div>
                 <div class="task-actions">
-                    ${task.status !== 'completed' ? `
+                    ${status !== 'completed' ? `
                         <button class="task-action-btn" onclick="event.stopPropagation(); app.startTask('${safeId}')" title="${this.t('timer.start')}">
                             <i class="fas fa-play"></i>
                         </button>
@@ -305,6 +307,8 @@ Object.assign(NuvioApp.prototype, {
         if (!task) return;
         const safeCategory = this.categories[task.category] ? task.category : 'personal';
         const safePriority = ['low', 'medium', 'high', 'urgent'].includes(task.priority) ? task.priority : 'medium';
+        const safeStatus = ['pending', 'in-progress', 'completed'].includes(task.status) ? task.status : 'pending';
+        const safeTags = Array.isArray(task.tags) ? task.tags.filter(tag => typeof tag === 'string').slice(0, 20) : [];
 
         const isAr = this.settings.language === 'ar';
 
@@ -330,7 +334,7 @@ Object.assign(NuvioApp.prototype, {
             </div>
             <div class="detail-row">
                 <span class="detail-label">${isAr ? 'الحالة' : 'Status'}</span>
-                <span class="detail-value">${this.t('status.' + task.status.replace('-', ''))}</span>
+                <span class="detail-value">${this.t('status.' + safeStatus.replace('-', ''))}</span>
             </div>
             <div class="detail-row">
                 <span class="detail-label">${this.t('form.estimatedTime')}</span>
@@ -350,14 +354,14 @@ Object.assign(NuvioApp.prototype, {
                 <span class="detail-label">${this.t('form.repeat')}</span>
                 <span class="detail-value">${this.t('repeat.' + task.repeat)}</span>
             </div>
-            ${task.tags.length > 0 ? `
+            ${safeTags.length > 0 ? `
             <div class="detail-row">
                 <span class="detail-label">${this.t('form.tags')}</span>
-                <span class="detail-value">${escapeHTML(task.tags.join(', '))}</span>
+                <span class="detail-value">${escapeHTML(safeTags.join(', '))}</span>
             </div>
             ` : ''}
             <div class="detail-actions">
-                ${task.status !== 'completed' ? `
+                ${status !== 'completed' ? `
                     <button class="btn-primary" onclick="app.startTask('${safeId}'); app.closeTaskDetails();">
                         <i class="fas fa-play"></i> ${this.t('timer.start')}
                     </button>
