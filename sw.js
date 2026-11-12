@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nuvio-v17';
+const CACHE_NAME = 'nuvio-v18';
 const STATIC_ASSETS = [
     './',
     './index.html',
@@ -27,12 +27,12 @@ const STATIC_ASSETS = [
     './js/ui.js?v=3',
     './js/dashboard.js',
     './js/tasks.js',
-    './js/focus.js?v=2',
+    './js/focus.js?v=3',
     './js/habits.js',
     './js/tracking.js',
     './js/prayer-reports.js',
     './js/main.js',
-    './js/ai-page.js?v=10'
+    './js/ai-page.js?v=11'
 ];
 
 self.addEventListener('install', (event) => {
