@@ -369,6 +369,8 @@
                     lastRemoteVersion = incomingVersion;
                 })
                 .subscribe();
+
+            emit('nuvio:sync-ready', { userId: nextUserId });
         } catch (error) {
             ready = false;
             handleSyncError(error);
