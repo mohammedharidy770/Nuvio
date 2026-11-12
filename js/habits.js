@@ -64,8 +64,10 @@ Object.assign(NuvioApp.prototype, {
         const habitId = document.getElementById('habitId').value;
         const title = document.getElementById('habitTitle').value.trim();
         const description = document.getElementById('habitDescription').value.trim();
-        const icon = document.getElementById('habitIcon').value;
-        const color = document.getElementById('habitColor').value;
+        const requestedIcon = document.getElementById('habitIcon').value;
+        const requestedColor = document.getElementById('habitColor').value;
+        const icon = /^[a-z0-9-]{1,40}$/i.test(requestedIcon) ? requestedIcon : 'fa-bullseye';
+        const color = /^#[0-9a-f]{6}$/i.test(requestedColor) ? requestedColor : '#64748b';
         const target = parseInt(document.getElementById('habitTarget').value) || 1;
         const unit = document.getElementById('habitUnit').value || (this.settings.language === 'ar' ? 'مرة' : 'time');
         const reminderTime = document.getElementById('habitReminderTime').value || null;
@@ -114,13 +116,16 @@ Object.assign(NuvioApp.prototype, {
         if (!habit) return;
 
         const today = new Date().toDateString();
-        const todayLog = habit.logs[today];
+        if (!habit.logs || typeof habit.logs !== 'object' || Array.isArray(habit.logs)) habit.logs = {};
+        const target = Number.isFinite(Number(habit.target)) && Number(habit.target) > 0 ? Number(habit.target) : 1;
+        habit.target = target;
+        const todayLog = Number(habit.logs[today]) || 0;
 
-        if (todayLog && todayLog >= habit.target) {
+        if (todayLog >= target) {
             delete habit.logs[today];
             this.showToast(this.t('habits.uncheckDone'), 'info');
         } else {
-            habit.logs[today] = habit.target;
+            habit.logs[today] = target;
             this.showToast(this.t('habits.checkDone'), 'success');
         }
 
@@ -129,7 +134,10 @@ Object.assign(NuvioApp.prototype, {
     },
 
     getHabitStreak(habit) {
-        const dates = Object.keys(habit.logs).sort((a, b) => new Date(b) - new Date(a));
+        const logs = habit.logs && typeof habit.logs === 'object' && !Array.isArray(habit.logs) ? habit.logs : {};
+        const repeatDays = Array.isArray(habit.repeatDays) ? habit.repeatDays.filter(day => Number.isInteger(day) && day >= 0 && day <= 6) : [];
+        if (repeatDays.length === 0) return 0;
+        const dates = Object.keys(logs).sort((a, b) => new Date(b) - new Date(a));
         if (dates.length === 0) return 0;
 
         let streak = 0;
@@ -143,7 +151,7 @@ Object.assign(NuvioApp.prototype, {
         const yesterdayStr = yesterday.toDateString();
 
         let checkDate = today;
-        if (!habit.logs[todayStr] || habit.logs[todayStr] < habit.target) {
+        if (!logs[todayStr] || logs[todayStr] < habit.target) {
             checkDate = yesterday;
         }
 
@@ -152,12 +160,12 @@ Object.assign(NuvioApp.prototype, {
             const dayOfWeek = checkDate.getDay();
 
             // If this day is not in repeatDays and it's not logged, skip it
-            if (!habit.repeatDays.includes(dayOfWeek)) {
+            if (!repeatDays.includes(dayOfWeek)) {
                 checkDate.setDate(checkDate.getDate() - 1);
                 continue;
             }
 
-            if (habit.logs[checkStr] && habit.logs[checkStr] >= habit.target) {
+            if (logs[checkStr] && logs[checkStr] >= habit.target) {
                 streak++;
                 checkDate.setDate(checkDate.getDate() - 1);
             } else {
@@ -170,13 +178,17 @@ Object.assign(NuvioApp.prototype, {
 
     getHabitProgress(habit) {
         const today = new Date().toDateString();
-        const todayLog = habit.logs[today] || 0;
-        return Math.min((todayLog / habit.target) * 100, 100);
+        const logs = habit.logs && typeof habit.logs === 'object' && !Array.isArray(habit.logs) ? habit.logs : {};
+        const todayLog = Number(logs[today]) || 0;
+        const target = Number(habit.target);
+        if (!Number.isFinite(target) || target <= 0) return 0;
+        return Math.max(0, Math.min((todayLog / target) * 100, 100));
     },
 
     isHabitDoneToday(habit) {
         const today = new Date().toDateString();
-        return habit.logs[today] && habit.logs[today] >= habit.target;
+        const logs = habit.logs && typeof habit.logs === 'object' && !Array.isArray(habit.logs) ? habit.logs : {};
+        return Number(logs[today]) >= Number(habit.target);
     },
 
     renderHabits() {
@@ -195,7 +207,8 @@ Object.assign(NuvioApp.prototype, {
             if (this.isHabitDoneToday(h)) completedToday++;
 
             // Calculate success rate
-            const logs = Object.keys(h.logs).length;
+            const habitLogs = h.logs && typeof h.logs === 'object' && !Array.isArray(h.logs) ? h.logs : {};
+            const logs = Object.keys(habitLogs).filter(key => Number(habitLogs[key]) > 0).length;
             const daysSince = Math.ceil((new Date() - new Date(h.createdAt)) / (1000 * 60 * 60 * 24));
             const expectedDays = Math.max(daysSince, 1);
             totalRate += (logs / expectedDays) * 100;
@@ -230,39 +243,47 @@ Object.assign(NuvioApp.prototype, {
     },
 
     renderHabitItem(habit) {
+        const escapeHTML = window.NuvioSecurity.escapeHTML;
+        const safeId = window.NuvioSecurity.safeId(habit.id);
+        const safeColor = /^#[0-9a-f]{6}$/i.test(habit.color || '') ? habit.color : '#64748b';
+        const safeIcon = /^[a-z0-9-]{1,40}$/i.test(habit.icon || '') ? habit.icon : 'fa-bullseye';
         const streak = this.getHabitStreak(habit);
         const progress = this.getHabitProgress(habit);
         const isDone = this.isHabitDoneToday(habit);
         const today = new Date().getDay();
-        const isActiveDay = habit.repeatDays.includes(today);
+        const repeatDays = Array.isArray(habit.repeatDays) ? habit.repeatDays : [];
+        const isActiveDay = repeatDays.includes(today);
+        const safeReminderTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(String(habit.reminderTime || '')) ? habit.reminderTime : '';
+        const safeTarget = Number.isFinite(Number(habit.target)) && Number(habit.target) > 0 ? Number(habit.target) : 1;
+        const safeProgress = Number.isFinite(progress) ? Math.max(0, Math.min(100, progress)) : 0;
 
         return `
             <div class="habit-item" style="${!isActiveDay ? 'opacity: 0.6;' : ''}">
-                <div class="habit-icon-wrap" style="background: ${habit.color}15; color: ${habit.color};">
-                    <i class="fas ${habit.icon}"></i>
+                <div class="habit-icon-wrap" style="background: ${safeColor}15; color: ${safeColor};">
+                    <i class="fas ${safeIcon}"></i>
                 </div>
                 <div class="habit-content">
-                    <div class="habit-title">${habit.title}</div>
+                    <div class="habit-title">${escapeHTML(habit.title)}</div>
                     <div class="habit-meta">
                         ${streak > 0 ? `<span class="habit-streak"><i class="fas fa-fire"></i> ${streak}</span>` : ''}
-                        <span>${habit.target} ${habit.unit}</span>
-                        ${habit.reminderTime ? `<span><i class="fas fa-bell"></i> ${habit.reminderTime}</span>` : ''}
+                        <span>${safeTarget} ${escapeHTML(habit.unit)}</span>
+                        ${safeReminderTime ? `<span><i class="fas fa-bell"></i> ${escapeHTML(safeReminderTime)}</span>` : ''}
                     </div>
                 </div>
                 <div class="habit-progress-wrap">
                     <div class="habit-progress-bar">
-                        <div class="habit-progress-fill" style="width: ${progress}%; background: ${habit.color};"></div>
+                        <div class="habit-progress-fill" style="width: ${safeProgress}%; background: ${safeColor};"></div>
                     </div>
-                    <span class="habit-progress-text">${Math.round(progress)}%</span>
+                    <span class="habit-progress-text">${Math.round(safeProgress)}%</span>
                 </div>
-                <div class="habit-check ${isDone ? 'checked' : ''}" onclick="event.stopPropagation(); app.toggleHabitToday('${habit.id}')">
+                <div class="habit-check ${isDone ? 'checked' : ''}" onclick="event.stopPropagation(); app.toggleHabitToday('${safeId}')">
                     ${isDone ? '<i class="fas fa-check"></i>' : ''}
                 </div>
                 <div class="habit-actions">
-                    <button class="task-action-btn" onclick="event.stopPropagation(); app.openHabitModal('${habit.id}')" title="${this.t('habits.editHabit')}">
+                    <button class="task-action-btn" onclick="event.stopPropagation(); app.openHabitModal('${safeId}')" title="${this.t('habits.editHabit')}">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="task-action-btn delete" onclick="event.stopPropagation(); app.deleteHabit('${habit.id}')" title="${this.t('actions.clearAll')}">
+                    <button class="task-action-btn delete" onclick="event.stopPropagation(); app.deleteHabit('${safeId}')" title="${this.t('actions.clearAll')}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -283,8 +304,10 @@ Object.assign(NuvioApp.prototype, {
             const dateStr = date.toDateString();
             const dayOfWeek = date.getDay();
             const isToday = i === 0;
-            const isDone = habit.logs[dateStr] && habit.logs[dateStr] >= habit.target;
-            const isRepeatDay = habit.repeatDays.includes(dayOfWeek);
+            const logs = habit.logs && typeof habit.logs === 'object' && !Array.isArray(habit.logs) ? habit.logs : {};
+            const repeatDays = Array.isArray(habit.repeatDays) ? habit.repeatDays : [];
+            const isDone = Number(logs[dateStr]) >= Number(habit.target || 1);
+            const isRepeatDay = repeatDays.includes(dayOfWeek);
 
             let cssClass = 'habit-day-dot';
             if (isDone) cssClass += ' done';

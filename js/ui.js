@@ -181,15 +181,73 @@ Object.assign(NuvioApp.prototype, {
         document.getElementById('progressDate').textContent = now.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
     },
 
-    requestNotificationPermission() {
-        if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission();
+    async requestNotificationPermission() {
+        if (!('Notification' in window)) {
+            this.showToast('المتصفح لا يدعم إشعارات الجهاز', 'warning');
+            return 'unsupported';
+        }
+        try {
+            const permission = Notification.permission === 'default'
+                ? await Notification.requestPermission()
+                : Notification.permission;
+            this.showToast(permission === 'granted'
+                ? 'تم تفعيل إشعارات Nuvio'
+                : 'لم يتم السماح بإشعارات الجهاز؛ ستظل التذكيرات داخل الموقع', permission === 'granted' ? 'success' : 'warning');
+            return permission;
+        } catch (error) {
+            console.warn('Notification permission request failed:', error);
+            return 'denied';
         }
     },
 
-    showNotification(title, body) {
-        if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification(title, { body });
+    showNotification(title, body, tag = '') {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        const options = {
+            body: String(body || '').slice(0, 240),
+            tag: tag || ('nuvio-' + Date.now()),
+            icon: './assets/layer-group.svg',
+            badge: './assets/layer-group.svg'
+        };
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready
+                .then(registration => registration.showNotification(String(title || 'Nuvio'), options))
+                .catch(() => new Notification(String(title || 'Nuvio'), options));
+        } else {
+            new Notification(String(title || 'Nuvio'), options);
+        }
+    },
+
+    startNotificationScheduler() {
+        if (this.notificationSchedulerInterval) clearInterval(this.notificationSchedulerInterval);
+        this.processScheduledNotifications();
+        this.notificationSchedulerInterval = setInterval(() => this.processScheduledNotifications(), 15000);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) this.processScheduledNotifications();
+        });
+        window.addEventListener('focus', () => this.processScheduledNotifications());
+    },
+
+    processScheduledNotifications() {
+        if (!Array.isArray(this.notifications) || !this.notifications.length) return;
+        const now = Date.now();
+        let changed = false;
+        this.notifications.forEach(item => {
+            if (!item || item.firedAt || !item.scheduledAt) return;
+            const scheduled = Date.parse(item.scheduledAt);
+            if (!Number.isFinite(scheduled) || scheduled > now) return;
+            item.firedAt = new Date(now).toISOString();
+            item.time = item.firedAt;
+            changed = true;
+            const title = this.settings.language === 'ar' ? 'تذكير من Nuvio' : 'Nuvio reminder';
+            this.showNotification(title, item.message, item.id);
+            this.playNotificationSound();
+            this.showToast(item.message, 'info');
+        });
+        if (changed) {
+            this.saveData();
+            if (document.getElementById('notificationsPanel')?.classList.contains('active')) {
+                this.renderNotifications();
+            }
         }
     },
 
@@ -215,19 +273,28 @@ Object.assign(NuvioApp.prototype, {
     },
 
     addNotification(type, message, time = null) {
+        const now = new Date();
+        const requested = time ? new Date(time) : null;
+        const scheduledAt = requested && Number.isFinite(requested.getTime()) && requested.getTime() > now.getTime()
+            ? requested.toISOString() : null;
         const notification = {
-            id: 'notif-' + Date.now(),
-            type,
-            message,
-            time: time ? time.toISOString() : new Date().toISOString(),
+            id: 'notif-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+            type: ['task', 'focus', 'reminder'].includes(type) ? type : 'reminder',
+            message: String(message || '').trim().slice(0, 240),
+            time: now.toISOString(),
+            scheduledAt,
+            firedAt: scheduledAt ? null : now.toISOString(),
             read: false
         };
 
+        if (!notification.message) return null;
         this.notifications.unshift(notification);
-        if (this.notifications.length > 50) this.notifications.pop();
+        if (this.notifications.length > 100) this.notifications.pop();
 
         this.saveData();
         this.updateNotificationBadge();
+        if (scheduledAt) this.processScheduledNotifications();
+        return notification.id;
     },
 
     toggleNotifications() {
@@ -247,17 +314,21 @@ Object.assign(NuvioApp.prototype, {
 
         const icons = { task: 'fa-tasks', focus: 'fa-clock', reminder: 'fa-bell' };
 
-        list.innerHTML = this.notifications.map(n => `
-            <div class="notification-item ${n.read ? '' : 'unread'}" onclick="app.markNotificationRead('${n.id}')">
-                <div class="notification-icon ${n.type}">
+        const escapeHTML = window.NuvioSecurity.escapeHTML;
+        list.innerHTML = this.notifications.map(n => {
+            const safeType = ['task', 'focus', 'reminder'].includes(n.type) ? n.type : 'reminder';
+            return `
+            <div class="notification-item ${n.read ? '' : 'unread'}" onclick="app.markNotificationRead('${window.NuvioSecurity.safeId(n.id)}')">
+                <div class="notification-icon ${safeType}">
                     <i class="fas ${icons[n.type] || 'fa-bell'}"></i>
                 </div>
                 <div class="notification-content">
-                    <p>${n.message}</p>
-                    <span>${new Date(n.time).toLocaleString(this.settings.language === 'ar' ? 'ar-SA' : 'en-US')}</span>
+                    <p>${escapeHTML(n.message)}</p>
+                    <span>${new Date(n.scheduledAt && !n.firedAt ? n.scheduledAt : n.time).toLocaleString(this.settings.language === 'ar' ? 'ar-SA' : 'en-US')}</span>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
     },
 
     markNotificationRead(id) {
@@ -292,11 +363,12 @@ Object.assign(NuvioApp.prototype, {
             info: 'fa-info-circle'
         };
 
+        const escapeHTML = window.NuvioSecurity.escapeHTML;
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
         toast.innerHTML = `
-            <div class="toast-icon"><i class="fas ${icons[type]}"></i></div>
-            <div class="toast-content"><p>${message}</p></div>
+            <div class="toast-icon"><i class="fas ${icons[type] || 'fa-info-circle'}"></i></div>
+            <div class="toast-content"><p>${escapeHTML(message)}</p></div>
             <button class="toast-close" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
         `;
 
@@ -321,6 +393,12 @@ Object.assign(NuvioApp.prototype, {
         const file = event.target.files[0];
         if (!file) return;
 
+        if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type)) {
+            this.showToast(this.settings.language === 'ar' ? 'صيغة الصورة غير مدعومة' : 'Unsupported image format', 'warning');
+            event.target.value = '';
+            return;
+        }
+
         if (file.size > 2 * 1024 * 1024) {
             this.showToast(this.settings.language === 'ar' ? 'الصورة كبيرة جداً (أقصى 2 ميجا)' : 'Image too large (max 2MB)', 'warning');
             return;
@@ -328,8 +406,13 @@ Object.assign(NuvioApp.prototype, {
 
         const reader = new FileReader();
         reader.onload = (e) => {
-            this.userProfile.avatar = e.target.result;
-            this.updateAvatarPreview(e.target.result);
+            const imageData = e.target?.result;
+            if (typeof imageData !== 'string' || !/^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+=*$/.test(imageData)) {
+                this.showToast(this.settings.language === 'ar' ? 'تعذر قراءة الصورة' : 'Could not read image', 'warning');
+                return;
+            }
+            this.userProfile.avatar = imageData;
+            this.updateAvatarPreview(imageData);
         };
         reader.readAsDataURL(file);
     },
@@ -338,7 +421,16 @@ Object.assign(NuvioApp.prototype, {
         const preview = document.getElementById('avatarPreview');
         if (!preview) return;
         
-        preview.innerHTML = `<img src="${imageData}" alt="avatar">`;
+        if (typeof imageData !== 'string' || imageData.length > 3_000_000 ||
+            !/^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+=*$/.test(imageData)) {
+            preview.replaceChildren();
+            preview.classList.remove('has-image');
+            return;
+        }
+        const image = document.createElement('img');
+        image.alt = 'avatar';
+        image.src = imageData;
+        preview.replaceChildren(image);
         preview.classList.add('has-image');
     },
 
@@ -352,7 +444,16 @@ Object.assign(NuvioApp.prototype, {
         }
         
         if (avatarEl && this.userProfile.avatar) {
-            avatarEl.innerHTML = `<img src="${this.userProfile.avatar}" alt="${this.userProfile.name}">`;
+            const imageData = this.userProfile.avatar;
+            if (typeof imageData === 'string' && imageData.length <= 3_000_000 &&
+                /^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+=*$/.test(imageData)) {
+                const image = document.createElement('img');
+                image.alt = String(this.userProfile.name || 'avatar').slice(0, 80);
+                image.src = imageData;
+                avatarEl.replaceChildren(image);
+            } else {
+                avatarEl.replaceChildren();
+            }
         }
     },
 
@@ -387,8 +488,7 @@ Object.assign(NuvioApp.prototype, {
         
         if (preview) {
             if (this.userProfile.avatar) {
-                preview.innerHTML = `<img src="${this.userProfile.avatar}" alt="avatar">`;
-                preview.classList.add('has-image');
+                this.updateAvatarPreview(this.userProfile.avatar);
             } else {
                 preview.innerHTML = '<i class="fas fa-user"></i>';
                 preview.classList.remove('has-image');

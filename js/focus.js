@@ -58,9 +58,9 @@ Object.assign(NuvioApp.prototype, {
         this.timerState.interval = setInterval(() => {
             this.timerState.timeLeft = Math.max(0, Math.ceil((this.timerState.endAt - Date.now()) / 1000));
             this.updateTimerDisplay();
-            this.persistTimerState();
+            if (this.timerState.timeLeft % 5 === 0 || this.timerState.timeLeft <= 0) this.persistTimerState();
             if (this.timerState.timeLeft <= 0) this.timerComplete();
-        }, 250);
+        }, 1000);
         this.updateTimerDisplay();
     },
 
@@ -198,7 +198,7 @@ Object.assign(NuvioApp.prototype, {
         if (this.timerState.mode === 'pomodoro') {
             this.focusSessions.push({
                 date: new Date().toISOString(),
-                duration: this.settings.pomodoroDuration,
+                duration: Math.round(this.timerState.totalTime / 60),
                 type: 'pomodoro',
                 taskId: this.timerState.currentTask
             });
@@ -206,7 +206,7 @@ Object.assign(NuvioApp.prototype, {
             if (this.timerState.currentTask) {
                 const task = this.tasks.find(t => t.id === this.timerState.currentTask);
                 if (task) {
-                    task.actualTime += this.settings.pomodoroDuration;
+                    task.actualTime = (Number(task.actualTime) || 0) + Math.round(this.timerState.totalTime / 60);
                 }
             }
 
@@ -222,6 +222,77 @@ Object.assign(NuvioApp.prototype, {
         this.renderAll();
         this.renderFocusStats();
         document.title = 'Nuvio';
+    },
+
+    startScheduleAutomation() {
+        if (this.scheduleAutomationInterval) clearInterval(this.scheduleAutomationInterval);
+        this.checkScheduledFocusBlocks();
+        this.scheduleAutomationInterval = setInterval(() => this.checkScheduledFocusBlocks(), 15000);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) this.checkScheduledFocusBlocks();
+        });
+        window.addEventListener('focus', () => this.checkScheduledFocusBlocks());
+    },
+
+    checkScheduledFocusBlocks() {
+        if (!Array.isArray(this.tasks) || !this.tasks.length) return;
+        const now = Date.now();
+        if (this.timerState?.running) return;
+
+        const due = this.tasks
+            .filter(task => task && task.status !== 'completed' && task.autoStart === true && task.dueDate)
+            .map(task => {
+                const start = Date.parse(task.dueDate);
+                const explicitEnd = task.endDate ? Date.parse(task.endDate) : NaN;
+                const duration = Math.min(1440, Math.max(1, Number(task.estimatedTime) || 25));
+                const end = Number.isFinite(explicitEnd) ? explicitEnd : start + duration * 60000;
+                return { task, start, end };
+            })
+            .filter(item => Number.isFinite(item.start) && Number.isFinite(item.end)
+                && item.end > item.start && item.start <= now && now < item.end
+                && item.task.autoStartedFor !== new Date(item.start).toISOString())
+            .sort((a, b) => a.start - b.start);
+
+        if (!due.length) return;
+        const { task, start, end } = due[0];
+        const startKey = new Date(start).toISOString();
+        task.autoStartedFor = startKey;
+        this.tasks.forEach(item => {
+            if (item.id !== task.id && item.status === 'in-progress') item.status = 'pending';
+        });
+        task.status = 'in-progress';
+
+        const remainingSeconds = Math.max(1, Math.ceil((end - now) / 1000));
+        this.timerState.mode = 'pomodoro';
+        this.timerState.totalTime = remainingSeconds;
+        this.timerState.timeLeft = remainingSeconds;
+        this.timerState.currentTask = task.id;
+        this.timerState.running = false;
+        this.timerState.paused = false;
+        this.timerState.endAt = null;
+
+        this.saveData();
+        const info = document.getElementById('timerTaskInfo');
+        if (info) {
+            const name = document.createElement('div');
+            name.className = 'task-name';
+            name.textContent = String(task.title || 'جلسة مذاكرة');
+            const description = document.createElement('p');
+            description.textContent = this.settings.language === 'ar'
+                ? 'بدأت الجلسة تلقائيًا حسب جدولك'
+                : 'Session started automatically from your schedule';
+            info.replaceChildren(name, description);
+        }
+        // Start before showing the focus section so its restore hook cannot overwrite this scheduled session.
+        this.startTimer();
+        this.showSection('focus');
+        this.updateTimerDisplay();
+        const message = this.settings.language === 'ar'
+            ? 'بدأت جلسة ' + (task.title || 'المذاكرة') + ' تلقائيًا حسب جدولك'
+            : 'Your scheduled session has started: ' + (task.title || 'Study');
+        this.addNotification('focus', message);
+        this.showNotification('Nuvio', message);
+        this.showToast(message, 'success');
     },
 
     startTaskFocus(taskId) {

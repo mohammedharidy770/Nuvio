@@ -1,4 +1,50 @@
 
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
+const ALLOWED_ORIGINS = new Set([
+    'https://nuvio-blue.vercel.app',
+    'https://mohammedharidy770.github.io',
+    'https://nuvio-mohammedharidy770.vercel.app',
+    'https://nuvio-git-main-mohammedharidy770.vercel.app'
+]);
+const isAllowedOrigin = origin => ALLOWED_ORIGINS.has(origin);
+
+async function consumeUserQuota(req) {
+    const authorization = req.headers.authorization;
+    const response = await fetch(SUPABASE_URL + '/rest/v1/rpc/consume_nuvio_ai_quota', {
+        method: 'POST',
+        headers: {
+            apikey: SUPABASE_PUBLISHABLE_KEY,
+            Authorization: authorization,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+    });
+    if (!response.ok) {
+        const detail = await response.text().catch(() => '');
+        console.error('Nuvio quota check failed:', response.status, detail.slice(0, 300));
+        throw new Error('AI quota service unavailable');
+    }
+    return response.json();
+}
+
+async function authenticateRequest(req) {
+    const header = req.headers.authorization || '';
+    const match = /^Bearer\s+(.+)$/i.exec(header);
+    if (!match) return null;
+
+    const response = await fetch(SUPABASE_URL + '/auth/v1/user', {
+        headers: {
+            apikey: SUPABASE_PUBLISHABLE_KEY,
+            Authorization: 'Bearer ' + match[1]
+        }
+    });
+    if (!response.ok) return null;
+    const user = await response.json().catch(() => null);
+    return user && typeof user.id === 'string' ? user : null;
+}
+
+
 const SAFE_SECTIONS = ['dashboard','tasks','focus','calendar','reports','habits','prayer','sleep','water','notes','settings','ai'];
 const SAFE_CATEGORIES = ['coding','work','study','health','sport','finance','personal','Islam','development'];
 const SAFE_PRIORITIES = ['low','medium','high','urgent'];
@@ -6,12 +52,89 @@ const clean = (value, max = 1000) => typeof value === 'string' ? value.trim().sl
 const refValue = value => typeof value === 'string' ? clean(value, 150) : value && typeof value === 'object' ? (clean(value.title, 150) || clean(value.id, 150)) : '';
 const validDate = value => typeof value === 'string' && value && !Number.isNaN(Date.parse(value)) ? new Date(value).toISOString() : null;
 
+function safeString(value, max = 120) {
+    return typeof value === 'string' ? value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max) : '';
+}
+
+function sanitizeContext(input) {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) return {};
+    const date = value => typeof value === 'string' && !Number.isNaN(Date.parse(value))
+        ? new Date(value).toISOString() : '';
+    const localDate = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '';
+    let timeZone = '';
+    const requestedZone = safeString(input.timeZone, 80);
+    if (requestedZone) {
+        try {
+            new Intl.DateTimeFormat('en-US', { timeZone: requestedZone });
+            timeZone = requestedZone;
+        } catch {}
+    }
+    const tasks = Array.isArray(input.tasks) ? input.tasks.slice(0, 80).map(item => ({
+        id: safeString(item?.id, 100),
+        title: safeString(item?.title, 150),
+        status: ['pending', 'in-progress', 'completed'].includes(item?.status) ? item.status : 'pending',
+        category: SAFE_CATEGORIES.includes(item?.category) ? item.category : 'personal',
+        priority: SAFE_PRIORITIES.includes(item?.priority) ? item.priority : 'medium',
+        dueDate: date(item?.dueDate),
+        endDate: date(item?.endDate),
+        estimatedTime: Math.min(1440, Math.max(0, Number(item?.estimatedTime) || 0))
+    })) : [];
+    const habits = Array.isArray(input.habits) ? input.habits.slice(0, 30).map(item => ({
+        id: safeString(item?.id, 100),
+        title: safeString(item?.title, 150),
+        target: Math.min(1000, Math.max(1, Number(item?.target) || 1)),
+        unit: safeString(item?.unit, 30),
+        repeatDays: Array.isArray(item?.repeatDays)
+            ? item.repeatDays.filter(day => Number.isInteger(day) && day >= 0 && day <= 6).slice(0, 7) : []
+    })) : [];
+    const notes = Array.isArray(input.notes) ? input.notes.slice(0, 40).map(item => ({
+        id: safeString(item?.id, 100),
+        title: safeString(item?.title, 150),
+        tags: Array.isArray(item?.tags) ? item.tags.slice(0, 10).map(tag => safeString(tag, 40)) : [],
+        updatedAt: date(item?.updatedAt)
+    })) : [];
+    const numeric = value => Number.isFinite(Number(value)) ? Math.max(0, Math.min(100000, Number(value))) : 0;
+    return {
+        currentDate: date(input.currentDate) || new Date().toISOString(),
+        localDate: localDate(input.localDate),
+        timeZone,
+        currentSection: SAFE_SECTIONS.includes(input.currentSection) ? input.currentSection : '',
+        theme: input.theme === 'dark' ? 'dark' : 'light',
+        language: input.language === 'en' ? 'en' : 'ar',
+        tasks,
+        habits,
+        notes,
+        water: input.water && typeof input.water === 'object' ? {
+            today: numeric(input.water.today),
+            goal: numeric(input.water.goal)
+        } : null,
+        focus: input.focus && typeof input.focus === 'object' ? {
+            running: input.focus.running === true,
+            paused: input.focus.paused === true,
+            mode: ['pomodoro', 'shortBreak', 'longBreak'].includes(input.focus.mode) ? input.focus.mode : 'pomodoro',
+            timeLeft: numeric(input.focus.timeLeft)
+        } : null,
+        counts: {
+            tasks: numeric(input.counts?.tasks),
+            habits: numeric(input.counts?.habits),
+            notes: numeric(input.counts?.notes)
+        }
+    };
+}
+
 function sanitizeAction(action) {
     if (!action || typeof action !== 'object' || typeof action.type !== 'string') return null;
     const type = action.type;
     if (type === 'navigate') return SAFE_SECTIONS.includes(action.section) ? { type, section: action.section } : null;
     if (type === 'set_theme') return typeof action.dark === 'boolean' ? { type, dark: action.dark } : null;
     if (['add_water_glass','start_focus','clear_notifications'].includes(type)) return { type };
+    if (type === 'add_reminder') {
+        const x = action.reminder || {};
+        const message = clean(x.message, 240);
+        const remindAt = validDate(x.remindAt);
+        if (!message || !remindAt || Date.parse(remindAt) <= Date.now()) return null;
+        return { type, reminder: { message, remindAt } };
+    }
     if (type === 'set_water_goal') {
         const goal = Number(action.goal);
         return Number.isInteger(goal) && goal >= 1 && goal <= 30 ? { type, goal } : null;
@@ -25,12 +148,19 @@ function sanitizeAction(action) {
         const x = action.task || {};
         const title = clean(x.title, 150);
         if (!title) return null;
+        const dueDate = validDate(x.dueDate);
+        const estimatedTime = Math.min(1440, Math.max(1, parseInt(x.estimatedTime, 10) || 25));
+        const autoStart = x.autoStart === true || Boolean(validDate(x.endDate));
+        let endDate = validDate(x.endDate);
+        if (autoStart && dueDate && !endDate) {
+            endDate = new Date(Date.parse(dueDate) + estimatedTime * 60000).toISOString();
+        }
         return { type, task: {
             title, description: clean(x.description, 1000),
             category: SAFE_CATEGORIES.includes(x.category) ? x.category : 'study',
             priority: SAFE_PRIORITIES.includes(x.priority) ? x.priority : 'medium',
-            dueDate: validDate(x.dueDate), endDate: validDate(x.endDate),
-            estimatedTime: Math.min(1440, Math.max(1, parseInt(x.estimatedTime, 10) || 25)),
+            dueDate, endDate, autoStart,
+            estimatedTime,
             repeat: 'none', reminder: 0,
             tags: Array.isArray(x.tags) ? x.tags.slice(0,10).map(v => clean(String(v),40)).filter(Boolean) : []
         }};
@@ -76,19 +206,46 @@ function sanitizeAction(action) {
 }
 
 export default async function handler(req, res) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    const origin = req.headers.origin;
+    if (origin && !isAllowedOrigin(origin)) {
+        return res.status(403).json({ error: 'Origin not allowed.' });
+    }
+    if (origin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Vary', 'Origin');
+    }
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') return res.status(204).end();
+    res.setHeader('Cache-Control', 'no-store');
+    if (req.method === 'OPTIONS') {
+        if (!origin || (!isAllowedOrigin(origin))) {
+            return res.status(403).end();
+        }
+        return res.status(204).end();
+    }
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     try {
-        const apiKey = process.env.GROQ_API_KEY;
-        if (!apiKey) return res.status(500).json({ error: 'GROQ_API_KEY is missing in the server environment.' });
+        if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+            console.error('Nuvio AI is missing Supabase server configuration.');
+            return res.status(500).json({ error: 'AI authentication is not configured.' });
+        }
+
+        const user = await authenticateRequest(req);
+        if (!user) return res.status(401).json({ error: 'سجّل الدخول لاستخدام Nuvio AI.' });
 
         const message = req.body?.message;
         if (typeof message !== 'string' || !message.trim() || message.length > 8000) {
             return res.status(400).json({ error: 'Message is required.' });
+        }
+
+        const apiKey = process.env.GROQ_API_KEY;
+        if (!apiKey) return res.status(500).json({ error: 'GROQ_API_KEY is missing in the server environment.' });
+
+        const quotaAllowed = await consumeUserQuota(req);
+        if (quotaAllowed !== true) {
+            res.setHeader('Retry-After', '60');
+            return res.status(429).json({ error: 'وصلت إلى حد الاستخدام المؤقت. حاول بعد دقيقة.' });
         }
 
         const preferences = req.body?.preferences || {};
@@ -98,9 +255,7 @@ export default async function handler(req, res) {
                 ? 'كن طبيعيًا وودودًا دون مبالغة.'
                 : 'كن مختصرًا ومباشرًا قدر الإمكان.';
         const actionsEnabled = preferences.actionsEnabled !== false;
-        const rawContext = req.body?.context && typeof req.body.context === 'object' ? req.body.context : {};
-        let context = rawContext;
-        try { if (JSON.stringify(rawContext).length > 30000) context = {}; } catch { context = {}; }
+        const context = sanitizeContext(req.body?.context);
         const history = Array.isArray(req.body?.history)
             ? req.body.history.slice(-10).filter(item =>
                 item && ['user', 'assistant'].includes(item.role) && typeof item.content === 'string'
@@ -124,15 +279,17 @@ ${actionsEnabled
 - إذا طلب المستخدم كتابة ملاحظة ولم يحدد عنوانًا، استنتج عنوانًا قصيرًا من المحتوى.
 - لا تخترع وقتًا أو تاريخًا أو كمية غير مذكورة. إذا كان التفصيل ضروريًا وغير موجود، اسأل سؤالًا واحدًا محددًا.
 - الأوقات مثل 9 صباحًا = 09:00، 2 ظهرًا = 14:00، 6 مساءً = 18:00، 7 مساءً = 19:00. لا تفترض أن كل ساعة من 1 إلى 8 مساءً.
-- عند إنشاء جدول، اجعل dueDate وقت بداية الفترة وendDate وقت نهايتها، وestimatedTime بالدقائق. راعِ التاريخ المحلي الحالي. لا تحول نهاية الفترة إلى يوم آخر إلا إذا كان ذلك واضحًا.
+- عند إنشاء جدول، اجعل dueDate وقت بداية الفترة وendDate وقت نهايتها، وestimatedTime بالدقائق. لأي مهمة مذاكرة يحدد المستخدم لها وقت بداية ومدة (مثل الساعة 7 لمدة 90 دقيقة)، اجعل autoStart=true واحسب endDate بإضافة estimatedTime إلى dueDate. هذه المهام تبدأ جلسة التركيز تلقائيًا عند موعدها إذا كان المؤقت غير مشغول. لا تجعل autoStart=true للمهام العادية أو المواعيد النهائية فقط. راعِ التاريخ المحلي الحالي. لا تحول نهاية الفترة إلى يوم آخر إلا إذا كان ذلك واضحًا.
+- إذا قال المستخدم ذكرني/فكرني/نبهني في موعد محدد، استخدم add_reminder مع message وremindAt كتاريخ ووقت محليين محولين إلى ISO مع المنطقة الزمنية الصحيحة. إذا كانت الساعة مبهمة مثل 8 دون صباحًا/مساءً ولا يوجد سياق واضح، اسأل عن الفترة ولا تخمن. لا تستخدم add_task كتذكير لمجرد أن المستخدم قال فكرني.
 - لا تحذف أو تستبدل بيانات مهمة أو ملاحظة أو عادة إلا بطلب واضح. إذا كان الهدف غير محدد أو توجد عناصر متشابهة، اسأل قبل إصدار إجراء الحذف.
 - لا تدّعِ تنفيذ إجراء. لا تقل تم أو خليته إلا إذا أصدرت action صالحًا محدد الهدف. إذا لم تستطع تحديد المهمة، اسأل عن اسمها.
 - لا تُصدر أكثر من 30 إجراء في الرسالة الواحدة.
 - أعد JSON صالحًا فقط، دون Markdown أو نص خارج JSON، بالشكل:
-{"reply":"رد عربي طبيعي","actions":[{"type":"add_task","task":{"title":"عنوان","description":"","category":"study","priority":"medium","dueDate":"ISO datetime أو null","endDate":"ISO datetime أو null","estimatedTime":45,"repeat":"none","reminder":0,"tags":[]}}]}
+{"reply":"رد عربي طبيعي","actions":[{"type":"add_task","task":{"title":"عنوان","description":"","category":"study","priority":"medium","dueDate":"ISO datetime أو null","endDate":"ISO datetime أو null","autoStart":true أو false,"estimatedTime":45,"repeat":"none","reminder":0,"tags":[]}}]}
 
 الإجراءات المدعومة:
-1) add_task: task {title, description, category, priority, dueDate, endDate, estimatedTime, repeat, reminder, tags}
+0) add_reminder: reminder {message, remindAt} لإشعار مستقبلي محدد الوقت.
+1) add_task: task {title, description, category, priority, dueDate, endDate, autoStart, estimatedTime, repeat, reminder, tags}
 2) update_task: task (اسم أو id) + changes {title, description, category, priority, dueDate, estimatedTime}
 3) complete_task / start_task / delete_task: task (اسم أو id)
 4) add_note: note {title, content, tags, color}
@@ -151,12 +308,17 @@ ${actionsEnabled
 استخدم priority من: low, medium, high, urgent.
 لا تستخدم إجراءات غير القائمة أعلاه.`;
 
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 25_000);
+        let response;
+        try {
+            response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: {
                 Authorization: 'Bearer ' + apiKey,
                 'Content-Type': 'application/json'
             },
+            signal: controller.signal,
             body: JSON.stringify({
                 model: 'openai/gpt-oss-20b',
                 temperature: 0.2,
@@ -174,7 +336,10 @@ ${actionsEnabled
                     }
                 ]
             })
-        });
+            });
+        } finally {
+            clearTimeout(timeout);
+        }
 
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {

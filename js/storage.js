@@ -104,22 +104,49 @@ Object.assign(NuvioApp.prototype, {
 
     exportData() {
         const data = {
+            schemaVersion: 2,
+            exportDate: new Date().toISOString(),
             tasks: this.tasks,
             focusSessions: this.focusSessions,
             settings: this.settings,
             notifications: this.notifications,
-            exportDate: new Date().toISOString()
+            habits: this.habits,
+            notes: this.notes,
+            sleepRecords: this.sleepRecords,
+            waterData: this.waterData,
+            prayerData: this.prayerData,
+            userProfile: this.userProfile,
+            timerState: this.timerState ? {
+                mode: this.timerState.mode,
+                timeLeft: this.timerState.timeLeft,
+                totalTime: this.timerState.totalTime,
+                paused: this.timerState.paused,
+                currentTask: this.timerState.currentTask || null
+            } : null,
+            aiHistory: this.getLocalBackupValue('nuvio_ai_history', []),
+            aiSettings: this.getLocalBackupValue('nuvio_ai_settings', null)
         };
 
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `nuvio-backup-${new Date().toISOString().slice(0, 10)}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `nuvio-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-        this.showToast(this.settings.language === 'ar' ? 'تم تصدير البيانات' : 'Data exported', 'success');
+        this.showToast(this.settings.language === 'ar' ? 'تم تصدير النسخة الاحتياطية الكاملة' : 'Full backup exported', 'success');
+    },
+
+    getLocalBackupValue(key, fallback) {
+        try {
+            const value = localStorage.getItem(key);
+            return value === null ? fallback : JSON.parse(value);
+        } catch {
+            return fallback;
+        }
     },
 
     importData() {
@@ -128,45 +155,133 @@ Object.assign(NuvioApp.prototype, {
     },
 
     handleImport(event) {
-        const file = event.target.files[0];
+        const file = event.target.files?.[0];
         if (!file) return;
 
+        if (file.size > 10 * 1024 * 1024) {
+            this.showToast(this.settings.language === 'ar' ? 'حجم الملف أكبر من 10 ميجابايت' : 'Backup file exceeds 10 MB', 'error');
+            event.target.value = '';
+            return;
+        }
+
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = () => {
             try {
-                const data = JSON.parse(e.target.result);
+                const data = JSON.parse(String(reader.result || ''));
+                if (!data || typeof data !== 'object' || Array.isArray(data)) {
+                    throw new Error('Invalid backup structure');
+                }
+
+                const arrayFields = ['tasks', 'focusSessions', 'notifications', 'habits', 'notes', 'sleepRecords'];
+                arrayFields.forEach(key => {
+                    if (data[key] !== undefined && !Array.isArray(data[key])) {
+                        throw new Error('Invalid ' + key);
+                    }
+                });
+                ['settings', 'waterData', 'prayerData', 'userProfile'].forEach(key => {
+                    if (data[key] !== undefined && (!data[key] || typeof data[key] !== 'object' || Array.isArray(data[key]))) {
+                        throw new Error('Invalid ' + key);
+                    }
+                });
+
+                const backupKeys = [
+                    'nuvio_tasks', 'nuvio_sessions', 'nuvio_settings', 'nuvio_notifications',
+                    'nuvio_habits', 'nuvio_notes', 'nuvio_sleep', 'nuvio_water',
+                    'nuvio_prayer', 'nuvio_user_profile', 'nuvio_timer_state',
+                    'nuvio_ai_history', 'nuvio_ai_settings'
+                ];
+                const current = {};
+                backupKeys.forEach(key => {
+                    const value = localStorage.getItem(key);
+                    if (value !== null) current[key] = value;
+                });
+                localStorage.setItem('nuvio_pre_import_backup', JSON.stringify({
+                    createdAt: new Date().toISOString(),
+                    data: current
+                }));
 
                 if (data.tasks) this.tasks = data.tasks;
                 if (data.focusSessions) this.focusSessions = data.focusSessions;
                 if (data.settings) this.settings = { ...this.settings, ...data.settings };
                 if (data.notifications) this.notifications = data.notifications;
+                if (data.habits) this.habits = data.habits;
+                if (data.notes) this.notes = data.notes;
+                if (data.sleepRecords) this.sleepRecords = data.sleepRecords;
+                if (data.waterData) this.waterData = { ...this.waterData, ...data.waterData };
+                if (data.prayerData) this.prayerData = { ...this.prayerData, ...data.prayerData };
+                if (data.userProfile) this.userProfile = { ...this.userProfile, ...data.userProfile };
 
                 this.saveData();
+                this.saveHabits();
+                this.saveNotes();
+                this.saveSleepRecords();
+                this.saveWaterData();
+                this.savePrayerSettings();
+                localStorage.setItem('nuvio_user_profile', JSON.stringify(this.userProfile));
+
+                if (Array.isArray(data.aiHistory)) localStorage.setItem('nuvio_ai_history', JSON.stringify(data.aiHistory));
+                if (data.aiSettings && typeof data.aiSettings === 'object') localStorage.setItem('nuvio_ai_settings', JSON.stringify(data.aiSettings));
+                if (data.timerState && typeof data.timerState === 'object') {
+                    localStorage.setItem('nuvio_timer_state', JSON.stringify(data.timerState));
+                }
+
                 this.applyTheme();
                 this.applyLanguage();
                 this.renderAll();
-                this.showToast(this.settings.language === 'ar' ? 'تم استيراد البيانات' : 'Data imported', 'success');
-            } catch (err) {
-                this.showToast(this.settings.language === 'ar' ? 'خطأ في قراءة الملف' : 'Error reading file', 'error');
+                this.renderHabits?.();
+                this.renderNotes?.();
+                this.renderSleep?.();
+                this.renderWater?.();
+                this.showToast(this.settings.language === 'ar' ? 'تم استيراد النسخة الاحتياطية' : 'Backup imported', 'success');
+            } catch (error) {
+                console.error('Backup import failed:', error);
+                this.showToast(this.settings.language === 'ar' ? 'ملف النسخة الاحتياطية غير صالح أو تالف' : 'Invalid or corrupted backup file', 'error');
+            } finally {
+                event.target.value = '';
             }
         };
+        reader.onerror = () => {
+            this.showToast(this.settings.language === 'ar' ? 'تعذر قراءة الملف' : 'Could not read file', 'error');
+            event.target.value = '';
+        };
         reader.readAsText(file);
-        event.target.value = '';
     },
 
     clearAllData() {
-        const msg = this.settings.language === 'ar' 
-            ? 'هل أنت متأكد من مسح كل البيانات؟ هذا الإجراء لا يمكن التراجع عنه.' 
-            : 'Are you sure you want to clear all data? This action cannot be undone.';
+        const msg = this.settings.language === 'ar'
+            ? 'هل أنت متأكد من حذف جميع بياناتك المحلية؟ سيتم الاحتفاظ بإعدادات العرض واللغة.'
+            : 'Clear all personal data? Display and language preferences will be kept.';
 
         if (!confirm(msg)) return;
 
         this.tasks = [];
         this.focusSessions = [];
         this.notifications = [];
+        this.habits = [];
+        this.notes = [];
+        this.sleepRecords = [];
+        this.waterData = { goal: 8, today: 0, history: {}, reminder: false, lastDate: new Date().toDateString() };
+        this.prayerData = { city: 'Cairo', method: '5', times: null, hijriDate: null, location: null };
+        this.userProfile = { name: '', avatar: null };
+
+        if (this.timerState) this.timerState.currentTask = null;
+        this.resetTimer?.();
+
+        ['nuvio_ai_history', 'nuvio_ai_settings'].forEach(key => localStorage.removeItem(key));
         this.saveData();
+        this.saveHabits();
+        this.saveNotes();
+        this.saveSleepRecords();
+        this.saveWaterData();
+        this.savePrayerSettings();
+        localStorage.setItem('nuvio_user_profile', JSON.stringify(this.userProfile));
+
         this.renderAll();
-        this.showToast(this.settings.language === 'ar' ? 'تم مسح كل البيانات' : 'All data cleared', 'success');
+        this.renderHabits?.();
+        this.renderNotes?.();
+        this.renderSleep?.();
+        this.renderWater?.();
+        this.showToast(this.settings.language === 'ar' ? 'تم حذف جميع البيانات الشخصية' : 'All personal data cleared', 'success');
     },
 
     loadHabits() {

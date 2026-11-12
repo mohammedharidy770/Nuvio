@@ -235,9 +235,52 @@
         }
     }
 
+    function normalizeDigits(value) {
+        return String(value || '').replace(/[٠-٩]/g, digit => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)));
+    }
+
+    function inferDirectReminder(message) {
+        const raw = normalizeDigits(message);
+        const trigger = /(?:فكرني|ذكرني|افتكرني|نبهني|اعملي?\\s+تذكير)/i;
+        if (!trigger.test(raw)) return [];
+
+        const timePattern = /(?:على\\s+الساعة|علي\\s+الساعة|الساعة|على|علي|عند)\\s*(\\d{1,2})(?::(\\d{2}))?\\s*(صباحا|صباحًا|الصبح|صبح|مساء|مساءً|بالليل|ليل|ظهر|بعد\\s+الظهر)?/i;
+        const match = timePattern.exec(raw);
+        if (!match) return [];
+
+        let messageText = (raw.slice(0, match.index) + ' ' + raw.slice(match.index + match[0].length))
+            .replace(trigger, '')
+            .replace(/^(?:مثلا|مثلًا|لو سمحت|من فضلك)\\s*/i, '')
+            .replace(/[،,.!؟]+/g, ' ')
+            .replace(/\\s+/g, ' ')
+            .trim();
+        let hour = Number(match[1]);
+        const minute = Number(match[2] || 0);
+        const period = String(match[3] || '').replace(/\\s/g, '');
+        if (!messageText || hour < 1 || hour > 12 || minute > 59) return [];
+
+        const morning = /صباح|صبح/.test(period);
+        const evening = /مساء|ليل/.test(period);
+        const noon = /ظهر/.test(period);
+        if (morning) hour = hour === 12 ? 0 : hour;
+        else if (evening) hour = hour === 12 ? 12 : hour + 12;
+        else if (noon) hour = hour === 12 ? 12 : hour + 12;
+        else if (/أ?فطر|فطار|الفطار|breakfast/i.test(messageText) && hour <= 11) {
+            // Breakfast is a clear morning context.
+        } else {
+            return [];
+        }
+
+        const now = new Date();
+        const due = new Date(now);
+        due.setHours(hour, minute, 0, 0);
+        if (due <= now) due.setDate(due.getDate() + 1);
+        return [{ type: 'add_reminder', reminder: { message: messageText, remindAt: due.toISOString() } }];
+    }
+
     function inferDirectActions(message) {
         const text = String(message).toLowerCase();
-        const actions = [];
+        const actions = inferDirectReminder(message);
         const sections = {
             dashboard: /لوحة التحكم|الرئيسية/,
             tasks: /المهام|مهامي/,
@@ -338,20 +381,19 @@
             tasks: tasks.slice(0, 80).map(task => ({
                 id: task.id,
                 title: task.title,
-                description: task.description,
                 status: task.status,
                 category: task.category,
                 priority: task.priority,
                 dueDate: task.dueDate,
+                endDate: task.endDate,
                 estimatedTime: task.estimatedTime
             })),
             habits: Array.isArray(window.app?.habits) ? window.app.habits.slice(0, 30).map(habit => ({
                 id: habit.id, title: habit.title, target: habit.target, unit: habit.unit,
-                logs: habit.logs, repeatDays: habit.repeatDays
+                repeatDays: habit.repeatDays
             })) : [],
             notes: Array.isArray(window.app?.notes) ? window.app.notes.slice(0, 40).map(note => ({
-                id: note.id, title: note.title, content: String(note.content || '').slice(0, 500),
-                tags: note.tags, updatedAt: note.updatedAt
+                id: note.id, title: note.title, tags: note.tags, updatedAt: note.updatedAt
             })) : [],
             water: window.app?.waterData ? {
                 today: window.app.waterData.today, goal: window.app.waterData.goal
@@ -433,12 +475,12 @@
                     id: 'habit-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
                     title: String(input.title).trim().slice(0, 150),
                     description: String(input.description || '').trim().slice(0, 1000),
-                    icon: input.icon || 'fa-bullseye',
-                    color: input.color || '#dc2626',
+                    icon: /^[a-z0-9-]{1,40}$/i.test(String(input.icon || '')) ? String(input.icon) : 'fa-bullseye',
+                    color: /^#[0-9a-f]{6}$/i.test(String(input.color || '')) ? String(input.color) : '#dc2626',
                     target: Math.max(1, parseInt(input.target, 10) || 1),
-                    unit: input.unit || 'مرة',
-                    reminderTime: input.reminderTime || null,
-                    repeatDays: Array.isArray(input.repeatDays) ? input.repeatDays : [0, 1, 2, 3, 4, 5, 6],
+                    unit: String(input.unit || 'مرة').trim().slice(0, 30),
+                    reminderTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(input.reminderTime || '')) ? input.reminderTime : null,
+                    repeatDays: Array.isArray(input.repeatDays) ? input.repeatDays.filter(day => Number.isInteger(day) && day >= 0 && day <= 6) : [0, 1, 2, 3, 4, 5, 6],
                     logs: {},
                     createdAt: new Date().toISOString()
                 });
@@ -544,6 +586,16 @@
                 return;
             }
 
+            if (action.type === 'add_reminder') {
+                const reminder = action.reminder || {};
+                const remindAt = new Date(reminder.remindAt);
+                const message = String(reminder.message || '').trim().slice(0, 240);
+                if (!message || Number.isNaN(remindAt.getTime()) || remindAt <= new Date()) return;
+                window.app.addNotification('reminder', message, remindAt);
+                count++;
+                return;
+            }
+
             if (action.type === 'start_focus') {
                 window.app.startTimer();
                 count++;
@@ -577,7 +629,10 @@
                     dueDate: due,
                     endDate: input.endDate && !Number.isNaN(Date.parse(input.endDate))
                         ? new Date(input.endDate).toISOString()
-                        : null,
+                        : (input.autoStart && due
+                            ? new Date(Date.parse(due) + Math.min(1440, Math.max(1, parseInt(input.estimatedTime, 10) || 25)) * 60000).toISOString()
+                            : null),
+                    autoStart: Boolean(input.autoStart || (input.endDate && !Number.isNaN(Date.parse(input.endDate)))),
                     estimatedTime: Math.min(1440, Math.max(1, parseInt(input.estimatedTime, 10) || 25)),
                     actualTime: 0,
                     repeat: 'none',
@@ -634,6 +689,17 @@
         return count;
     }
 
+    function timeToDate(value, reference = new Date()) {
+        const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || '').trim());
+        if (!match) return null;
+        const hour = Number(match[1]);
+        const minute = Number(match[2]);
+        if (hour > 23 || minute > 59) return null;
+        const date = new Date(reference);
+        date.setHours(hour, minute, 0, 0);
+        return date;
+    }
+
     function parseSchedule(message) {
         const actions = [];
         String(message).split(/\n+/).forEach(line => {
@@ -659,6 +725,7 @@
                     priority: /كيمياء|أحياء|عربي/.test(title) ? 'high' : 'medium',
                     dueDate: start.toISOString(),
                     endDate: end.toISOString(),
+                    autoStart: true,
                     estimatedTime: Math.round((end - start) / 60000),
                     tags: ['جدول اليوم']
                 }
@@ -688,9 +755,15 @@
 
         const typing = showTyping();
         try {
+            const session = await window.NuvioCloud?.getSession();
+            if (!session?.access_token) throw new Error('سجّل الدخول لاستخدام Nuvio AI.');
+
             const response = await fetch(API_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: 'Bearer ' + session.access_token
+                },
                 body: JSON.stringify({
                     message: text,
                     context: getAppContext(),
@@ -703,14 +776,22 @@
             typing.remove();
 
             const result = parseJSON(data.reply);
+            const directReminderActions = inferDirectReminder(text);
+            const scheduleActions = parseSchedule(text);
             const relativeDateActions = inferRelativeTaskDateActions(text);
-            if (relativeDateActions.length) {
+            if (directReminderActions.length) {
+                result.actions = directReminderActions;
+                result.reply = 'تم ضبط التذكير في الموعد المطلوب.';
+            } else if (scheduleActions.length) {
+                result.actions = scheduleActions;
+                result.reply = 'تم حفظ فترات جدولك، وسيبدأ مؤقت التركيز تلقائيًا في مواعيدها.';
+            } else if (relativeDateActions.length) {
                 result.actions = relativeDateActions;
                 result.reply = relativeDateActions.length === 1
                     ? 'تم تحديث موعد المهمة إلى التاريخ المطلوب.'
                     : `تم تحديث مواعيد ${relativeDateActions.length} مهمة نشطة إلى التاريخ المطلوب.`;
             }
-            if (!Array.isArray(result.actions) || !result.actions.length) {
+            if (!directReminderActions.length && (!Array.isArray(result.actions) || !result.actions.length)) {
                 const direct = inferDirectActions(text);
                 if (direct.length) {
                     result.actions = direct;
