@@ -237,7 +237,7 @@ Object.assign(NuvioApp.prototype, {
     checkScheduledFocusBlocks() {
         if (!Array.isArray(this.tasks) || !this.tasks.length) return;
         const now = Date.now();
-        if (this.timerState?.running || this.timerState?.paused) return;
+        if (this.timerState?.running) return;
 
         const due = this.tasks
             .filter(task => task && task.status !== 'completed' && task.autoStart === true && task.dueDate)
