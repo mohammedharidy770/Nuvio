@@ -677,6 +677,17 @@
         return count;
     }
 
+    function timeToDate(value, reference = new Date()) {
+        const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || '').trim());
+        if (!match) return null;
+        const hour = Number(match[1]);
+        const minute = Number(match[2]);
+        if (hour > 23 || minute > 59) return null;
+        const date = new Date(reference);
+        date.setHours(hour, minute, 0, 0);
+        return date;
+    }
+
     function parseSchedule(message) {
         const actions = [];
         String(message).split(/\n+/).forEach(line => {
@@ -702,6 +713,7 @@
                     priority: /كيمياء|أحياء|عربي/.test(title) ? 'high' : 'medium',
                     dueDate: start.toISOString(),
                     endDate: end.toISOString(),
+                    autoStart: true,
                     estimatedTime: Math.round((end - start) / 60000),
                     tags: ['جدول اليوم']
                 }
@@ -753,10 +765,14 @@
 
             const result = parseJSON(data.reply);
             const directReminderActions = inferDirectReminder(text);
+            const scheduleActions = parseSchedule(text);
             const relativeDateActions = inferRelativeTaskDateActions(text);
             if (directReminderActions.length) {
                 result.actions = directReminderActions;
                 result.reply = 'تم ضبط التذكير في الموعد المطلوب.';
+            } else if (scheduleActions.length) {
+                result.actions = scheduleActions;
+                result.reply = 'تم حفظ فترات جدولك، وسيبدأ مؤقت التركيز تلقائيًا في مواعيدها.';
             } else if (relativeDateActions.length) {
                 result.actions = relativeDateActions;
                 result.reply = relativeDateActions.length === 1
