@@ -240,8 +240,14 @@ Object.assign(NuvioApp.prototype, {
         if (this.timerState?.running || this.timerState?.paused) return;
 
         const due = this.tasks
-            .filter(task => task && task.status !== 'completed' && task.autoStart !== false && task.dueDate && task.endDate)
-            .map(task => ({ task, start: Date.parse(task.dueDate), end: Date.parse(task.endDate) }))
+            .filter(task => task && task.status !== 'completed' && task.autoStart === true && task.dueDate)
+            .map(task => {
+                const start = Date.parse(task.dueDate);
+                const explicitEnd = task.endDate ? Date.parse(task.endDate) : NaN;
+                const duration = Math.min(1440, Math.max(1, Number(task.estimatedTime) || 25));
+                const end = Number.isFinite(explicitEnd) ? explicitEnd : start + duration * 60000;
+                return { task, start, end };
+            })
             .filter(item => Number.isFinite(item.start) && Number.isFinite(item.end)
                 && item.end > item.start && item.start <= now && now < item.end
                 && item.task.autoStartedFor !== new Date(item.start).toISOString())
