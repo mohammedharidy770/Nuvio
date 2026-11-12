@@ -237,7 +237,7 @@ Object.assign(NuvioApp.prototype, {
     checkScheduledFocusBlocks() {
         if (!Array.isArray(this.tasks) || !this.tasks.length) return;
         const now = Date.now();
-        if (this.timerState?.running) return;
+        if (this.timerState?.running || this.timerState?.paused) return;
 
         const due = this.tasks
             .filter(task => task && task.status !== 'completed' && task.autoStart !== false && task.dueDate && task.endDate)
@@ -277,9 +277,10 @@ Object.assign(NuvioApp.prototype, {
                 : 'Session started automatically from your schedule';
             info.replaceChildren(name, description);
         }
+        // Start before showing the focus section so its restore hook cannot overwrite this scheduled session.
+        this.startTimer();
         this.showSection('focus');
         this.updateTimerDisplay();
-        this.startTimer();
         const message = this.settings.language === 'ar'
             ? 'بدأت جلسة ' + (task.title || 'المذاكرة') + ' تلقائيًا حسب جدولك'
             : 'Your scheduled session has started: ' + (task.title || 'Study');
