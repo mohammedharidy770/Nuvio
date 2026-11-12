@@ -27,7 +27,7 @@ const STATIC_ASSETS = [
     './js/ui.js?v=3',
     './js/dashboard.js',
     './js/tasks.js',
-    './js/focus.js?v=3',
+    './js/focus.js?v=4',
     './js/habits.js',
     './js/tracking.js',
     './js/prayer-reports.js',
