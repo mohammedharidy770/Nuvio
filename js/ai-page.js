@@ -235,9 +235,42 @@
         }
     }
 
+    function normalizeDigits(value) {
+        return String(value || '').replace(/[٠-٩]/g, digit => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)));
+    }
+
+    function inferDirectReminder(message) {
+        const raw = normalizeDigits(message);
+        const match = /(?:فكرني|ذكرني|افتكرني|نبهني|اعمل(?:ي)?\s+تذكير)(?:\s+(?:ب|إني|اني|إن|ان))?\s*(.*?)\s*(?:على\s+الساعة|الساعة|على|عند)\s*(\d{1,2})(?::(\d{2}))?\s*(صباحا|صباحًا|الصبح|صبح|مساء|مساءً|بالليل|ليل|ظهر|بعد\s+الظهر)?/i.exec(raw);
+        if (!match) return [];
+        const messageText = match[1].trim().replace(/[،,.!؟]+$/, '');
+        let hour = Number(match[2]);
+        const minute = Number(match[3] || 0);
+        const period = String(match[4] || '').replace(/\s/g, '');
+        if (!messageText || hour < 1 || hour > 12 || minute > 59) return [];
+        const morning = /صباح|صبح/.test(period);
+        const evening = /مساء|ليل/.test(period);
+        const noon = /ظهر/.test(period);
+        if (morning) hour = hour === 12 ? 0 : hour;
+        else if (evening) hour = hour === 12 ? 12 : hour + 12;
+        else if (noon) hour = hour === 12 ? 12 : hour + 12;
+        else {
+            if (/افطر|فطار|الفطار|breakfast/i.test(messageText) && hour <= 11) {
+                // Breakfast is an unambiguous morning context.
+            } else {
+                return [];
+            }
+        }
+        const now = new Date();
+        const due = new Date(now);
+        due.setHours(hour, minute, 0, 0);
+        if (due <= now) due.setDate(due.getDate() + 1);
+        return [{ type: 'add_reminder', reminder: { message: messageText, remindAt: due.toISOString() } }];
+    }
+
     function inferDirectActions(message) {
         const text = String(message).toLowerCase();
-        const actions = [];
+        const actions = inferDirectReminder(message);
         const sections = {
             dashboard: /لوحة التحكم|الرئيسية/,
             tasks: /المهام|مهامي/,
@@ -342,6 +375,7 @@
                 category: task.category,
                 priority: task.priority,
                 dueDate: task.dueDate,
+                endDate: task.endDate,
                 estimatedTime: task.estimatedTime
             })),
             habits: Array.isArray(window.app?.habits) ? window.app.habits.slice(0, 30).map(habit => ({
@@ -542,6 +576,16 @@
                 return;
             }
 
+            if (action.type === 'add_reminder') {
+                const reminder = action.reminder || {};
+                const remindAt = new Date(reminder.remindAt);
+                const message = String(reminder.message || '').trim().slice(0, 240);
+                if (!message || Number.isNaN(remindAt.getTime()) || remindAt <= new Date()) return;
+                window.app.addNotification('reminder', message, remindAt);
+                count++;
+                return;
+            }
+
             if (action.type === 'start_focus') {
                 window.app.startTimer();
                 count++;
@@ -576,6 +620,7 @@
                     endDate: input.endDate && !Number.isNaN(Date.parse(input.endDate))
                         ? new Date(input.endDate).toISOString()
                         : null,
+                    autoStart: Boolean(input.endDate && !Number.isNaN(Date.parse(input.endDate))),
                     estimatedTime: Math.min(1440, Math.max(1, parseInt(input.estimatedTime, 10) || 25)),
                     actualTime: 0,
                     repeat: 'none',
@@ -707,14 +752,18 @@
             typing.remove();
 
             const result = parseJSON(data.reply);
+            const directReminderActions = inferDirectReminder(text);
             const relativeDateActions = inferRelativeTaskDateActions(text);
-            if (relativeDateActions.length) {
+            if (directReminderActions.length) {
+                result.actions = directReminderActions;
+                result.reply = 'تم ضبط التذكير في الموعد المطلوب.';
+            } else if (relativeDateActions.length) {
                 result.actions = relativeDateActions;
                 result.reply = relativeDateActions.length === 1
                     ? 'تم تحديث موعد المهمة إلى التاريخ المطلوب.'
                     : `تم تحديث مواعيد ${relativeDateActions.length} مهمة نشطة إلى التاريخ المطلوب.`;
             }
-            if (!Array.isArray(result.actions) || !result.actions.length) {
+            if (!directReminderActions.length && (!Array.isArray(result.actions) || !result.actions.length)) {
                 const direct = inferDirectActions(text);
                 if (direct.length) {
                     result.actions = direct;
