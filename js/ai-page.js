@@ -629,8 +629,10 @@
                     dueDate: due,
                     endDate: input.endDate && !Number.isNaN(Date.parse(input.endDate))
                         ? new Date(input.endDate).toISOString()
-                        : null,
-                    autoStart: Boolean(input.endDate && !Number.isNaN(Date.parse(input.endDate))),
+                        : (input.autoStart && due
+                            ? new Date(Date.parse(due) + Math.min(1440, Math.max(1, parseInt(input.estimatedTime, 10) || 25)) * 60000).toISOString()
+                            : null),
+                    autoStart: Boolean(input.autoStart || (input.endDate && !Number.isNaN(Date.parse(input.endDate)))),
                     estimatedTime: Math.min(1440, Math.max(1, parseInt(input.estimatedTime, 10) || 25)),
                     actualTime: 0,
                     repeat: 'none',
