@@ -181,15 +181,73 @@ Object.assign(NuvioApp.prototype, {
         document.getElementById('progressDate').textContent = now.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
     },
 
-    requestNotificationPermission() {
-        if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission();
+    async requestNotificationPermission() {
+        if (!('Notification' in window)) {
+            this.showToast('المتصفح لا يدعم إشعارات الجهاز', 'warning');
+            return 'unsupported';
+        }
+        try {
+            const permission = Notification.permission === 'default'
+                ? await Notification.requestPermission()
+                : Notification.permission;
+            this.showToast(permission === 'granted'
+                ? 'تم تفعيل إشعارات Nuvio'
+                : 'لم يتم السماح بإشعارات الجهاز؛ ستظل التذكيرات داخل الموقع', permission === 'granted' ? 'success' : 'warning');
+            return permission;
+        } catch (error) {
+            console.warn('Notification permission request failed:', error);
+            return 'denied';
         }
     },
 
-    showNotification(title, body) {
-        if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification(title, { body });
+    showNotification(title, body, tag = '') {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        const options = {
+            body: String(body || '').slice(0, 240),
+            tag: tag || ('nuvio-' + Date.now()),
+            icon: './assets/layer-group.svg',
+            badge: './assets/layer-group.svg'
+        };
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready
+                .then(registration => registration.showNotification(String(title || 'Nuvio'), options))
+                .catch(() => new Notification(String(title || 'Nuvio'), options));
+        } else {
+            new Notification(String(title || 'Nuvio'), options);
+        }
+    },
+
+    startNotificationScheduler() {
+        if (this.notificationSchedulerInterval) clearInterval(this.notificationSchedulerInterval);
+        this.processScheduledNotifications();
+        this.notificationSchedulerInterval = setInterval(() => this.processScheduledNotifications(), 15000);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) this.processScheduledNotifications();
+        });
+        window.addEventListener('focus', () => this.processScheduledNotifications());
+    },
+
+    processScheduledNotifications() {
+        if (!Array.isArray(this.notifications) || !this.notifications.length) return;
+        const now = Date.now();
+        let changed = false;
+        this.notifications.forEach(item => {
+            if (!item || item.firedAt || !item.scheduledAt) return;
+            const scheduled = Date.parse(item.scheduledAt);
+            if (!Number.isFinite(scheduled) || scheduled > now) return;
+            item.firedAt = new Date(now).toISOString();
+            item.time = item.firedAt;
+            changed = true;
+            const title = this.settings.language === 'ar' ? 'تذكير من Nuvio' : 'Nuvio reminder';
+            this.showNotification(title, item.message, item.id);
+            this.playNotificationSound();
+            this.showToast(item.message, 'info');
+        });
+        if (changed) {
+            this.saveData();
+            if (document.getElementById('notificationsPanel')?.classList.contains('active')) {
+                this.renderNotifications();
+            }
         }
     },
 
@@ -215,19 +273,28 @@ Object.assign(NuvioApp.prototype, {
     },
 
     addNotification(type, message, time = null) {
+        const now = new Date();
+        const requested = time ? new Date(time) : null;
+        const scheduledAt = requested && Number.isFinite(requested.getTime()) && requested.getTime() > now.getTime()
+            ? requested.toISOString() : null;
         const notification = {
-            id: 'notif-' + Date.now(),
-            type,
-            message,
-            time: time ? time.toISOString() : new Date().toISOString(),
+            id: 'notif-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+            type: ['task', 'focus', 'reminder'].includes(type) ? type : 'reminder',
+            message: String(message || '').trim().slice(0, 240),
+            time: now.toISOString(),
+            scheduledAt,
+            firedAt: scheduledAt ? null : now.toISOString(),
             read: false
         };
 
+        if (!notification.message) return null;
         this.notifications.unshift(notification);
-        if (this.notifications.length > 50) this.notifications.pop();
+        if (this.notifications.length > 100) this.notifications.pop();
 
         this.saveData();
         this.updateNotificationBadge();
+        if (scheduledAt) this.processScheduledNotifications();
+        return notification.id;
     },
 
     toggleNotifications() {
@@ -257,7 +324,7 @@ Object.assign(NuvioApp.prototype, {
                 </div>
                 <div class="notification-content">
                     <p>${escapeHTML(n.message)}</p>
-                    <span>${new Date(n.time).toLocaleString(this.settings.language === 'ar' ? 'ar-SA' : 'en-US')}</span>
+                    <span>${new Date(n.scheduledAt && !n.firedAt ? n.scheduledAt : n.time).toLocaleString(this.settings.language === 'ar' ? 'ar-SA' : 'en-US')}</span>
                 </div>
             </div>
         `;
