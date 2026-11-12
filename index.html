@@ -1103,7 +1103,10 @@
     <div class="notifications-panel" id="notificationsPanel">
         <div class="notifications-header">
             <h3 data-i18n="notifications.title">الإشعارات</h3>
-            <button class="btn-text" onclick="app.clearNotifications()" data-i18n="actions.clearAll">مسح الكل</button>
+            <div class="notifications-header-actions">
+                <button class="btn-text" onclick="app.requestNotificationPermission()" type="button">تفعيل إشعارات الجهاز</button>
+                <button class="btn-text" onclick="app.clearNotifications()" data-i18n="actions.clearAll">مسح الكل</button>
+            </div>
         </div>
         <div class="notifications-list" id="notificationsList"></div>
     </div>
@@ -1337,13 +1340,13 @@
     <script src="./js/ui.js?v=3"></script>
     <script src="./js/dashboard.js"></script>
     <script src="./js/tasks.js"></script>
-    <script src="./js/focus.js?v=2"></script>
+    <script src="./js/focus.js?v=3"></script>
     <script src="./js/habits.js"></script>
     <script src="./js/tracking.js"></script>
     <script src="./js/prayer-reports.js"></script>
     <script src="./js/main.js"></script>
     <script src="./js/cloud-sync.js?v=3"></script>
-    <script src="./js/ai-page.js?v=10"></script>
+    <script src="./js/ai-page.js?v=11"></script>
     <!-- زر عائم لفتح الشات بالذكاء الاصطناعي -->
 <button onclick="app.showSection('ai')" id="ai-chat-btn" class="ai-chat-fab" aria-label="فتح AI Nuvio"><i class="fas fa-robot" aria-hidden="true"></i></button>
 
