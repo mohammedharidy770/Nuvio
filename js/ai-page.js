@@ -255,7 +255,7 @@
         else if (evening) hour = hour === 12 ? 12 : hour + 12;
         else if (noon) hour = hour === 12 ? 12 : hour + 12;
         else {
-            if (/افطر|فطار|الفطار|breakfast/i.test(messageText) && hour <= 11) {
+            if (/أفطر|افطر|فطار|الفطار|breakfast/i.test(messageText) && hour <= 11) {
                 // Breakfast is an unambiguous morning context.
             } else {
                 return [];
