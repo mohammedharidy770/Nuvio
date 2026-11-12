@@ -281,6 +281,7 @@ ${actionsEnabled
 {"reply":"رد عربي طبيعي","actions":[{"type":"add_task","task":{"title":"عنوان","description":"","category":"study","priority":"medium","dueDate":"ISO datetime أو null","endDate":"ISO datetime أو null","estimatedTime":45,"repeat":"none","reminder":0,"tags":[]}}]}
 
 الإجراءات المدعومة:
+0) add_reminder: reminder {message, remindAt} لإشعار مستقبلي محدد الوقت.
 1) add_task: task {title, description, category, priority, dueDate, endDate, estimatedTime, repeat, reminder, tags}
 2) update_task: task (اسم أو id) + changes {title, description, category, priority, dueDate, estimatedTime}
 3) complete_task / start_task / delete_task: task (اسم أو id)
