@@ -76,6 +76,7 @@ function sanitizeContext(input) {
         category: SAFE_CATEGORIES.includes(item?.category) ? item.category : 'personal',
         priority: SAFE_PRIORITIES.includes(item?.priority) ? item.priority : 'medium',
         dueDate: date(item?.dueDate),
+        endDate: date(item?.endDate),
         estimatedTime: Math.min(1440, Math.max(0, Number(item?.estimatedTime) || 0))
     })) : [];
     const habits = Array.isArray(input.habits) ? input.habits.slice(0, 30).map(item => ({
@@ -127,6 +128,13 @@ function sanitizeAction(action) {
     if (type === 'navigate') return SAFE_SECTIONS.includes(action.section) ? { type, section: action.section } : null;
     if (type === 'set_theme') return typeof action.dark === 'boolean' ? { type, dark: action.dark } : null;
     if (['add_water_glass','start_focus','clear_notifications'].includes(type)) return { type };
+    if (type === 'add_reminder') {
+        const x = action.reminder || {};
+        const message = clean(x.message, 240);
+        const remindAt = validDate(x.remindAt);
+        if (!message || !remindAt || Date.parse(remindAt) <= Date.now()) return null;
+        return { type, reminder: { message, remindAt } };
+    }
     if (type === 'set_water_goal') {
         const goal = Number(action.goal);
         return Number.isInteger(goal) && goal >= 1 && goal <= 30 ? { type, goal } : null;
@@ -264,7 +272,8 @@ ${actionsEnabled
 - إذا طلب المستخدم كتابة ملاحظة ولم يحدد عنوانًا، استنتج عنوانًا قصيرًا من المحتوى.
 - لا تخترع وقتًا أو تاريخًا أو كمية غير مذكورة. إذا كان التفصيل ضروريًا وغير موجود، اسأل سؤالًا واحدًا محددًا.
 - الأوقات مثل 9 صباحًا = 09:00، 2 ظهرًا = 14:00، 6 مساءً = 18:00، 7 مساءً = 19:00. لا تفترض أن كل ساعة من 1 إلى 8 مساءً.
-- عند إنشاء جدول، اجعل dueDate وقت بداية الفترة وendDate وقت نهايتها، وestimatedTime بالدقائق. راعِ التاريخ المحلي الحالي. لا تحول نهاية الفترة إلى يوم آخر إلا إذا كان ذلك واضحًا.
+- عند إنشاء جدول، اجعل dueDate وقت بداية الفترة وendDate وقت نهايتها، وestimatedTime بالدقائق. أضف endDate دائمًا للفترات المحددة بوقت بداية ونهاية؛ هذه المهام تبدأ جلسة التركيز تلقائيًا عند موعدها إذا كان المؤقت غير مشغول. راعِ التاريخ المحلي الحالي. لا تحول نهاية الفترة إلى يوم آخر إلا إذا كان ذلك واضحًا.
+- إذا قال المستخدم ذكرني/فكرني/نبهني في موعد محدد، استخدم add_reminder مع message وremindAt كتاريخ ووقت محليين محولين إلى ISO مع المنطقة الزمنية الصحيحة. إذا كانت الساعة مبهمة مثل 8 دون صباحًا/مساءً ولا يوجد سياق واضح، اسأل عن الفترة ولا تخمن. لا تستخدم add_task كتذكير لمجرد أن المستخدم قال فكرني.
 - لا تحذف أو تستبدل بيانات مهمة أو ملاحظة أو عادة إلا بطلب واضح. إذا كان الهدف غير محدد أو توجد عناصر متشابهة، اسأل قبل إصدار إجراء الحذف.
 - لا تدّعِ تنفيذ إجراء. لا تقل تم أو خليته إلا إذا أصدرت action صالحًا محدد الهدف. إذا لم تستطع تحديد المهمة، اسأل عن اسمها.
 - لا تُصدر أكثر من 30 إجراء في الرسالة الواحدة.
