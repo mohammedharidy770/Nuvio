@@ -117,7 +117,8 @@ class NuvioApp {
         this.renderAll();
         this.startClock();
         this.checkOverdueTasks();
-        this.requestNotificationPermission();
+        this.startNotificationScheduler?.();
+        this.startScheduleAutomation?.();
         const helpSeen = localStorage.getItem('nuvio_help_seen');
         if (!helpSeen) {
             setTimeout(() => this.showHelp(), 800);
