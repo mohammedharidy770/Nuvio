@@ -148,12 +148,19 @@ function sanitizeAction(action) {
         const x = action.task || {};
         const title = clean(x.title, 150);
         if (!title) return null;
+        const dueDate = validDate(x.dueDate);
+        const estimatedTime = Math.min(1440, Math.max(1, parseInt(x.estimatedTime, 10) || 25));
+        const autoStart = x.autoStart === true || Boolean(validDate(x.endDate));
+        let endDate = validDate(x.endDate);
+        if (autoStart && dueDate && !endDate) {
+            endDate = new Date(Date.parse(dueDate) + estimatedTime * 60000).toISOString();
+        }
         return { type, task: {
             title, description: clean(x.description, 1000),
             category: SAFE_CATEGORIES.includes(x.category) ? x.category : 'study',
             priority: SAFE_PRIORITIES.includes(x.priority) ? x.priority : 'medium',
-            dueDate: validDate(x.dueDate), endDate: validDate(x.endDate),
-            estimatedTime: Math.min(1440, Math.max(1, parseInt(x.estimatedTime, 10) || 25)),
+            dueDate, endDate, autoStart,
+            estimatedTime,
             repeat: 'none', reminder: 0,
             tags: Array.isArray(x.tags) ? x.tags.slice(0,10).map(v => clean(String(v),40)).filter(Boolean) : []
         }};
@@ -272,13 +279,13 @@ ${actionsEnabled
 - إذا طلب المستخدم كتابة ملاحظة ولم يحدد عنوانًا، استنتج عنوانًا قصيرًا من المحتوى.
 - لا تخترع وقتًا أو تاريخًا أو كمية غير مذكورة. إذا كان التفصيل ضروريًا وغير موجود، اسأل سؤالًا واحدًا محددًا.
 - الأوقات مثل 9 صباحًا = 09:00، 2 ظهرًا = 14:00، 6 مساءً = 18:00، 7 مساءً = 19:00. لا تفترض أن كل ساعة من 1 إلى 8 مساءً.
-- عند إنشاء جدول، اجعل dueDate وقت بداية الفترة وendDate وقت نهايتها، وestimatedTime بالدقائق. أضف endDate دائمًا للفترات المحددة بوقت بداية ونهاية؛ هذه المهام تبدأ جلسة التركيز تلقائيًا عند موعدها إذا كان المؤقت غير مشغول. راعِ التاريخ المحلي الحالي. لا تحول نهاية الفترة إلى يوم آخر إلا إذا كان ذلك واضحًا.
+- عند إنشاء جدول، اجعل dueDate وقت بداية الفترة وendDate وقت نهايتها، وestimatedTime بالدقائق. لأي مهمة مذاكرة يحدد المستخدم لها وقت بداية ومدة (مثل الساعة 7 لمدة 90 دقيقة)، اجعل autoStart=true واحسب endDate بإضافة estimatedTime إلى dueDate. هذه المهام تبدأ جلسة التركيز تلقائيًا عند موعدها إذا كان المؤقت غير مشغول. لا تجعل autoStart=true للمهام العادية أو المواعيد النهائية فقط. راعِ التاريخ المحلي الحالي. لا تحول نهاية الفترة إلى يوم آخر إلا إذا كان ذلك واضحًا.
 - إذا قال المستخدم ذكرني/فكرني/نبهني في موعد محدد، استخدم add_reminder مع message وremindAt كتاريخ ووقت محليين محولين إلى ISO مع المنطقة الزمنية الصحيحة. إذا كانت الساعة مبهمة مثل 8 دون صباحًا/مساءً ولا يوجد سياق واضح، اسأل عن الفترة ولا تخمن. لا تستخدم add_task كتذكير لمجرد أن المستخدم قال فكرني.
 - لا تحذف أو تستبدل بيانات مهمة أو ملاحظة أو عادة إلا بطلب واضح. إذا كان الهدف غير محدد أو توجد عناصر متشابهة، اسأل قبل إصدار إجراء الحذف.
 - لا تدّعِ تنفيذ إجراء. لا تقل تم أو خليته إلا إذا أصدرت action صالحًا محدد الهدف. إذا لم تستطع تحديد المهمة، اسأل عن اسمها.
 - لا تُصدر أكثر من 30 إجراء في الرسالة الواحدة.
 - أعد JSON صالحًا فقط، دون Markdown أو نص خارج JSON، بالشكل:
-{"reply":"رد عربي طبيعي","actions":[{"type":"add_task","task":{"title":"عنوان","description":"","category":"study","priority":"medium","dueDate":"ISO datetime أو null","endDate":"ISO datetime أو null","estimatedTime":45,"repeat":"none","reminder":0,"tags":[]}}]}
+{"reply":"رد عربي طبيعي","actions":[{"type":"add_task","task":{"title":"عنوان","description":"","category":"study","priority":"medium","dueDate":"ISO datetime أو null","endDate":"ISO datetime أو null","autoStart":true أو false,"estimatedTime":45,"repeat":"none","reminder":0,"tags":[]}}]}
 
 الإجراءات المدعومة:
 0) add_reminder: reminder {message, remindAt} لإشعار مستقبلي محدد الوقت.
