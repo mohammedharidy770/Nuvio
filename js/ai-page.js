@@ -241,26 +241,36 @@
 
     function inferDirectReminder(message) {
         const raw = normalizeDigits(message);
-        const match = /(?:فكرني|ذكرني|افتكرني|نبهني|اعمل(?:ي)?\s+تذكير)(?:\s+(?:ب|إني|اني|إن|ان))?\s*(.*?)\s*(?:على\s+الساعة|الساعة|على|عند)\s*(\d{1,2})(?::(\d{2}))?\s*(صباحا|صباحًا|الصبح|صبح|مساء|مساءً|بالليل|ليل|ظهر|بعد\s+الظهر)?/i.exec(raw);
+        const trigger = /(?:فكرني|ذكرني|افتكرني|نبهني|اعملي?\\s+تذكير)/i;
+        if (!trigger.test(raw)) return [];
+
+        const timePattern = /(?:على\\s+الساعة|الساعة|على|عند)\\s*(\\d{1,2})(?::(\\d{2}))?\\s*(صباحا|صباحًا|الصبح|صبح|مساء|مساءً|بالليل|ليل|ظهر|بعد\\s+الظهر)?/i;
+        const match = timePattern.exec(raw);
         if (!match) return [];
-        const messageText = match[1].trim().replace(/[،,.!؟]+$/, '');
-        let hour = Number(match[2]);
-        const minute = Number(match[3] || 0);
-        const period = String(match[4] || '').replace(/\s/g, '');
+
+        let messageText = (raw.slice(0, match.index) + ' ' + raw.slice(match.index + match[0].length))
+            .replace(trigger, '')
+            .replace(/^(?:مثلا|مثلًا|لو سمحت|من فضلك)\\s*/i, '')
+            .replace(/[،,.!؟]+/g, ' ')
+            .replace(/\\s+/g, ' ')
+            .trim();
+        let hour = Number(match[1]);
+        const minute = Number(match[2] || 0);
+        const period = String(match[3] || '').replace(/\\s/g, '');
         if (!messageText || hour < 1 || hour > 12 || minute > 59) return [];
+
         const morning = /صباح|صبح/.test(period);
         const evening = /مساء|ليل/.test(period);
         const noon = /ظهر/.test(period);
         if (morning) hour = hour === 12 ? 0 : hour;
         else if (evening) hour = hour === 12 ? 12 : hour + 12;
         else if (noon) hour = hour === 12 ? 12 : hour + 12;
-        else {
-            if (/أفطر|افطر|فطار|الفطار|breakfast/i.test(messageText) && hour <= 11) {
-                // Breakfast is an unambiguous morning context.
-            } else {
-                return [];
-            }
+        else if (/أ?فطر|فطار|الفطار|breakfast/i.test(messageText) && hour <= 11) {
+            // Breakfast is a clear morning context.
+        } else {
+            return [];
         }
+
         const now = new Date();
         const due = new Date(now);
         due.setHours(hour, minute, 0, 0);
