@@ -117,8 +117,12 @@ class NuvioApp {
         this.renderAll();
         this.startClock();
         this.checkOverdueTasks();
-        this.startNotificationScheduler?.();
-        this.startScheduleAutomation?.();
+        window.addEventListener('nuvio:sync-ready', () => {
+            if (this.schedulersStarted) return;
+            this.schedulersStarted = true;
+            this.startNotificationScheduler?.();
+            this.startScheduleAutomation?.();
+        }, { once: true });
         const helpSeen = localStorage.getItem('nuvio_help_seen');
         if (!helpSeen) {
             setTimeout(() => this.showHelp(), 800);
