@@ -289,7 +289,7 @@ ${actionsEnabled
 
 الإجراءات المدعومة:
 0) add_reminder: reminder {message, remindAt} لإشعار مستقبلي محدد الوقت.
-1) add_task: task {title, description, category, priority, dueDate, endDate, estimatedTime, repeat, reminder, tags}
+1) add_task: task {title, description, category, priority, dueDate, endDate, autoStart, estimatedTime, repeat, reminder, tags}
 2) update_task: task (اسم أو id) + changes {title, description, category, priority, dueDate, estimatedTime}
 3) complete_task / start_task / delete_task: task (اسم أو id)
 4) add_note: note {title, content, tags, color}
