@@ -836,8 +836,21 @@
                 result.actions = directReminderActions;
                 result.reply = 'تم ضبط التذكير في الموعد المطلوب.';
             } else if (scheduleActions.length) {
-                result.actions = scheduleActions;
-                result.reply = 'تم حفظ فترات جدولك، وسيبدأ مؤقت التركيز تلقائيًا في مواعيدها.';
+                const normalizeScheduleTitle = value => String(value || '').toLowerCase()
+                    .replace(/[ًٌٍَُِّْـ]/g, '')
+                    .replace(/[أإآ]/g, 'ا')
+                    .replace(/[^\u0600-\u06FF\w\s]/g, ' ')
+                    .replace(/\s+/g, ' ').trim();
+                const explicitKeys = new Set(scheduleActions.map(action =>
+                    normalizeScheduleTitle(action.task?.title) + '|' + String(action.task?.dueDate || '')
+                ));
+                const remainingModelActions = (Array.isArray(result.actions) ? result.actions : []).filter(action => {
+                    if (action?.type !== 'add_task') return true;
+                    const key = normalizeScheduleTitle(action.task?.title) + '|' + String(action.task?.dueDate || '');
+                    return !explicitKeys.has(key);
+                });
+                result.actions = [...scheduleActions, ...remainingModelActions].slice(0, 30);
+                result.reply = 'تم حفظ الفترات المحددة في الجدول، مع الاحتفاظ بباقي الأنشطة التي لا تحتوي على وقت دقيق.';
             } else if (relativeDateActions.length) {
                 result.actions = relativeDateActions;
                 result.reply = relativeDateActions.length === 1
