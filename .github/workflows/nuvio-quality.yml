@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - hardening/security-data-sync-2026-11
+      - main
 
 jobs:
   syntax:
