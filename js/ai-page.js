@@ -844,10 +844,12 @@
                 const explicitKeys = new Set(scheduleActions.map(action =>
                     normalizeScheduleTitle(action.task?.title) + '|' + String(action.task?.dueDate || '')
                 ));
+                const explicitTitles = new Set(scheduleActions.map(action => normalizeScheduleTitle(action.task?.title)));
                 const remainingModelActions = (Array.isArray(result.actions) ? result.actions : []).filter(action => {
                     if (action?.type !== 'add_task') return true;
-                    const key = normalizeScheduleTitle(action.task?.title) + '|' + String(action.task?.dueDate || '');
-                    return !explicitKeys.has(key);
+                    const title = normalizeScheduleTitle(action.task?.title);
+                    const key = title + '|' + String(action.task?.dueDate || '');
+                    return !explicitKeys.has(key) && !explicitTitles.has(title);
                 });
                 result.actions = [...scheduleActions, ...remainingModelActions].slice(0, 30);
                 result.reply = 'تم حفظ الفترات المحددة في الجدول، مع الاحتفاظ بباقي الأنشطة التي لا تحتوي على وقت دقيق.';
