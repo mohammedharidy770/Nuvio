@@ -689,21 +689,29 @@
         return count;
     }
 
-    function parseScheduleClock(value, periodHint = '') {
+    function parseScheduleClock(value, periodHint = '', referenceMinutes = null, role = 'start') {
         const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || '').trim());
         if (!match) return null;
-        let hour = Number(match[1]);
+        const rawHour = Number(match[1]);
         const minute = Number(match[2]);
-        if (minute > 59 || hour > 23) return null;
+        if (minute > 59 || rawHour > 23) return null;
+        if (rawHour > 12) return rawHour * 60 + minute;
+
         const hint = String(periodHint || '').replace(/\s+/g, '').toLowerCase();
         const isMorning = /صباح|صبح|ص/.test(hint);
         const isEvening = /مساء|ليل|م/.test(hint);
         const isNoon = /ظهر/.test(hint);
-        if (hour <= 12 && (isMorning || isEvening || isNoon)) {
-            if (isMorning) hour = hour === 12 ? 0 : hour;
-            else if (isEvening || isNoon) hour = hour === 12 ? 12 : hour + 12;
-        }
-        return hour * 60 + minute;
+        if (isMorning) return (rawHour === 12 ? 0 : rawHour) * 60 + minute;
+        if (isEvening || isNoon) return (rawHour === 12 ? 12 : rawHour + 12) * 60 + minute;
+
+        const hour = rawHour === 12 ? 12 : rawHour;
+        const candidates = [hour * 60 + minute, (hour === 12 ? 12 : hour + 12) * 60 + minute];
+        if (referenceMinutes === null) return candidates[0];
+        const valid = candidates.filter(candidate => role === 'start'
+            ? candidate >= referenceMinutes - 15
+            : candidate > referenceMinutes);
+        if (!valid.length) return candidates[1];
+        return valid.sort((a, b) => Math.abs(a - referenceMinutes) - Math.abs(b - referenceMinutes))[0];
     }
 
     function parseSchedule(message) {
@@ -721,19 +729,24 @@
         );
         const studyPattern = /مذاكر|مراجعة|راجع|حل\b|حل\s|محاضرة|حفظ|تسميع|دراسة|study|revision|practice|biology|physics|chemistry|english|math|calculus|تفسير|توحيد|فقه|حديث|نحو|صرف|بلاغة|أحياء|فيزياء|كيمياء|إنجليزي|انجليزي|رياضيات/i;
         const islamPattern = /صلاة|أذكار|اذكار|قرآن|قران|شرعي|مسجد/i;
+        let previousEnd = null;
 
         String(message || '').split(/\r?\n+/).forEach(line => {
             const range = rangePattern.exec(line);
             if (!range) return;
 
             const firstPeriod = range[2] || '';
-            const secondPeriod = range[4] || firstPeriod;
-            let startMinutes = parseScheduleClock(range[1], firstPeriod || secondPeriod);
-            let endMinutes = parseScheduleClock(range[3], secondPeriod || firstPeriod);
-            if (startMinutes === null || endMinutes === null) return;
-            if (!firstPeriod && secondPeriod) startMinutes = parseScheduleClock(range[1], secondPeriod);
-            if (!secondPeriod && firstPeriod) endMinutes = parseScheduleClock(range[3], firstPeriod);
-            if (endMinutes <= startMinutes) return;
+            const secondPeriod = range[4] || '';
+            let startMinutes = parseScheduleClock(range[1], firstPeriod, previousEnd, 'start');
+            if (startMinutes === null) return;
+            let endMinutes = parseScheduleClock(range[3], secondPeriod, startMinutes, 'end');
+            if (endMinutes === null || endMinutes <= startMinutes) return;
+
+            // A marker written only after the end time applies to the whole range.
+            if (!firstPeriod && secondPeriod) {
+                startMinutes = parseScheduleClock(range[1], secondPeriod, startMinutes, 'start');
+                if (startMinutes === null || startMinutes >= endMinutes) return;
+            }
 
             const cells = line.split('|').map(cell => cell.trim()).filter(Boolean);
             let title = '';
@@ -769,6 +782,7 @@
                     tags: ['جدول اليوم']
                 }
             });
+            previousEnd = endMinutes;
         });
         return actions;
     }
