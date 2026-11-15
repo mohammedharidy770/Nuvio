@@ -689,44 +689,83 @@
         return count;
     }
 
-    function timeToDate(value, reference = new Date()) {
+    function parseScheduleClock(value, periodHint = '') {
         const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || '').trim());
         if (!match) return null;
-        const hour = Number(match[1]);
+        let hour = Number(match[1]);
         const minute = Number(match[2]);
-        if (hour > 23 || minute > 59) return null;
-        const date = new Date(reference);
-        date.setHours(hour, minute, 0, 0);
-        return date;
+        if (minute > 59 || hour > 23) return null;
+        const hint = String(periodHint || '').replace(/\s+/g, '').toLowerCase();
+        const isMorning = /صباح|صبح|ص/.test(hint);
+        const isEvening = /مساء|ليل|م/.test(hint);
+        const isNoon = /ظهر/.test(hint);
+        if (hour <= 12 && (isMorning || isEvening || isNoon)) {
+            if (isMorning) hour = hour === 12 ? 0 : hour;
+            else if (isEvening || isNoon) hour = hour === 12 ? 12 : hour + 12;
+        }
+        return hour * 60 + minute;
     }
 
     function parseSchedule(message) {
         const actions = [];
-        String(message).split(/\n+/).forEach(line => {
-            const range = /(\d{1,2}:\d{2})\s*[–—-]\s*(\d{1,2}:\d{2})/.exec(line);
+        const now = new Date();
+        const dateAtMinutes = minutes => {
+            const date = new Date(now);
+            date.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+            return date;
+        };
+        const periodPattern = '(صباحًا|صباحا|الصبح|صبح|مساءً|مساء|بالليل|ليل|ظهر|بعد\\s+الظهر|ص|م)';
+        const rangePattern = new RegExp(
+            '(\\d{1,2}:\\d{2})\\s*' + periodPattern + '?\\s*[–—-]\\s*(\\d{1,2}:\\d{2})\\s*' + periodPattern + '?',
+            'i'
+        );
+        const studyPattern = /مذاكر|مراجعة|راجع|حل\b|حل\s|محاضرة|حفظ|تسميع|دراسة|study|revision|practice|biology|physics|chemistry|english|math|calculus|تفسير|توحيد|فقه|حديث|نحو|صرف|بلاغة|أحياء|فيزياء|كيمياء|إنجليزي|انجليزي|رياضيات/i;
+        const islamPattern = /صلاة|أذكار|اذكار|قرآن|قران|شرعي|مسجد/i;
+
+        String(message || '').split(/\r?\n+/).forEach(line => {
+            const range = rangePattern.exec(line);
             if (!range) return;
-            const start = timeToDate(range[1]);
-            const end = timeToDate(range[2], start || undefined);
-            if (!start || !end || end <= start) return;
-            const title = line
-                .replace(range[0], '')
-                .replace(/^[^\w\u0600-\u06FF]+/, '')
-                .replace(/^[|:\s]+/, '')
-                .replace(/^[🧪🧬📚🕌☕🍽️🌙]+\s*/, '')
-                .trim();
-            if (!title) return;
+
+            const firstPeriod = range[2] || '';
+            const secondPeriod = range[4] || firstPeriod;
+            let startMinutes = parseScheduleClock(range[1], firstPeriod || secondPeriod);
+            let endMinutes = parseScheduleClock(range[3], secondPeriod || firstPeriod);
+            if (startMinutes === null || endMinutes === null) return;
+            if (!firstPeriod && secondPeriod) startMinutes = parseScheduleClock(range[1], secondPeriod);
+            if (!secondPeriod && firstPeriod) endMinutes = parseScheduleClock(range[3], firstPeriod);
+            if (endMinutes <= startMinutes) return;
+
+            const cells = line.split('|').map(cell => cell.trim()).filter(Boolean);
+            let title = '';
+            if (cells.length >= 2) {
+                const timeCellIndex = cells.findIndex(cell => rangePattern.test(cell));
+                if (timeCellIndex >= 0) title = cells[timeCellIndex + 1] || '';
+            }
+            if (!title) {
+                title = line.replace(range[0], ' ')
+                    .replace(/^[\s|:؛-]+/, '')
+                    .replace(/[|]+$/, '')
+                    .trim();
+            }
+            title = title.replace(/^[\s|:؛-]+|[\s|]+$/g, '').trim();
+            if (!title || /^الوقت|النشاط|وقت تقريبي/i.test(title)) return;
+
+            const start = dateAtMinutes(startMinutes);
+            const end = dateAtMinutes(endMinutes);
+            const isStudy = studyPattern.test(title) && !/حصة|درس مباشر|محاضرة مباشرة|استراحة|راحة/i.test(title);
+            const category = isStudy ? 'study' : islamPattern.test(title) ? 'Islam' : 'personal';
 
             actions.push({
                 type: 'add_task',
                 task: {
-                    title,
-                    description: `من ${range[1]} إلى ${range[2]}`,
-                    category: /كيمياء|أحياء|عربي/.test(title) ? 'study' : /صلاة|شرعي/.test(title) ? 'Islam' : 'personal',
-                    priority: /كيمياء|أحياء|عربي/.test(title) ? 'high' : 'medium',
+                    title: title.slice(0, 150),
+                    description: 'موعد ضمن جدول اليوم من ' + range[1] + ' إلى ' + range[3],
+                    category,
+                    priority: isStudy ? 'high' : 'medium',
                     dueDate: start.toISOString(),
                     endDate: end.toISOString(),
-                    autoStart: true,
-                    estimatedTime: Math.round((end - start) / 60000),
+                    autoStart: isStudy,
+                    estimatedTime: Math.max(1, Math.round((end - start) / 60000)),
                     tags: ['جدول اليوم']
                 }
             });
