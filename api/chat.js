@@ -320,9 +320,10 @@ ${actionsEnabled
             },
             signal: controller.signal,
             body: JSON.stringify({
-                model: 'openai/gpt-oss-20b',
+                model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
                 temperature: 0.2,
-                max_completion_tokens: 4096,
+                reasoning_effort: 'high',
+                max_completion_tokens: 8192,
                 response_format: { type: 'json_object' },
                 messages: [
                     { role: 'system', content: systemPrompt },
