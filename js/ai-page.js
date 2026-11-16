@@ -698,9 +698,11 @@
         if (hour > 12) return hour * 60 + minute;
 
         const hint = String(periodHint || '').replace(/\s+/g, '').toLowerCase();
-        if (/صباح|صبح|ص/.test(hint)) return (hour === 12 ? 0 : hour) * 60 + minute;
-        if (/مساء|ليل|م/.test(hint)) return (hour === 12 ? 12 : hour + 12) * 60 + minute;
-        if (/ظهر/.test(hint)) return (hour === 12 ? 12 : hour + 12) * 60 + minute;
+        const adjustNextDay = value => referenceMinutes !== null && referenceMinutes >= 24 * 60 && value < referenceMinutes - 15
+            ? value + 24 * 60 : value;
+        if (/صباح|صبح|ص/.test(hint)) return adjustNextDay((hour === 12 ? 0 : hour) * 60 + minute);
+        if (/مساء|ليل|م/.test(hint)) return adjustNextDay((hour === 12 ? 12 : hour + 12) * 60 + minute);
+        if (/ظهر/.test(hint)) return adjustNextDay((hour === 12 ? 12 : hour + 12) * 60 + minute);
 
         const base = hour === 12 ? 12 * 60 + minute : hour * 60 + minute;
         let candidates = [base, (hour === 12 ? 12 * 60 : (hour + 12) * 60) + minute];
