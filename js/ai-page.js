@@ -703,8 +703,11 @@
         if (/ظهر/.test(hint)) return (hour === 12 ? 12 : hour + 12) * 60 + minute;
 
         const base = hour === 12 ? 12 * 60 + minute : hour * 60 + minute;
-        const candidates = [base, (hour === 12 ? 12 * 60 : (hour + 12) * 60) + minute];
+        let candidates = [base, (hour === 12 ? 12 * 60 : (hour + 12) * 60) + minute];
         if (referenceMinutes === null) return candidates[0];
+        if (referenceMinutes >= 24 * 60) {
+            candidates = candidates.map(candidate => candidate < referenceMinutes - 15 ? candidate + 24 * 60 : candidate);
+        }
         const valid = candidates.filter(candidate => role === 'start'
             ? candidate >= referenceMinutes - 15
             : candidate > referenceMinutes);
@@ -817,6 +820,21 @@
 
         const typing = showTyping();
         try {
+            // Deterministic schedule parsing must not depend on the model returning valid JSON.
+            const localScheduleActions = parseSchedule(text);
+            if (localScheduleActions.length) {
+                typing.remove();
+                const scheduleCount = settings.actionsEnabled ? executeActions(localScheduleActions) : 0;
+                const scheduleReply = settings.actionsEnabled
+                    ? (scheduleCount === localScheduleActions.length
+                        ? 'تم حفظ جدولك كاملًا. مهام المذاكرة ستبدأ تلقائيًا في مواعيدها.'
+                        : 'تمت إضافة ' + scheduleCount + ' من ' + localScheduleActions.length + ' نشاطًا. راجع المهام للتأكد من الباقي.')
+                    : 'تم تحليل الجدول، لكن تنفيذ الأوامر متوقف من إعدادات المساعد.';
+                await animateReply(scheduleReply);
+                chat.messages.push({ role: 'assistant', content: scheduleReply });
+                saveHistory();
+                return;
+            }
             const session = await window.NuvioCloud?.getSession();
             if (!session?.access_token) throw new Error('سجّل الدخول لاستخدام Nuvio AI.');
 
