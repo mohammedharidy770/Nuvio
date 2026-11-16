@@ -692,26 +692,24 @@
     function parseScheduleClock(value, periodHint = '', referenceMinutes = null, role = 'start') {
         const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || '').trim());
         if (!match) return null;
-        const rawHour = Number(match[1]);
+        const hour = Number(match[1]);
         const minute = Number(match[2]);
-        if (minute > 59 || rawHour > 23) return null;
-        if (rawHour > 12) return rawHour * 60 + minute;
+        if (minute > 59 || hour > 23) return null;
+        if (hour > 12) return hour * 60 + minute;
 
         const hint = String(periodHint || '').replace(/\s+/g, '').toLowerCase();
-        const isMorning = /صباح|صبح|ص/.test(hint);
-        const isEvening = /مساء|ليل|م/.test(hint);
-        const isNoon = /ظهر/.test(hint);
-        if (isMorning) return (rawHour === 12 ? 0 : rawHour) * 60 + minute;
-        if (isEvening || isNoon) return (rawHour === 12 ? 12 : rawHour + 12) * 60 + minute;
+        if (/صباح|صبح|ص/.test(hint)) return (hour === 12 ? 0 : hour) * 60 + minute;
+        if (/مساء|ليل|م/.test(hint)) return (hour === 12 ? 12 : hour + 12) * 60 + minute;
+        if (/ظهر/.test(hint)) return (hour === 12 ? 12 : hour + 12) * 60 + minute;
 
-        const hour = rawHour === 12 ? 12 : rawHour;
-        const candidates = [hour * 60 + minute, (hour === 12 ? 12 : hour + 12) * 60 + minute];
+        const base = hour === 12 ? 12 * 60 + minute : hour * 60 + minute;
+        const candidates = [base, (hour === 12 ? 12 * 60 : (hour + 12) * 60) + minute];
         if (referenceMinutes === null) return candidates[0];
         const valid = candidates.filter(candidate => role === 'start'
             ? candidate >= referenceMinutes - 15
             : candidate > referenceMinutes);
-        if (!valid.length) return candidates[1];
-        return valid.sort((a, b) => Math.abs(a - referenceMinutes) - Math.abs(b - referenceMinutes))[0];
+        if (valid.length) return valid.sort((a, b) => Math.abs(a - referenceMinutes) - Math.abs(b - referenceMinutes))[0];
+        return candidates[1];
     }
 
     function parseSchedule(message) {
@@ -727,63 +725,74 @@
             '(\\d{1,2}:\\d{2})\\s*' + periodPattern + '?\\s*[–—-]\\s*(\\d{1,2}:\\d{2})\\s*' + periodPattern + '?',
             'i'
         );
-        const studyPattern = /مذاكر|مراجعة|راجع|حل\b|حل\s|محاضرة|حفظ|تسميع|دراسة|study|revision|practice|biology|physics|chemistry|english|math|calculus|برمجة|كود|coding|programming|تفسير|توحيد|فقه|حديث|نحو|صرف|بلاغة|أحياء|فيزياء|كيمياء|إنجليزي|انجليزي|رياضيات/i;
+        const studyPattern = /مذاكر|مراجعة|راجع|حل\b|محاضرة|حفظ|تسميع|دراسة|study|revision|practice|biology|physics|chemistry|english|math|calculus|برمجة|كود|coding|programming|تفسير|توحيد|فقه|حديث|نحو|صرف|بلاغة|أحياء|فيزياء|كيمياء|إنجليزي|انجليزي|رياضيات/i;
         const islamPattern = /صلاة|أذكار|اذكار|قرآن|قران|شرعي|مسجد/i;
-        let previousEnd = null;
 
-        String(message || '').split(/\r?\n+/).forEach(line => {
-            const range = rangePattern.exec(line);
-            if (!range) return;
+        const rawLines = String(message || '').replace(/&#x20;/gi, ' ').split(/\r?\n/);
+        const lines = rawLines.map(line => line
+            .replace(/^\s*#+\s*/, '')
+            .replace(/\*\*/g, '')
+            .replace(/^\s*\|\s*[-: ]+\s*\|\s*$/, '')
+            .replace(/^\s*\|\s*$/, '')
+            .replace(/\|/g, ' ')
+            .replace(/&nbsp;/gi, ' ')
+            .trim()
+        ).filter(line => line && !/^[-:| ]+$/.test(line) && !/^الوقت$|^النشاط$|^جدول المذاكرة/i.test(line));
 
-            const firstPeriod = range[2] || '';
-            const secondPeriod = range[4] || '';
-            let startMinutes = parseScheduleClock(range[1], firstPeriod, previousEnd, 'start');
-            if (startMinutes === null) return;
-            let endMinutes = parseScheduleClock(range[3], secondPeriod, startMinutes, 'end');
-            if (endMinutes === null || endMinutes <= startMinutes) return;
-
-            // A marker written only after the end time applies to the whole range.
-            if (!firstPeriod && secondPeriod) {
-                startMinutes = parseScheduleClock(range[1], secondPeriod, startMinutes, 'start');
-                if (startMinutes === null || startMinutes >= endMinutes) return;
-            }
-
-            const cells = line.split('|').map(cell => cell.trim()).filter(Boolean);
-            let title = '';
-            if (cells.length >= 2) {
-                const timeCellIndex = cells.findIndex(cell => rangePattern.test(cell));
-                if (timeCellIndex >= 0) title = cells[timeCellIndex + 1] || '';
-            }
+        const entries = [];
+        for (let i = 0; i < lines.length; i++) {
+            const match = rangePattern.exec(lines[i]);
+            if (!match) continue;
+            let title = lines[i].replace(match[0], ' ').replace(/[*_]/g, ' ').trim();
             if (!title) {
-                title = line.replace(range[0], ' ')
-                    .replace(/^[\s|:؛-]+/, '')
-                    .replace(/[|]+$/, '')
-                    .trim();
+                for (let j = i + 1; j < lines.length; j++) {
+                    if (rangePattern.test(lines[j])) break;
+                    if (/^(تقريبًا|تقريبا|حوالي)$/.test(lines[j])) continue;
+                    title = lines[j].replace(/^[\s|:؛-]+/, '').trim();
+                    break;
+                }
             }
-            title = title.replace(/^[\s|:؛-]+|[\s|]+$/g, '').trim();
-            if (!title || /^الوقت|النشاط|وقت تقريبي/i.test(title)) return;
+            if (title) entries.push({ match, title });
+        }
 
-            const start = dateAtMinutes(startMinutes);
-            const end = dateAtMinutes(endMinutes);
+        let previousEnd = null;
+        for (const entry of entries) {
+            const match = entry.match;
+            const firstPeriod = match[2] || '';
+            const secondPeriod = match[4] || firstPeriod;
+            const startMinutes = parseScheduleClock(match[1], firstPeriod || secondPeriod, previousEnd, 'start');
+            let endMinutes = parseScheduleClock(match[3], secondPeriod || firstPeriod, startMinutes, 'end');
+            if (startMinutes === null || endMinutes === null) continue;
+
+            if (endMinutes <= startMinutes && (/صباح|صبح|ص/.test(secondPeriod) || (!secondPeriod && startMinutes >= 18 * 60 && endMinutes < 12 * 60))) {
+                endMinutes += 24 * 60;
+            }
+            if (endMinutes <= startMinutes) continue;
+
+            const startDate = dateAtMinutes(startMinutes);
+            const endDate = dateAtMinutes(endMinutes);
+            const title = entry.title.replace(/^[\s|:؛-]+|[\s|]+$/g, '').replace(/[*_]/g, '').trim();
+            if (!title) continue;
             const isStudy = studyPattern.test(title) && !/حصة|درس مباشر|محاضرة مباشرة|استراحة|راحة/i.test(title);
-            const category = isStudy ? 'study' : islamPattern.test(title) ? 'Islam' : 'personal';
+            const category = isStudy ? (/برمجة|كود|coding|programming/i.test(title) ? 'coding' : 'study')
+                : islamPattern.test(title) ? 'Islam' : /تمرين|رياضة|جيم/i.test(title) ? 'sport' : 'personal';
 
             actions.push({
                 type: 'add_task',
                 task: {
                     title: title.slice(0, 150),
-                    description: 'موعد ضمن جدول اليوم من ' + range[1] + ' إلى ' + range[3],
+                    description: 'موعد ضمن جدول اليوم من ' + match[1] + ' إلى ' + match[3],
                     category,
                     priority: isStudy ? 'high' : 'medium',
-                    dueDate: start.toISOString(),
-                    endDate: end.toISOString(),
+                    dueDate: startDate.toISOString(),
+                    endDate: endDate.toISOString(),
                     autoStart: isStudy,
-                    estimatedTime: Math.max(1, Math.round((end - start) / 60000)),
+                    estimatedTime: Math.max(1, Math.round((endDate - startDate) / 60000)),
                     tags: ['جدول اليوم']
                 }
             });
             previousEnd = endMinutes;
-        });
+        }
         return actions;
     }
 
