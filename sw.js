@@ -32,7 +32,7 @@ const STATIC_ASSETS = [
     './js/tracking.js',
     './js/prayer-reports.js',
     './js/main.js',
-    './js/ai-page.js?v=18'
+    './js/ai-page.js?v=19'
 ];
 
 self.addEventListener('install', (event) => {
