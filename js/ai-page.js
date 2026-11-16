@@ -728,6 +728,7 @@
             '(\\d{1,2}:\\d{2})\\s*' + periodPattern + '?\\s*[–—-]\\s*(\\d{1,2}:\\d{2})\\s*' + periodPattern + '?',
             'i'
         );
+        const singleTimePattern = new RegExp('^(\\d{1,2}:\\d{2})\\s*' + periodPattern + '?$', 'i');
         const studyPattern = /مذاكر|مراجعة|راجع|حل\b|محاضرة|حفظ|تسميع|دراسة|study|revision|practice|biology|physics|chemistry|english|math|calculus|برمجة|كود|coding|programming|تفسير|توحيد|فقه|حديث|نحو|صرف|بلاغة|أحياء|فيزياء|كيمياء|إنجليزي|انجليزي|رياضيات/i;
         const islamPattern = /صلاة|أذكار|اذكار|قرآن|قران|شرعي|مسجد/i;
 
@@ -745,38 +746,42 @@
         const entries = [];
         for (let i = 0; i < lines.length; i++) {
             const match = rangePattern.exec(lines[i]);
-            if (!match) continue;
-            let title = lines[i].replace(match[0], ' ').replace(/[*_]/g, ' ').trim();
+            const singleMatch = match ? null : singleTimePattern.exec(lines[i]);
+            if (!match && !singleMatch) continue;
+            let title = match ? lines[i].replace(match[0], ' ').replace(/[*_]/g, ' ').trim() : '';
             if (!title) {
                 for (let j = i + 1; j < lines.length; j++) {
-                    if (rangePattern.test(lines[j])) break;
+                    if (rangePattern.test(lines[j]) || singleTimePattern.test(lines[j])) break;
                     if (/^(تقريبًا|تقريبا|حوالي)$/.test(lines[j])) continue;
                     title = lines[j].replace(/^[\s|:؛-]+/, '').trim();
                     break;
                 }
             }
-            if (title) entries.push({ match, title });
+            if (title) entries.push({ match: match || singleMatch, title, single: Boolean(singleMatch) });
         }
 
         let previousEnd = null;
         for (const entry of entries) {
             const match = entry.match;
             const firstPeriod = match[2] || '';
-            const secondPeriod = match[4] || firstPeriod;
+            const secondPeriod = entry.single ? firstPeriod : (match[4] || firstPeriod);
             const startMinutes = parseScheduleClock(match[1], firstPeriod || secondPeriod, previousEnd, 'start');
-            let endMinutes = parseScheduleClock(match[3], secondPeriod || firstPeriod, startMinutes, 'end');
-            if (startMinutes === null || endMinutes === null) continue;
+            if (startMinutes === null) continue;
+            let endMinutes = entry.single
+                ? startMinutes
+                : parseScheduleClock(match[3], secondPeriod || firstPeriod, startMinutes, 'end');
+            if (endMinutes === null) continue;
 
-            if (endMinutes <= startMinutes && (/صباح|صبح|ص/.test(secondPeriod) || (!secondPeriod && startMinutes >= 18 * 60 && endMinutes < 12 * 60))) {
+            if (!entry.single && endMinutes <= startMinutes && (/صباح|صبح|ص/.test(secondPeriod) || (!secondPeriod && startMinutes >= 18 * 60 && endMinutes < 12 * 60))) {
                 endMinutes += 24 * 60;
             }
-            if (endMinutes <= startMinutes) continue;
+            if (!entry.single && endMinutes <= startMinutes) continue;
 
             const startDate = dateAtMinutes(startMinutes);
-            const endDate = dateAtMinutes(endMinutes);
+            const endDate = entry.single ? null : dateAtMinutes(endMinutes);
             const title = entry.title.replace(/^[\s|:؛-]+|[\s|]+$/g, '').replace(/[*_]/g, '').trim();
             if (!title) continue;
-            const isStudy = studyPattern.test(title) && !/حصة|درس مباشر|محاضرة مباشرة|استراحة|راحة/i.test(title);
+            const isStudy = !entry.single && studyPattern.test(title) && !/حصة|درس مباشر|محاضرة مباشرة|استراحة|راحة/i.test(title);
             const category = isStudy ? (/برمجة|كود|coding|programming/i.test(title) ? 'coding' : 'study')
                 : islamPattern.test(title) ? 'Islam' : /تمرين|رياضة|جيم/i.test(title) ? 'sport' : 'personal';
 
@@ -784,17 +789,17 @@
                 type: 'add_task',
                 task: {
                     title: title.slice(0, 150),
-                    description: 'موعد ضمن جدول اليوم من ' + match[1] + ' إلى ' + match[3],
+                    description: entry.single ? 'موعد محدد ضمن جدول اليوم' : 'موعد ضمن جدول اليوم من ' + match[1] + ' إلى ' + match[3],
                     category,
                     priority: isStudy ? 'high' : 'medium',
                     dueDate: startDate.toISOString(),
-                    endDate: endDate.toISOString(),
+                    endDate: endDate ? endDate.toISOString() : null,
                     autoStart: isStudy,
-                    estimatedTime: Math.max(1, Math.round((endDate - startDate) / 60000)),
+                    estimatedTime: entry.single ? 25 : Math.max(1, Math.round((endDate - startDate) / 60000)),
                     tags: ['جدول اليوم']
                 }
             });
-            previousEnd = endMinutes;
+            previousEnd = entry.single ? startMinutes : endMinutes;
         }
         return actions;
     }
