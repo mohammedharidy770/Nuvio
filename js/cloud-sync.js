@@ -9,12 +9,13 @@
 
     const TABLE = 'nuvio_data';
     const OWNER_KEY = 'nuvio_local_owner_id';
+    const DIRTY_KEY = 'nuvio_local_dirty_at';
     const BACKUP_PREFIX = 'nuvio_account_backup_';
     const DATA_KEYS = [
         'nuvio_tasks', 'nuvio_sessions', 'nuvio_settings', 'nuvio_notifications',
         'nuvio_habits', 'nuvio_notes', 'nuvio_sleep', 'nuvio_water',
         'nuvio_prayer', 'nuvio_user_profile', 'nuvio_timer_state',
-        'nuvio_ai_history', 'nuvio_ai_settings'
+        'nuvio_ai_history', 'nuvio_ai_settings', DIRTY_KEY
     ];
 
     let userId = null;
@@ -160,6 +161,7 @@
                 localStorage.setItem(key, JSON.stringify(value));
             });
 
+            localStorage.removeItem(DIRTY_KEY);
             if (timerState && typeof timerState === 'object' && !Array.isArray(timerState)) localStorage.setItem('nuvio_timer_state', JSON.stringify(timerState));
             if (Array.isArray(aiHistory)) localStorage.setItem('nuvio_ai_history', JSON.stringify(aiHistory));
             if (aiSettings && typeof aiSettings === 'object' && !Array.isArray(aiSettings)) localStorage.setItem('nuvio_ai_settings', JSON.stringify(aiSettings));
@@ -244,6 +246,7 @@
         busy = true;
         const writeUserId = userId;
         const writeGeneration = generation;
+        const localRevision = localStorage.getItem(DIRTY_KEY);
 
         try {
             const { data: row, error: readError } = await client
@@ -309,7 +312,8 @@
 
             if (writeGeneration === generation && writeUserId === userId) {
                 lastRemoteVersion = nextVersion;
-                dirty = false;
+                if (localStorage.getItem(DIRTY_KEY) === localRevision) localStorage.removeItem(DIRTY_KEY);
+                dirty = Boolean(localStorage.getItem(DIRTY_KEY));
             }
         } finally {
             busy = false;
@@ -361,8 +365,12 @@
     }
 
     function scheduleSave() {
-        if (!userId || applying) return;
+        if (applying) return;
         dirty = true;
+        try { localStorage.setItem(DIRTY_KEY, String(Date.now())); } catch (error) {
+            emit('nuvio:sync-error', { message: 'تعذر تسجيل حالة التعديل المحلي؛ صدّر نسخة احتياطية قبل تغيير الحساب.' });
+        }
+        if (!userId) return;
         clearTimeout(timer);
         timer = setTimeout(() => {
             writeSnapshot().catch(handleSyncError);
@@ -400,7 +408,7 @@
         pendingConflict = null;
         const startGeneration = ++generation;
         ready = false;
-        dirty = false;
+        dirty = Boolean(localStorage.getItem(DIRTY_KEY));
         clearTimeout(timer);
 
         try {
@@ -414,9 +422,10 @@
             if (startGeneration !== generation || userId !== nextUserId) return;
 
             let initialLocalConflict = null;
+            const hasUnsentLocalChanges = Boolean(localStorage.getItem(DIRTY_KEY));
             if (row) {
                 lastRemoteVersion = Number(row.version) || 0;
-                if (!ownerId && hasLocalData()) {
+                if ((!ownerId && hasLocalData()) || hasUnsentLocalChanges) {
                     if (!backupLocalAccountData('initial-device-cloud-conflict', nextUserId)) throw new Error('Local backup failed; refusing to replace local data.');
                     localStorage.setItem(OWNER_KEY, nextUserId);
                     dirty = true;
