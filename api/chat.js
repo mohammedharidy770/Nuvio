@@ -8,7 +8,19 @@ const ALLOWED_ORIGINS = new Set([
     'https://nuvio-git-fix-stability-and-data-safety-mohammedharidy770.vercel.app',
     'https://nuvio-git-main-mohammedharidy770.vercel.app'
 ]);
-const isAllowedOrigin = origin => ALLOWED_ORIGINS.has(origin);
+const isAllowedOrigin = origin => {
+    if (ALLOWED_ORIGINS.has(origin)) return true;
+
+    // Allow only HTTPS preview deployments belonging to this Nuvio Vercel project.
+    try {
+        const url = new URL(origin);
+        return url.protocol === 'https:' &&
+            url.origin === origin &&
+            /^nuvio-[a-z0-9-]+-mohammedharidy770\\.vercel\\.app$/i.test(url.hostname);
+    } catch {
+        return false;
+    }
+};
 
 async function consumeUserQuota(req) {
     const authorization = req.headers.authorization;
