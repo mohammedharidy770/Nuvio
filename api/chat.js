@@ -163,18 +163,21 @@ function sanitizeAction(action) {
         if (!title) return null;
         const dueDate = validDate(x.dueDate);
         const estimatedTime = Math.min(1440, Math.max(1, parseInt(x.estimatedTime, 10) || 25));
-        const autoStart = x.autoStart === true || Boolean(validDate(x.endDate));
+        const autoStart = x.autoStart === true;
         let endDate = validDate(x.endDate);
         if (autoStart && dueDate && !endDate) {
             endDate = new Date(Date.parse(dueDate) + estimatedTime * 60000).toISOString();
         }
+        const repeat = ['none', 'daily', 'weekly', 'monthly'].includes(x.repeat) ? x.repeat : 'none';
+        const reminderValue = Number(x.reminder);
+        const reminder = [0, 15, 30, 60, 1440].includes(reminderValue) ? reminderValue : 0;
         return { type, task: {
             title, description: clean(x.description, 1000),
             category: SAFE_CATEGORIES.includes(x.category) ? x.category : 'study',
             priority: SAFE_PRIORITIES.includes(x.priority) ? x.priority : 'medium',
             dueDate, endDate, autoStart,
             estimatedTime,
-            repeat: 'none', reminder: 0,
+            repeat, reminder,
             tags: Array.isArray(x.tags) ? x.tags.slice(0,10).map(v => clean(String(v),40)).filter(Boolean) : []
         }};
     }
