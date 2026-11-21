@@ -16,7 +16,7 @@ const isAllowedOrigin = origin => {
         const url = new URL(origin);
         return url.protocol === 'https:' &&
             url.origin === origin &&
-            /^nuvio-[a-z0-9-]+-mohammedharidy770\\.vercel\\.app$/i.test(url.hostname);
+            /^nuvio-[a-z0-9-]+-mohammedharidy770\.vercel\.app$/i.test(url.hostname);
     } catch {
         return false;
     }
