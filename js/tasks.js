@@ -24,6 +24,7 @@ Object.assign(NuvioApp.prototype, {
             }
         };
 
+        advance();
         const now = Date.now();
         let attempts = 0;
         while (nextDate.getTime() <= now && attempts < 500) {
