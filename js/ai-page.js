@@ -241,22 +241,22 @@
 
     function inferDirectReminder(message) {
         const raw = normalizeDigits(message);
-        const trigger = /(?:فكرني|ذكرني|افتكرني|نبهني|اعملي?\\s+تذكير)/i;
+        const trigger = /(?:فكرني|ذكرني|افتكرني|نبهني|اعملي?\s+تذكير)/i;
         if (!trigger.test(raw)) return [];
 
-        const timePattern = /(?:على\\s+الساعة|علي\\s+الساعة|الساعة|على|علي|عند)\\s*(\\d{1,2})(?::(\\d{2}))?\\s*(صباحا|صباحًا|الصبح|صبح|مساء|مساءً|بالليل|ليل|ظهر|بعد\\s+الظهر)?/i;
+        const timePattern = /(?:على\s+الساعة|علي\s+الساعة|الساعة|على|علي|عند)\s*(\d{1,2})(?::(\d{2}))?\s*(صباحا|صباحًا|الصبح|صبح|مساء|مساءً|بالليل|ليل|ظهر|بعد\s+الظهر)?/i;
         const match = timePattern.exec(raw);
         if (!match) return [];
 
         let messageText = (raw.slice(0, match.index) + ' ' + raw.slice(match.index + match[0].length))
             .replace(trigger, '')
-            .replace(/^(?:مثلا|مثلًا|لو سمحت|من فضلك)\\s*/i, '')
+            .replace(/^(?:مثلا|مثلًا|لو سمحت|من فضلك)\s*/i, '')
             .replace(/[،,.!؟]+/g, ' ')
-            .replace(/\\s+/g, ' ')
+            .replace(/\s+/g, ' ')
             .trim();
         let hour = Number(match[1]);
         const minute = Number(match[2] || 0);
-        const period = String(match[3] || '').replace(/\\s/g, '');
+        const period = String(match[3] || '').replace(/\s/g, '');
         if (!messageText || hour < 1 || hour > 12 || minute > 59) return [];
 
         const morning = /صباح|صبح/.test(period);
@@ -725,12 +725,12 @@
             date.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
             return date;
         };
-        const periodPattern = '(صباحًا|صباحا|الصبح|صبح|مساءً|مساء|بالليل|ليل|ظهر|بعد\\s+الظهر|ص|م)';
+        const periodPattern = '(صباحًا|صباحا|الصبح|صبح|مساءً|مساء|بالليل|ليل|ظهر|بعد\s+الظهر|ص|م)';
         const rangePattern = new RegExp(
-            '(\\d{1,2}:\\d{2})\\s*' + periodPattern + '?\\s*[–—-]\\s*(\\d{1,2}:\\d{2})\\s*' + periodPattern + '?',
+            '(\d{1,2}:\d{2})\s*' + periodPattern + '?\s*[–—-]\s*(\d{1,2}:\d{2})\s*' + periodPattern + '?',
             'i'
         );
-        const singleTimePattern = new RegExp('^(\\d{1,2}:\\d{2})\\s*' + periodPattern + '?$', 'i');
+        const singleTimePattern = new RegExp('^(\d{1,2}:\d{2})\s*' + periodPattern + '?$', 'i');
         const studyPattern = /مذاكر|مراجعة|راجع|حل\b|محاضرة|حفظ|تسميع|دراسة|study|revision|practice|biology|physics|chemistry|english|math|calculus|برمجة|كود|coding|programming|تفسير|توحيد|فقه|حديث|نحو|صرف|بلاغة|أحياء|فيزياء|كيمياء|إنجليزي|انجليزي|رياضيات/i;
         const islamPattern = /صلاة|أذكار|اذكار|قرآن|قران|شرعي|مسجد/i;
 
