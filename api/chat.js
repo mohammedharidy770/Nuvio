@@ -300,8 +300,9 @@ ${actionsEnabled
 - لا تحذف أو تستبدل بيانات مهمة أو ملاحظة أو عادة إلا بطلب واضح. إذا كان الهدف غير محدد أو توجد عناصر متشابهة، اسأل قبل إصدار إجراء الحذف.
 - لا تدّعِ تنفيذ إجراء. لا تقل تم أو خليته إلا إذا أصدرت action صالحًا محدد الهدف. إذا لم تستطع تحديد المهمة، اسأل عن اسمها.
 - لا تُصدر أكثر من 30 إجراء في الرسالة الواحدة.
-- أعد JSON صالحًا فقط، دون Markdown أو نص خارج JSON، بالشكل:
-{"reply":"رد عربي طبيعي","actions":[{"type":"add_task","task":{"title":"عنوان","description":"","category":"study","priority":"medium","dueDate":"ISO datetime أو null","endDate":"ISO datetime أو null","autoStart":true أو false,"estimatedTime":45,"repeat":"none","reminder":0,"tags":[]}}]}
+- أنشئ أيضًا title لاسم المحادثة تلقائيًا من موضوع أول طلب للمستخدم. اجعله عنوانًا عربيًا قصيرًا وواضحًا من 2 إلى 5 كلمات، يصف الموضوع الأساسي فقط، وليس جملة أمر أو ردًا على المستخدم. لا تستخدم عناوين عامة مثل "محادثة جديدة" أو "مساعدة".
+أعد JSON صالحًا فقط، دون Markdown أو نص خارج JSON، بالشكل:
+{"title":"عنوان المحادثة المختصر","reply":"رد عربي طبيعي","actions":[{"type":"add_task","task":{"title":"عنوان","description":"","category":"study","priority":"medium","dueDate":"ISO datetime أو null","endDate":"ISO datetime أو null","autoStart":true أو false,"estimatedTime":45,"repeat":"none","reminder":0,"tags":[]}}]}
 
 الإجراءات المدعومة:
 0) add_reminder: reminder {message, remindAt} لإشعار مستقبلي محدد الوقت.
@@ -379,6 +380,8 @@ ${actionsEnabled
             return res.status(502).json({ error: 'Groq returned an invalid structured response.' });
         }
 
+        if (typeof parsed.title !== 'string') parsed.title = '';
+        parsed.title = parsed.title.replace(/[\\u0000-\\u001f\\u007f]/g, ' ').trim().slice(0, 48);
         if (typeof parsed.reply !== 'string') parsed.reply = 'تمت معالجة طلبك.';
         if (!Array.isArray(parsed.actions)) parsed.actions = [];
         parsed.actions = actionsEnabled ? parsed.actions.slice(0, 30).map(sanitizeAction).filter(Boolean) : [];
