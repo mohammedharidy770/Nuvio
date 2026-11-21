@@ -211,11 +211,24 @@ Object.assign(NuvioApp.prototype, {
         if (taskId) {
             const index = this.tasks.findIndex(t => t.id === taskId);
             if (index !== -1) {
+                const existingTask = this.tasks[index];
+                const previousNotification = this.notifications.find(notification =>
+                    notification.type === 'task' && notification.taskId === taskId
+                );
+                this.notifications = this.notifications.filter(notification =>
+                    !(notification.type === 'task' && notification.taskId === taskId)
+                );
                 this.tasks[index] = {
-                    ...this.tasks[index],
+                    ...existingTask,
                     title, description, category, priority,
                     dueDate: dueDate || null, estimatedTime, repeat, reminder, tags
                 };
+                if (dueDate && reminder > 0) {
+                    const remindAt = new Date(new Date(dueDate).getTime() - reminder * 60000);
+                    if (remindAt > new Date()) {
+                        this.addNotification('task', `${this.t('form.reminder')}: ${title}`, remindAt, taskId);
+                    }
+                }
                 this.showToast(this.settings.language === 'ar' ? 'تم تحديث المهمة' : 'Task updated', 'success');
             }
         } else {
@@ -232,7 +245,8 @@ Object.assign(NuvioApp.prototype, {
             this.showToast(this.settings.language === 'ar' ? 'تم إضافة المهمة' : 'Task added', 'success');
 
             if (dueDate && reminder > 0) {
-                this.addNotification('task', `${this.t('form.reminder')}: ${title}`, new Date(new Date(dueDate).getTime() - reminder * 60000));
+                const remindAt = new Date(new Date(dueDate).getTime() - reminder * 60000);
+                if (remindAt > new Date()) this.addNotification('task', `${this.t('form.reminder')}: ${title}`, remindAt, newTask.id);
             }
         }
 
@@ -250,6 +264,7 @@ Object.assign(NuvioApp.prototype, {
         if (!confirm(msg)) return;
 
         this.tasks = this.tasks.filter(t => t.id !== taskId);
+        this.notifications = this.notifications.filter(notification => notification.taskId !== taskId);
         this.saveData();
         this.renderAll();
         this.showToast(this.settings.language === 'ar' ? 'تم حذف المهمة' : 'Task deleted', 'success');
