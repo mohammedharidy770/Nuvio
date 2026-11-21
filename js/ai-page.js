@@ -254,7 +254,7 @@
             .replace(trigger, '')
             .replace(/^(?:مثلا|مثلًا|لو سمحت|من فضلك)\s*/i, '')
             .replace(/[،,.!؟]+/g, ' ')
-            .replace(/\\s+/g, ' ')
+            .replace(/\s+/g, ' ')
             .trim();
         let hour = Number(match[1]);
         const minute = Number(match[2] || 0);
