@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nuvio-v33';
+const CACHE_NAME = 'nuvio-v34';
 const STATIC_ASSETS = [
     './',
     './index.html',
@@ -27,7 +27,7 @@ const STATIC_ASSETS = [
     './js/ui.js?v=5',
     './js/dashboard.js?v=2',
     './js/tasks.js?v=5',
-    './js/focus.js?v=5',
+    './js/focus.js?v=6',
     './js/habits.js',
     './js/tracking.js',
     './js/prayer-reports.js',
