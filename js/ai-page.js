@@ -1,7 +1,9 @@
 (function () {
     'use strict';
 
-    const API_URL = 'https://nuvio-blue.vercel.app/api/chat';
+    const API_URL = window.location.hostname.endsWith('.vercel.app')
+        ? window.location.origin + '/api/chat'
+        : 'https://nuvio-blue.vercel.app/api/chat';
     const HISTORY_KEY = 'nuvio_ai_history';
     const TASKS_KEY = 'nuvio_tasks';
     let conversations = [];
