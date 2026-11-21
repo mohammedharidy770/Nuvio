@@ -655,6 +655,7 @@
 
             if (action.type === 'delete_task') {
                 window.app.tasks = window.app.tasks.filter(item => item.id !== task.id);
+                window.app.notifications = window.app.notifications.filter(item => item.taskId !== task.id);
                 count++;
                 changedTasks = true;
             } else if (action.type === 'complete_task') {
@@ -681,6 +682,16 @@
                     const nextDate = changes.dueDate === null ? null : new Date(changes.dueDate);
                     if (changes.dueDate === null || !Number.isNaN(nextDate.getTime())) task.dueDate = nextDate ? nextDate.toISOString() : null;
                     else return;
+                    window.app.notifications = window.app.notifications.filter(item => item.taskId !== task.id);
+                    if (task.dueDate && Number(task.reminder) > 0) {
+                        const remindAt = new Date(new Date(task.dueDate).getTime() - Number(task.reminder) * 60000);
+                        if (remindAt > new Date()) window.app.addNotification('task', 'تذكير: ' + task.title, remindAt, task.id);
+                    }
+                }
+                if (changes.title) {
+                    window.app.notifications.forEach(item => {
+                        if (item.taskId === task.id && !item.firedAt) item.message = 'تذكير: ' + task.title;
+                    });
                 }
                 const hasOtherChange = Boolean(changes.title || changes.description !== undefined || changes.category || changes.priority || changes.estimatedTime);
                 if (hasOtherChange || Object.prototype.hasOwnProperty.call(changes, 'dueDate')) { count++; changedTasks = true; }
