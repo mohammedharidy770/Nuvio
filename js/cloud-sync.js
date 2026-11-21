@@ -111,6 +111,7 @@
             app.renderAll?.();
             app.renderHabits?.();
             app.renderNotes?.();
+            emit('nuvio:remote-state-applied', {});
             if (timerState && typeof timerState === 'object' && !Array.isArray(timerState)) app.restoreTimerState?.();
         } finally {
             applying = false;
