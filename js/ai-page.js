@@ -727,10 +727,291 @@
         };
         const periodPattern = '(صباحًا|صباحا|الصبح|صبح|مساءً|مساء|بالليل|ليل|ظهر|بعد\s+الظهر|ص|م)';
         const rangePattern = new RegExp(
-            '(\d{1,2}:\d{2})\s*' + periodPattern + '?\s*[–—-]\s*(\d{1,2}:\d{2})\s*' + periodPattern + '?',
+            '(\\d{1,2}:\\d{2})\\s*' + periodPattern + '?\\s*[–—-]\\s*(\\d{1,2}:\\d{2})\\s*' + periodPattern + '?',
             'i'
         );
-        const singleTimePattern = new RegExp('^(\d{1,2}:\d{2})\s*' + periodPattern + '?$', 'i');
+        const singleTimePattern = new RegExp('^(\\d{1,2}:\\d{2})\\s*' + periodPattern + '?
+        const studyPattern = /مذاكر|مراجعة|راجع|حل\b|محاضرة|حفظ|تسميع|دراسة|study|revision|practice|biology|physics|chemistry|english|math|calculus|برمجة|كود|coding|programming|تفسير|توحيد|فقه|حديث|نحو|صرف|بلاغة|أحياء|فيزياء|كيمياء|إنجليزي|انجليزي|رياضيات/i;
+        const islamPattern = /صلاة|أذكار|اذكار|قرآن|قران|شرعي|مسجد/i;
+
+        const rawLines = String(message || '').replace(/&#x20;/gi, ' ').split(/\r?\n/);
+        const lines = rawLines.map(line => line
+            .replace(/^\s*#+\s*/, '')
+            .replace(/\*\*/g, '')
+            .replace(/^\s*\|\s*[-: ]+\s*\|\s*$/, '')
+            .replace(/^\s*\|\s*$/, '')
+            .replace(/\|/g, ' ')
+            .replace(/&nbsp;/gi, ' ')
+            .trim()
+        ).filter(line => line && !/^[-:| ]+$/.test(line) && !/^الوقت$|^النشاط$|^جدول المذاكرة/i.test(line));
+
+        const entries = [];
+        for (let i = 0; i < lines.length; i++) {
+            const match = rangePattern.exec(lines[i]);
+            const singleMatch = match ? null : singleTimePattern.exec(lines[i]);
+            if (!match && !singleMatch) continue;
+            let title = match ? lines[i].replace(match[0], ' ').replace(/[*_]/g, ' ').trim() : '';
+            if (!title) {
+                for (let j = i + 1; j < lines.length; j++) {
+                    if (rangePattern.test(lines[j]) || singleTimePattern.test(lines[j])) break;
+                    if (/^(تقريبًا|تقريبا|حوالي)$/.test(lines[j])) continue;
+                    title = lines[j].replace(/^[\s|:؛-]+/, '').trim();
+                    break;
+                }
+            }
+            if (title) entries.push({ match: match || singleMatch, title, single: Boolean(singleMatch) });
+        }
+
+        let previousEnd = null;
+        for (const entry of entries) {
+            const match = entry.match;
+            const firstPeriod = match[2] || '';
+            const secondPeriod = entry.single ? firstPeriod : (match[4] || firstPeriod);
+            const startMinutes = parseScheduleClock(match[1], firstPeriod || secondPeriod, previousEnd, 'start');
+            if (startMinutes === null) continue;
+            let endMinutes = entry.single
+                ? startMinutes
+                : parseScheduleClock(match[3], secondPeriod || firstPeriod, startMinutes, 'end');
+            if (endMinutes === null) continue;
+
+            if (!entry.single && endMinutes <= startMinutes && (/صباح|صبح|ص/.test(secondPeriod) || (!secondPeriod && startMinutes >= 18 * 60 && endMinutes < 12 * 60))) {
+                endMinutes += 24 * 60;
+            }
+            if (!entry.single && endMinutes <= startMinutes) continue;
+
+            const startDate = dateAtMinutes(startMinutes);
+            const endDate = entry.single ? null : dateAtMinutes(endMinutes);
+            const title = entry.title.replace(/^[\s|:؛-]+|[\s|]+$/g, '').replace(/[*_]/g, '').trim();
+            if (!title) continue;
+            const isStudy = !entry.single && studyPattern.test(title) && !/حصة|درس مباشر|محاضرة مباشرة|استراحة|راحة/i.test(title);
+            const category = isStudy ? (/برمجة|كود|coding|programming/i.test(title) ? 'coding' : 'study')
+                : islamPattern.test(title) ? 'Islam' : /تمرين|رياضة|جيم/i.test(title) ? 'sport' : 'personal';
+
+            actions.push({
+                type: 'add_task',
+                task: {
+                    title: title.slice(0, 150),
+                    description: entry.single ? 'موعد محدد ضمن جدول اليوم' : 'موعد ضمن جدول اليوم من ' + match[1] + ' إلى ' + match[3],
+                    category,
+                    priority: isStudy ? 'high' : 'medium',
+                    dueDate: startDate.toISOString(),
+                    endDate: endDate ? endDate.toISOString() : null,
+                    autoStart: isStudy,
+                    estimatedTime: entry.single ? 25 : Math.max(1, Math.round((endDate - startDate) / 60000)),
+                    tags: ['جدول اليوم']
+                }
+            });
+            previousEnd = entry.single ? startMinutes : endMinutes;
+        }
+        return actions;
+    }
+
+    async function sendMessage() {
+        if (sending || !dom.input) return;
+        const text = dom.input.value.trim();
+        const chat = currentChat();
+        if (!text || !chat) return;
+        const settings = getAISettings();
+
+        sending = true;
+        dom.input.value = '';
+        dom.input.style.height = '';
+        dom.send.disabled = true;
+        chat.messages.push({ role: 'user', content: text });
+        chat.title = text.slice(0, 36);
+        chat.updatedAt = Date.now();
+        appendMessage('user', text);
+        saveHistory();
+        renderHistory();
+
+
+        const typing = showTyping();
+        try {
+            // Deterministic schedule parsing must not depend on the model returning valid JSON.
+            const localScheduleActions = parseSchedule(text);
+            if (localScheduleActions.length) {
+                typing.remove();
+                const scheduleCount = settings.actionsEnabled ? executeActions(localScheduleActions) : 0;
+                const scheduleReply = settings.actionsEnabled
+                    ? (scheduleCount === localScheduleActions.length
+                        ? 'تم حفظ جدولك كاملًا. مهام المذاكرة ستبدأ تلقائيًا في مواعيدها.'
+                        : 'تمت إضافة ' + scheduleCount + ' من ' + localScheduleActions.length + ' نشاطًا. راجع المهام للتأكد من الباقي.')
+                    : 'تم تحليل الجدول، لكن تنفيذ الأوامر متوقف من إعدادات المساعد.';
+                await animateReply(scheduleReply);
+                chat.messages.push({ role: 'assistant', content: scheduleReply });
+                saveHistory();
+                return;
+            }
+            const session = await window.NuvioCloud?.getSession();
+            if (!session?.access_token) throw new Error('سجّل الدخول لاستخدام Nuvio AI.');
+
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: 'Bearer ' + session.access_token
+                },
+                body: JSON.stringify({
+                    message: text,
+                    context: getAppContext(),
+                    history: chat.messages.slice(-11, -1),
+                    preferences: settings
+                })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'تعذر الاتصال بالمساعد');
+            typing.remove();
+
+            const result = parseJSON(data.reply);
+            const directReminderActions = inferDirectReminder(text);
+            const scheduleActions = parseSchedule(text);
+            const relativeDateActions = inferRelativeTaskDateActions(text);
+            if (directReminderActions.length) {
+                result.actions = directReminderActions;
+                result.reply = 'تم ضبط التذكير في الموعد المطلوب.';
+            } else if (scheduleActions.length) {
+                const normalizeScheduleTitle = value => String(value || '').toLowerCase()
+                    .replace(/[ًٌٍَُِّْـ]/g, '')
+                    .replace(/[أإآ]/g, 'ا')
+                    .replace(/[^\u0600-\u06FF\w\s]/g, ' ')
+                    .replace(/\s+/g, ' ').trim();
+                const explicitKeys = new Set(scheduleActions.map(action =>
+                    normalizeScheduleTitle(action.task?.title) + '|' + String(action.task?.dueDate || '')
+                ));
+                const explicitTitles = new Set(scheduleActions.map(action => normalizeScheduleTitle(action.task?.title)));
+                const remainingModelActions = (Array.isArray(result.actions) ? result.actions : []).filter(action => {
+                    if (action?.type !== 'add_task') return true;
+                    const title = normalizeScheduleTitle(action.task?.title);
+                    const key = title + '|' + String(action.task?.dueDate || '');
+                    return !explicitKeys.has(key) && !explicitTitles.has(title);
+                });
+                result.actions = [...scheduleActions, ...remainingModelActions].slice(0, 30);
+                result.reply = 'تم حفظ الفترات المحددة في الجدول، مع الاحتفاظ بباقي الأنشطة التي لا تحتوي على وقت دقيق.';
+            } else if (relativeDateActions.length) {
+                result.actions = relativeDateActions;
+                result.reply = relativeDateActions.length === 1
+                    ? 'تم تحديث موعد المهمة إلى التاريخ المطلوب.'
+                    : `تم تحديث مواعيد ${relativeDateActions.length} مهمة نشطة إلى التاريخ المطلوب.`;
+            }
+            if (!directReminderActions.length && (!Array.isArray(result.actions) || !result.actions.length)) {
+                const direct = inferDirectActions(text);
+                if (direct.length) {
+                    result.actions = direct;
+                    if (!result.reply || /لم أفهم|لا أفهم|اعتذر/i.test(result.reply)) {
+                        result.reply = direct.length === 1 ? 'تم تنفيذ الأمر.' : `تم تنفيذ ${direct.length} إجراءات.`;
+                    }
+                }
+            }
+            const actions = settings.actionsEnabled ? result.actions : [];
+            const count = executeActions(actions);
+            const requestedTaskUpdate = actions.some(action => action?.type === 'update_task');
+            const reply = count
+                ? `${result.reply || 'تم تنفيذ الطلب.'}\nتم حفظ ${count} تعديل داخل الموقع.`
+                : requestedTaskUpdate
+                    ? 'لم يتم تعديل أي مهمة. لم أجد مهامًا مطابقة أو تعذر حفظ التواريخ. راجع المهام وحاول مرة أخرى.'
+                    : result.reply || escapeText(data.reply);
+            await animateReply(reply);
+            chat.messages.push({ role: 'assistant', content: reply });
+            saveHistory();
+        } catch (error) {
+            typing.remove();
+            const reply = error.message || 'تعذر الاتصال بالمساعد، حاول مرة أخرى.';
+            await animateReply(reply);
+            chat.messages.push({ role: 'assistant', content: reply });
+            saveHistory();
+        } finally {
+            sending = false;
+            dom.send.disabled = false;
+            dom.input.focus();
+        }
+    }
+
+    function initialize() {
+        dom.section = document.getElementById('aiSection');
+        dom.messages = document.getElementById('messages');
+        dom.history = document.getElementById('historyList');
+        dom.input = document.getElementById('prompt');
+        dom.send = document.getElementById('sendPrompt');
+        dom.title = document.getElementById('chatTitle');
+        dom.newChat = document.getElementById('newChat');
+        dom.clear = document.getElementById('clearChat');
+        dom.mobileMenu = document.getElementById('mobileMenu');
+        dom.sidebar = document.getElementById('aiSidebar');
+        dom.settingsPanel = document.getElementById('aiSettingsPanel');
+        dom.settingsBackdrop = document.getElementById('aiSettingsBackdrop');
+
+        if (!dom.section || !dom.messages || !dom.input || !dom.send) return;
+
+        loadHistory();
+        dom.newChat?.addEventListener('click', createChat);
+        dom.clear?.addEventListener('click', () => {
+            const chat = currentChat();
+            if (!chat || !window.confirm('هل تريد مسح هذه المحادثة؟')) return;
+            conversations = conversations.filter(item => item.id !== chat.id);
+            saveHistory();
+            activeId = null;
+            if (conversations.length) {
+                activeId = conversations[0].id;
+                render();
+            } else {
+                createChat();
+            }
+        });
+        dom.mobileMenu?.addEventListener('click', () => {
+            const isOpen = dom.sidebar?.classList.toggle('open') || false;
+            dom.mobileMenu?.setAttribute('aria-expanded', String(isOpen));
+        });
+        document.addEventListener('click', event => {
+            if (window.innerWidth > 768 || !dom.sidebar?.classList.contains('open')) return;
+            if (!dom.sidebar.contains(event.target) && !dom.mobileMenu?.contains(event.target)) {
+                dom.sidebar.classList.remove('open');
+                dom.mobileMenu?.setAttribute('aria-expanded', 'false');
+            }
+        });
+        document.getElementById('openAISettings')?.addEventListener('click', () => {
+            syncSettings();
+            openSettings(true);
+        });
+        document.getElementById('closeAISettings')?.addEventListener('click', () => openSettings(false));
+        dom.settingsBackdrop?.addEventListener('click', () => openSettings(false));
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape') {
+                openSettings(false);
+                dom.sidebar?.classList.remove('open');
+            }
+        });
+        document.getElementById('aiResponseTone')?.addEventListener('change', event => {
+            saveAISettings({ ...getAISettings(), tone: event.target.value });
+        });
+        document.getElementById('aiAutoActions')?.addEventListener('change', event => {
+            saveAISettings({ ...getAISettings(), actionsEnabled: event.target.checked });
+        });
+        document.getElementById('resetAISettings')?.addEventListener('click', () => {
+            saveAISettings({ tone: 'concise', actionsEnabled: true });
+            syncSettings();
+        });
+        dom.send.addEventListener('click', sendMessage);
+        dom.input.addEventListener('keydown', event => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+        dom.input.addEventListener('input', () => {
+            dom.input.style.height = 'auto';
+            dom.input.style.height = Math.min(dom.input.scrollHeight, 150) + 'px';
+        });
+
+        if (!conversations.length) createChat();
+        else {
+            activeId = conversations[0].id;
+            render();
+        }
+    }
+
+    initialize();
+})();
+, 'i');
         const studyPattern = /مذاكر|مراجعة|راجع|حل\b|محاضرة|حفظ|تسميع|دراسة|study|revision|practice|biology|physics|chemistry|english|math|calculus|برمجة|كود|coding|programming|تفسير|توحيد|فقه|حديث|نحو|صرف|بلاغة|أحياء|فيزياء|كيمياء|إنجليزي|انجليزي|رياضيات/i;
         const islamPattern = /صلاة|أذكار|اذكار|قرآن|قران|شرعي|مسجد/i;
 
