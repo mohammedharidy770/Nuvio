@@ -1,4 +1,56 @@
 Object.assign(NuvioApp.prototype, {
+    showSyncConflict(detail = {}) {
+        let overlay = document.getElementById('nuvioSyncConflict');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'nuvioSyncConflict';
+            overlay.className = 'modal-overlay active';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-labelledby', 'nuvioSyncConflictTitle');
+            document.body.appendChild(overlay);
+        }
+        const isAr = this.settings.language === 'ar';
+        const message = String(detail.message || (isAr
+            ? 'وجدنا اختلافًا بين بيانات هذا الجهاز والسحابة.'
+            : 'We found different data on this device and in the cloud.'));
+        overlay.innerHTML = `
+            <div class="modal-content" style="max-width:520px">
+                <div class="modal-header">
+                    <h2 id="nuvioSyncConflictTitle">${isAr ? 'اختلاف في بيانات المزامنة' : 'Sync data conflict'}</h2>
+                </div>
+                <div class="modal-body">
+                    <p>${window.NuvioSecurity.escapeHTML(message)}</p>
+                    <p style="color:var(--text-muted);font-size:.9rem">${isAr
+                        ? 'سنحتفظ بنسخة احتياطية من بيانات الجهاز والسحابة قبل تنفيذ اختيارك.'
+                        : 'We will back up both device and cloud data before applying your choice.'}</p>
+                    <div class="form-actions" style="display:grid;grid-template-columns:1fr;gap:10px">
+                        <button type="button" class="btn-primary" id="nuvioUseDevice">${isAr ? 'استخدم بيانات هذا الجهاز' : 'Use this device data'}</button>
+                        <button type="button" class="btn-secondary" id="nuvioUseCloud">${isAr ? 'استخدم بيانات السحابة' : 'Use cloud data'}</button>
+                    </div>
+                </div>
+            </div>`;
+        const deviceButton = overlay.querySelector('#nuvioUseDevice');
+        const cloudButton = overlay.querySelector('#nuvioUseCloud');
+        const choose = async choice => {
+            deviceButton.disabled = true;
+            cloudButton.disabled = true;
+            try {
+                const ok = await window.NuvioSync?.resolveConflict(choice);
+                if (!ok) throw new Error('Conflict resolution was not confirmed');
+                overlay.remove();
+                this.showToast(isAr ? 'تم حل تعارض المزامنة وحفظ النسخ الاحتياطية' : 'Sync conflict resolved and backups saved', 'success');
+            } catch (error) {
+                console.error('Nuvio conflict resolution failed:', error);
+                deviceButton.disabled = false;
+                cloudButton.disabled = false;
+                this.showToast(isAr ? 'تعذر حل التعارض. بياناتك لم تُحذف.' : 'Could not resolve the conflict. Your data was not deleted.', 'error');
+            }
+        };
+        deviceButton.addEventListener('click', () => choose('local'));
+        cloudButton.addEventListener('click', () => choose('remote'));
+    },
+
     setupEventListeners() {
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', (e) => {
