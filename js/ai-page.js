@@ -725,12 +725,12 @@
             date.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
             return date;
         };
-        const periodPattern = '(صباحًا|صباحا|الصبح|صبح|مساءً|مساء|بالليل|ليل|ظهر|بعد\s+الظهر|ص|م)';
+        const periodPattern = '(صباحًا|صباحا|الصبح|صبح|مساءً|مساء|بالليل|ليل|ظهر|بعد\\s+الظهر|ص|م)';
         const rangePattern = new RegExp(
             '(\\d{1,2}:\\d{2})\\s*' + periodPattern + '?\\s*[–—-]\\s*(\\d{1,2}:\\d{2})\\s*' + periodPattern + '?',
             'i'
         );
-        const singleTimePattern = new RegExp('^(\\d{1,2}:\\d{2})\\s*' + periodPattern + '?
+        const singleTimePattern = new RegExp('^(\\d{1,2}:\\d{2})\\s*' + periodPattern + '?$', 'i');
         const studyPattern = /مذاكر|مراجعة|راجع|حل\b|محاضرة|حفظ|تسميع|دراسة|study|revision|practice|biology|physics|chemistry|english|math|calculus|برمجة|كود|coding|programming|تفسير|توحيد|فقه|حديث|نحو|صرف|بلاغة|أحياء|فيزياء|كيمياء|إنجليزي|انجليزي|رياضيات/i;
         const islamPattern = /صلاة|أذكار|اذكار|قرآن|قران|شرعي|مسجد/i;
 
