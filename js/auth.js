@@ -111,6 +111,11 @@
             submitButton.innerHTML = '<span>تسجيل الدخول</span><i class="fas fa-arrow-left"></i>';
             switchButton.textContent = 'إنشاء حساب جديد';
             passwordInput.autocomplete = 'current-password';
+        } else if (mode === 'recovery') {
+            title.textContent = 'تعيين كلمة مرور جديدة';
+            submitButton.innerHTML = '<span>حفظ كلمة المرور</span><i class="fas fa-arrow-left"></i>';
+            switchButton.textContent = 'العودة لتسجيل الدخول';
+            passwordInput.autocomplete = 'new-password';
         } else {
             title.textContent = 'إنشاء حساب جديد';
             submitButton.innerHTML = '<span>إنشاء الحساب</span><i class="fas fa-arrow-left"></i>';
@@ -139,7 +144,12 @@
         showMessage('');
 
         try {
-            if (mode === 'signup') {
+            if (mode === 'recovery') {
+                const { error } = await supabase.auth.updateUser({ password });
+                if (error) throw error;
+                showMessage('تم تحديث كلمة المرور بنجاح. يمكنك تسجيل الدخول الآن.', true);
+                screen.hidden = true;
+            } else if (mode === 'signup') {
                 const { data, error } = await supabase.auth.signUp({
                     email,
                     password,
@@ -190,9 +200,11 @@
             );
         } finally {
             submitButton.disabled = false;
-            submitButton.innerHTML = mode === 'login'
-                ? '<span>تسجيل الدخول</span><i class="fas fa-arrow-left"></i>'
-                : '<span>إنشاء الحساب</span><i class="fas fa-arrow-left"></i>';
+            submitButton.innerHTML = mode === 'recovery'
+                ? '<span>حفظ كلمة المرور</span><i class="fas fa-arrow-left"></i>'
+                : mode === 'login'
+                    ? '<span>تسجيل الدخول</span><i class="fas fa-arrow-left"></i>'
+                    : '<span>إنشاء الحساب</span><i class="fas fa-arrow-left"></i>';
         }
     });
 
@@ -253,7 +265,11 @@
     }
 
     supabase.auth.onAuthStateChange(function (event, session) {
-        if (session) {
+        if (event === 'PASSWORD_RECOVERY') {
+            screen.hidden = false;
+            setMode('recovery');
+            showMessage('أدخل كلمة المرور الجديدة لحسابك.');
+        } else if (session) {
             screen.hidden = true;
         } else if (event === 'SIGNED_OUT') {
             screen.hidden = false;
