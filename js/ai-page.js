@@ -36,6 +36,7 @@
 
     function saveHistory() {
         localStorage.setItem(HISTORY_KEY, JSON.stringify(conversations.slice(0, 30)));
+        window.NuvioSync?.scheduleSave();
     }
 
     function currentChat() {
@@ -184,6 +185,7 @@
 
     function saveAISettings(settings) {
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+        window.NuvioSync?.scheduleSave();
     }
 
     function openSettings(open) {
@@ -1014,6 +1016,15 @@
             render();
         }
     }
+
+    window.addEventListener('nuvio:remote-state-applied', () => {
+        loadHistory();
+        if (dom.messages && document.getElementById('aiSection')?.classList.contains('active')) {
+            activeId = conversations[0]?.id || null;
+            if (activeId) render();
+            else createChat();
+        }
+    });
 
     initialize();
 })();
