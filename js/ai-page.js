@@ -636,15 +636,22 @@
                         : (input.autoStart && due
                             ? new Date(Date.parse(due) + Math.min(1440, Math.max(1, parseInt(input.estimatedTime, 10) || 25)) * 60000).toISOString()
                             : null),
-                    autoStart: Boolean(input.autoStart || (input.endDate && !Number.isNaN(Date.parse(input.endDate)))),
+                    autoStart: input.autoStart === true,
                     estimatedTime: Math.min(1440, Math.max(1, parseInt(input.estimatedTime, 10) || 25)),
                     actualTime: 0,
-                    repeat: 'none',
-                    reminder: 0,
+                    repeat: ['none', 'daily', 'weekly', 'monthly'].includes(input.repeat) ? input.repeat : 'none',
+                    reminder: [0, 15, 30, 60, 1440].includes(Number(input.reminder)) ? Number(input.reminder) : 0,
                     tags: Array.isArray(input.tags) ? input.tags.slice(0, 10) : [],
                     createdAt: new Date().toISOString(),
                     completedAt: null
                 });
+                const createdTask = window.app.tasks[0];
+                if (createdTask?.dueDate && createdTask.reminder > 0) {
+                    const remindAt = new Date(new Date(createdTask.dueDate).getTime() - createdTask.reminder * 60000);
+                    if (remindAt > new Date()) {
+                        window.app.addNotification('task', 'تذكير: ' + createdTask.title, remindAt, createdTask.id);
+                    }
+                }
                 count++;
                 changedTasks = true;
                 return;
