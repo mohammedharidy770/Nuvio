@@ -840,8 +840,8 @@
         dom.input.value = '';
         dom.input.style.height = '';
         dom.send.disabled = true;
+        const isFirstMessage = chat.messages.length === 0;
         chat.messages.push({ role: 'user', content: text });
-        chat.title = text.slice(0, 36);
         chat.updatedAt = Date.now();
         appendMessage('user', text);
         saveHistory();
@@ -860,6 +860,13 @@
                         ? 'تم حفظ جدولك كاملًا. مهام المذاكرة ستبدأ تلقائيًا في مواعيدها.'
                         : 'تمت إضافة ' + scheduleCount + ' من ' + localScheduleActions.length + ' نشاطًا. راجع المهام للتأكد من الباقي.')
                     : 'تم تحليل الجدول، لكن تنفيذ الأوامر متوقف من إعدادات المساعد.';
+                if (isFirstMessage) {
+                    const mainTaskTitle = localScheduleActions.find(action => action.type === 'add_task')?.task?.title;
+                    if (mainTaskTitle) chat.title = String(mainTaskTitle).slice(0, 48);
+                    if (dom.title) dom.title.textContent = chat.title;
+                    renderHistory();
+                    saveHistory();
+                }
                 await animateReply(scheduleReply);
                 chat.messages.push({ role: 'assistant', content: scheduleReply });
                 saveHistory();
@@ -886,6 +893,12 @@
             typing.remove();
 
             const result = parseJSON(data.reply);
+            if (isFirstMessage && typeof result.title === 'string' && result.title.trim()) {
+                chat.title = result.title.trim().replace(/[\\r\\n]+/g, ' ').slice(0, 48);
+                if (dom.title) dom.title.textContent = chat.title;
+                renderHistory();
+                saveHistory();
+            }
             const directReminderActions = inferDirectReminder(text);
             const scheduleActions = parseSchedule(text);
             const relativeDateActions = inferRelativeTaskDateActions(text);
