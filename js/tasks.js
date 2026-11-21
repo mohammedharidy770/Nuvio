@@ -212,9 +212,6 @@ Object.assign(NuvioApp.prototype, {
             const index = this.tasks.findIndex(t => t.id === taskId);
             if (index !== -1) {
                 const existingTask = this.tasks[index];
-                const previousNotification = this.notifications.find(notification =>
-                    notification.type === 'task' && notification.taskId === taskId
-                );
                 this.notifications = this.notifications.filter(notification =>
                     !(notification.type === 'task' && notification.taskId === taskId)
                 );
