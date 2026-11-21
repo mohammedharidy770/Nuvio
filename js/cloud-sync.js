@@ -481,7 +481,7 @@
             if (startGeneration !== generation || userId !== nextUserId) return;
 
             let initialLocalConflict = null;
-            const hasUnsentLocalChanges = Boolean(localStorage.getItem(DIRTY_KEY));
+            const hasUnsentLocalChanges = Boolean(localStorage.getItem(DIRTY_KEY)) && hasLocalData();
             if (row) {
                 lastRemoteVersion = Number(row.version) || 0;
                 if ((!ownerId && hasLocalData()) || hasUnsentLocalChanges) {
