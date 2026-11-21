@@ -89,7 +89,9 @@
     const form = screen.querySelector('#nuvio-auth-form');
     const title = screen.querySelector('#nuvio-auth-title');
     const emailInput = screen.querySelector('#nuvio-auth-email');
+    const emailField = emailInput.closest('.nuvio-auth-field');
     const passwordInput = screen.querySelector('#nuvio-auth-password');
+    const resetLinks = screen.querySelector('.nuvio-auth-links');
     const submitButton = screen.querySelector('#nuvio-auth-submit');
     const switchButton = screen.querySelector('#nuvio-auth-switch');
     const resetButton = screen.querySelector('#nuvio-auth-reset');
@@ -105,6 +107,11 @@
     function setMode(nextMode) {
         mode = nextMode;
         message.textContent = '';
+        const isRecovery = mode === 'recovery';
+        emailField.hidden = isRecovery;
+        emailInput.required = !isRecovery;
+        resetLinks.hidden = isRecovery;
+        passwordInput.value = '';
 
         if (mode === 'login') {
             title.textContent = 'تسجيل الدخول';
