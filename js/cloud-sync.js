@@ -45,7 +45,10 @@
             nuvio_water: app?.waterData || {},
             nuvio_prayer: app?.prayerData || {},
             nuvio_user_profile: app?.userProfile || {},
-            schemaVersion: 19
+            nuvio_timer_state: (() => { try { return JSON.parse(localStorage.getItem('nuvio_timer_state') || 'null'); } catch { return null; } })(),
+            nuvio_ai_history: (() => { try { return JSON.parse(localStorage.getItem('nuvio_ai_history') || '[]'); } catch { return []; } })(),
+            nuvio_ai_settings: (() => { try { return JSON.parse(localStorage.getItem('nuvio_ai_settings') || '{}'); } catch { return {}; } })(),
+            schemaVersion: 20
         };
     }
 
@@ -66,6 +69,9 @@
             const water = get('waterData', 'nuvio_water');
             const prayer = get('prayerData', 'nuvio_prayer');
             const profile = get('userProfile', 'nuvio_user_profile');
+            const timerState = get('timerState', 'nuvio_timer_state');
+            const aiHistory = get('aiHistory', 'nuvio_ai_history');
+            const aiSettings = get('aiSettings', 'nuvio_ai_settings');
 
             if (Array.isArray(tasks)) app.tasks = tasks;
             if (Array.isArray(sessions)) app.focusSessions = sessions;
@@ -97,11 +103,15 @@
                 localStorage.setItem(key, JSON.stringify(value));
             });
 
+            if (timerState && typeof timerState === 'object' && !Array.isArray(timerState)) localStorage.setItem('nuvio_timer_state', JSON.stringify(timerState));
+            if (Array.isArray(aiHistory)) localStorage.setItem('nuvio_ai_history', JSON.stringify(aiHistory));
+            if (aiSettings && typeof aiSettings === 'object' && !Array.isArray(aiSettings)) localStorage.setItem('nuvio_ai_settings', JSON.stringify(aiSettings));
             app.applyTheme?.();
             app.applyLanguage?.();
             app.renderAll?.();
             app.renderHabits?.();
             app.renderNotes?.();
+            if (timerState && typeof timerState === 'object' && !Array.isArray(timerState)) app.restoreTimerState?.();
         } finally {
             applying = false;
         }
@@ -114,17 +124,37 @@
         });
     }
 
+    function backupLocalAccountData(reason, nextUserId) {
+        const data = {};
+        DATA_KEYS.forEach(key => { const value = localStorage.getItem(key); if (value !== null) data[key] = value; });
+        if (!Object.keys(data).length) return true;
+        const owner = localStorage.getItem(OWNER_KEY) || 'unclaimed';
+        const key = BACKUP_PREFIX + owner + '_' + Date.now();
+        try {
+            localStorage.setItem(key, JSON.stringify({ createdAt: new Date().toISOString(), reason, previousOwner: owner, nextUserId: nextUserId || null, data }));
+            emit('nuvio:local-backup-created', { key, reason });
+            return true;
+        } catch (error) {
+            console.error('Nuvio local backup failed; refusing destructive cleanup:', error);
+            emit('nuvio:sync-error', { message: 'تعذر إنشاء نسخة احتياطية محلية؛ أوقفنا تبديل البيانات لحمايتها.' });
+            return false;
+        }
+    }
+
     function clearLocalAccountData() {
         DATA_KEYS.forEach(key => localStorage.removeItem(key));
-        localStorage.removeItem('nuvio_pre_import_backup');
-
-        // Device-only backups are cleared; cloud account rows are not touched.
-        Object.keys(localStorage).forEach(key => {
-            if (key.startsWith(BACKUP_PREFIX)) localStorage.removeItem(key);
-        });
+        // Keep recovery backups and pre-import backups intact.
     }
 
     function resetForDifferentAccount(nextUserId) {
+        if (!backupLocalAccountData('account-switch', nextUserId)) {
+            ready = false;
+            userId = null;
+            clearTimeout(timer);
+            generation += 1;
+            if (channel) { client.removeChannel(channel); channel = null; }
+            return;
+        }
         clearTimeout(timer);
         ready = false;
         dirty = false;
@@ -320,6 +350,7 @@
 
             if (row) {
                 if (!ownerId && hasLocalData()) {
+                    if (!backupLocalAccountData('remote-account-data-preferred', nextUserId)) throw new Error('Local backup failed; refusing to replace local data.');
                     clearLocalAccountData();
                     localStorage.setItem(OWNER_KEY, nextUserId);
                     window.location.reload();
@@ -330,14 +361,7 @@
                 localStorage.setItem(OWNER_KEY, nextUserId);
                 dirty = false;
             } else {
-                const unclaimedLocalData = !ownerId && hasLocalData();
-                if (unclaimedLocalData) {
-                    clearLocalAccountData();
-                    localStorage.setItem(OWNER_KEY, nextUserId);
-                    window.location.reload();
-                    return;
-                }
-
+                // With no cloud row, preserve and claim existing unassigned device data.
                 localStorage.setItem(OWNER_KEY, nextUserId);
                 ready = true;
                 await writeSnapshot();
