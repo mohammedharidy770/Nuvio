@@ -16,7 +16,7 @@ Object.assign(NuvioApp.prototype, {
             } else if (task.repeat === 'weekly') {
                 nextDate.setDate(nextDate.getDate() + 7);
             } else {
-                const day = nextDate.getDate();
+                const day = Number(task.recurrenceDay) || currentDate.getDate();
                 nextDate.setDate(1);
                 nextDate.setMonth(nextDate.getMonth() + 1);
                 const lastDay = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
@@ -43,6 +43,7 @@ Object.assign(NuvioApp.prototype, {
             completedAt: null,
             tags: Array.isArray(task.tags) ? [...task.tags] : [],
             seriesId: task.seriesId || task.id,
+            recurrenceDay: Number(task.recurrenceDay) || currentDate.getDate(),
             recurrenceParentId: task.id,
             recurrenceNextId: null,
             autoStartedFor: null
