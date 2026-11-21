@@ -1,4 +1,66 @@
 Object.assign(NuvioApp.prototype, {
+    createNextRecurringTask(task) {
+        if (!task || !['daily', 'weekly', 'monthly'].includes(task.repeat) || !task.dueDate) return null;
+        const currentDate = new Date(task.dueDate);
+        if (Number.isNaN(currentDate.getTime())) return null;
+
+        const existing = task.recurrenceNextId
+            ? this.tasks.find(item => item.id === task.recurrenceNextId)
+            : this.tasks.find(item => item.recurrenceParentId === task.id);
+        if (existing) return existing;
+
+        const nextDate = new Date(currentDate);
+        const advance = () => {
+            if (task.repeat === 'daily') {
+                nextDate.setDate(nextDate.getDate() + 1);
+            } else if (task.repeat === 'weekly') {
+                nextDate.setDate(nextDate.getDate() + 7);
+            } else {
+                const day = nextDate.getDate();
+                nextDate.setDate(1);
+                nextDate.setMonth(nextDate.getMonth() + 1);
+                const lastDay = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
+                nextDate.setDate(Math.min(day, lastDay));
+            }
+        };
+
+        const now = Date.now();
+        let attempts = 0;
+        while (nextDate.getTime() <= now && attempts < 500) {
+            advance();
+            attempts += 1;
+        }
+        if (nextDate.getTime() <= now) return null;
+
+        const nextTask = {
+            ...task,
+            id: 'task-repeat-' + (window.crypto?.randomUUID?.() || (Date.now() + '-' + Math.random().toString(36).slice(2, 9))),
+            title: task.title,
+            status: 'pending',
+            dueDate: nextDate.toISOString(),
+            actualTime: 0,
+            createdAt: new Date().toISOString(),
+            completedAt: null,
+            tags: Array.isArray(task.tags) ? [...task.tags] : [],
+            seriesId: task.seriesId || task.id,
+            recurrenceParentId: task.id,
+            recurrenceNextId: null,
+            autoStartedFor: null
+        };
+        task.seriesId = task.seriesId || task.id;
+        task.recurrenceNextId = nextTask.id;
+        this.tasks.unshift(nextTask);
+
+        const reminderMinutes = Number(nextTask.reminder) || 0;
+        if (reminderMinutes > 0) {
+            const remindAt = new Date(nextDate.getTime() - reminderMinutes * 60000);
+            if (remindAt > new Date()) {
+                this.addNotification('task', `${this.t('form.reminder')}: ${nextTask.title}`, remindAt, nextTask.id);
+            }
+        }
+        return nextTask;
+    },
+
     renderTasks() {
         const list = document.getElementById('tasksList');
         const empty = document.getElementById('tasksEmpty');
@@ -278,6 +340,7 @@ Object.assign(NuvioApp.prototype, {
         } else {
             task.status = 'completed';
             task.completedAt = new Date().toISOString();
+            this.createNextRecurringTask(task);
             this.showToast(this.settings.language === 'ar' ? 'تم إكمال المهمة! أحسنت' : 'Task completed! Great job', 'success');
             this.addNotification('focus', `${this.settings.language === 'ar' ? 'أحسنت! أكملت' : 'Great! Completed'}: ${task.title}`);
         }
@@ -306,6 +369,7 @@ Object.assign(NuvioApp.prototype, {
 
         task.status = 'completed';
         task.completedAt = new Date().toISOString();
+        this.createNextRecurringTask(task);
         // Actual time is accumulated from completed focus sessions, not estimates.
         this.saveData();
         this.renderAll();
