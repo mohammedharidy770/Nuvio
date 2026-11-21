@@ -178,10 +178,69 @@
     }
 
     function hasLocalData() {
-        return DATA_KEYS.some(key => {
-            const value = localStorage.getItem(key);
-            return value && value !== '[]' && value !== '{}';
-        });
+        const read = key => {
+            try {
+                const raw = localStorage.getItem(key);
+                return raw === null ? null : JSON.parse(raw);
+            } catch {
+                return null;
+            }
+        };
+        const hasItems = key => {
+            const value = read(key);
+            return Array.isArray(value) && value.length > 0;
+        };
+
+        // Only count actual user-created content. The app creates a default
+        // water-tracking record during startup, which must not trigger a
+        // local-vs-cloud conflict for a brand-new device.
+        if (['nuvio_tasks', 'nuvio_sessions', 'nuvio_notifications',
+            'nuvio_habits', 'nuvio_notes', 'nuvio_sleep'].some(hasItems)) return true;
+
+        const profile = read('nuvio_user_profile');
+        if (profile && (String(profile.name || '').trim() || profile.avatar)) return true;
+
+        const settings = read('nuvio_settings');
+        if (settings && typeof settings === 'object' && !Array.isArray(settings)) {
+            const defaults = {
+                pomodoroDuration: 25, shortBreakDuration: 5, longBreakDuration: 15,
+                darkMode: false, language: 'ar', timerNotification: true, taskReminder: true
+            };
+            if (Object.entries(settings).some(([key, value]) =>
+                Object.prototype.hasOwnProperty.call(defaults, key) && value !== defaults[key]
+            )) return true;
+        }
+
+        const water = read('nuvio_water');
+        if (water && typeof water === 'object' && !Array.isArray(water)) {
+            if (Number(water.today) > 0 || Number(water.goal || 8) !== 8 ||
+                water.reminder === true || (water.history && Object.keys(water.history).length > 0)) return true;
+        }
+
+        const prayer = read('nuvio_prayer');
+        if (prayer && typeof prayer === 'object' && !Array.isArray(prayer)) {
+            if ((prayer.city && prayer.city !== 'Cairo') ||
+                (prayer.method && String(prayer.method) !== '5') ||
+                prayer.times || prayer.location) return true;
+        }
+
+        const timerState = read('nuvio_timer_state');
+        if (timerState && typeof timerState === 'object' && !Array.isArray(timerState)) {
+            if (timerState.running || timerState.paused || timerState.currentTask ||
+                (timerState.mode && timerState.mode !== 'pomodoro') ||
+                (Number(timerState.timeLeft) > 0 && Number(timerState.totalTime) > 0 &&
+                    Number(timerState.timeLeft) !== Number(timerState.totalTime))) return true;
+        }
+
+        const aiHistory = read('nuvio_ai_history');
+        if (Array.isArray(aiHistory) && aiHistory.some(chat =>
+            Array.isArray(chat?.messages) && chat.messages.length > 0
+        )) return true;
+
+        const aiSettings = read('nuvio_ai_settings');
+        if (aiSettings && typeof aiSettings === 'object' && Object.keys(aiSettings).length > 0) return true;
+
+        return false;
     }
 
     function backupLocalAccountData(reason, nextUserId) {
