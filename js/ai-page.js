@@ -1,7 +1,9 @@
 (function () {
     'use strict';
 
-    const API_URL = 'https://nuvio-blue.vercel.app/api/chat';
+    const API_URL = window.location.hostname.endsWith('.vercel.app')
+        ? window.location.origin + '/api/chat'
+        : 'https://nuvio-blue.vercel.app/api/chat';
     const HISTORY_KEY = 'nuvio_ai_history';
     const TASKS_KEY = 'nuvio_tasks';
     let conversations = [];
@@ -36,6 +38,7 @@
 
     function saveHistory() {
         localStorage.setItem(HISTORY_KEY, JSON.stringify(conversations.slice(0, 30)));
+        window.NuvioSync?.scheduleSave();
     }
 
     function currentChat() {
@@ -184,6 +187,7 @@
 
     function saveAISettings(settings) {
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+        window.NuvioSync?.scheduleSave();
     }
 
     function openSettings(open) {
@@ -241,22 +245,22 @@
 
     function inferDirectReminder(message) {
         const raw = normalizeDigits(message);
-        const trigger = /(?:فكرني|ذكرني|افتكرني|نبهني|اعملي?\\s+تذكير)/i;
+        const trigger = /(?:فكرني|ذكرني|افتكرني|نبهني|اعملي?\s+تذكير)/i;
         if (!trigger.test(raw)) return [];
 
-        const timePattern = /(?:على\\s+الساعة|علي\\s+الساعة|الساعة|على|علي|عند)\\s*(\\d{1,2})(?::(\\d{2}))?\\s*(صباحا|صباحًا|الصبح|صبح|مساء|مساءً|بالليل|ليل|ظهر|بعد\\s+الظهر)?/i;
+        const timePattern = /(?:على\s+الساعة|علي\s+الساعة|الساعة|على|علي|عند)\s*(\d{1,2})(?::(\d{2}))?\s*(صباحا|صباحًا|الصبح|صبح|مساء|مساءً|بالليل|ليل|ظهر|بعد\s+الظهر)?/i;
         const match = timePattern.exec(raw);
         if (!match) return [];
 
         let messageText = (raw.slice(0, match.index) + ' ' + raw.slice(match.index + match[0].length))
             .replace(trigger, '')
-            .replace(/^(?:مثلا|مثلًا|لو سمحت|من فضلك)\\s*/i, '')
+            .replace(/^(?:مثلا|مثلًا|لو سمحت|من فضلك)\s*/i, '')
             .replace(/[،,.!؟]+/g, ' ')
-            .replace(/\\s+/g, ' ')
+            .replace(/\s+/g, ' ')
             .trim();
         let hour = Number(match[1]);
         const minute = Number(match[2] || 0);
-        const period = String(match[3] || '').replace(/\\s/g, '');
+        const period = String(match[3] || '').replace(/\s/g, '');
         if (!messageText || hour < 1 || hour > 12 || minute > 59) return [];
 
         const morning = /صباح|صبح/.test(period);
@@ -651,11 +655,13 @@
 
             if (action.type === 'delete_task') {
                 window.app.tasks = window.app.tasks.filter(item => item.id !== task.id);
+                window.app.notifications = window.app.notifications.filter(item => item.taskId !== task.id);
                 count++;
                 changedTasks = true;
             } else if (action.type === 'complete_task') {
                 task.status = task.status === 'completed' ? 'pending' : 'completed';
                 task.completedAt = task.status === 'completed' ? new Date().toISOString() : null;
+                if (task.status === 'completed') window.app.createNextRecurringTask?.(task);
                 count++;
                 changedTasks = true;
             } else if (action.type === 'start_task') {
@@ -676,6 +682,16 @@
                     const nextDate = changes.dueDate === null ? null : new Date(changes.dueDate);
                     if (changes.dueDate === null || !Number.isNaN(nextDate.getTime())) task.dueDate = nextDate ? nextDate.toISOString() : null;
                     else return;
+                    window.app.notifications = window.app.notifications.filter(item => item.taskId !== task.id);
+                    if (task.dueDate && Number(task.reminder) > 0) {
+                        const remindAt = new Date(new Date(task.dueDate).getTime() - Number(task.reminder) * 60000);
+                        if (remindAt > new Date()) window.app.addNotification('task', 'تذكير: ' + task.title, remindAt, task.id);
+                    }
+                }
+                if (changes.title) {
+                    window.app.notifications.forEach(item => {
+                        if (item.taskId === task.id && !item.firedAt) item.message = 'تذكير: ' + task.title;
+                    });
                 }
                 const hasOtherChange = Boolean(changes.title || changes.description !== undefined || changes.category || changes.priority || changes.estimatedTime);
                 if (hasOtherChange || Object.prototype.hasOwnProperty.call(changes, 'dueDate')) { count++; changedTasks = true; }
@@ -1008,6 +1024,15 @@
             render();
         }
     }
+
+    window.addEventListener('nuvio:remote-state-applied', () => {
+        loadHistory();
+        if (dom.messages && document.getElementById('aiSection')?.classList.contains('active')) {
+            activeId = conversations[0]?.id || null;
+            if (activeId) render();
+            else createChat();
+        }
+    });
 
     initialize();
 })();

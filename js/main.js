@@ -1,3 +1,7 @@
+window.addEventListener('nuvio:sync-conflict', event => {
+    window.app?.showSyncConflict?.(event.detail || {});
+});
+
 window.app = new NuvioApp();
 
 if ('serviceWorker' in navigator) {

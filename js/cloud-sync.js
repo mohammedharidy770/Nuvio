@@ -9,12 +9,13 @@
 
     const TABLE = 'nuvio_data';
     const OWNER_KEY = 'nuvio_local_owner_id';
+    const DIRTY_KEY = 'nuvio_local_dirty_at';
     const BACKUP_PREFIX = 'nuvio_account_backup_';
     const DATA_KEYS = [
         'nuvio_tasks', 'nuvio_sessions', 'nuvio_settings', 'nuvio_notifications',
         'nuvio_habits', 'nuvio_notes', 'nuvio_sleep', 'nuvio_water',
         'nuvio_prayer', 'nuvio_user_profile', 'nuvio_timer_state',
-        'nuvio_ai_history', 'nuvio_ai_settings'
+        'nuvio_ai_history', 'nuvio_ai_settings', DIRTY_KEY
     ];
 
     let userId = null;
@@ -27,9 +28,66 @@
     let generation = 0;
     let lastRemoteVersion = 0;
     let channel = null;
+    let pendingConflict = null;
 
     function emit(name, detail) {
         window.dispatchEvent(new CustomEvent(name, { detail }));
+    }
+
+    function setPendingConflict(remoteData, remoteVersion, message) {
+        const version = Number(remoteVersion);
+        if (!remoteData || !Number.isFinite(version) || version < 1) return;
+        pendingConflict = {
+            remoteData,
+            remoteVersion: version,
+            detectedAt: new Date().toISOString()
+        };
+        emit('nuvio:sync-conflict', { message, remoteVersion: version });
+    }
+
+    async function resolveConflict(choice) {
+        if (!pendingConflict || !userId || !ready || busy) return false;
+        if (!['remote', 'local'].includes(choice)) return false;
+
+        const conflict = pendingConflict;
+        if (!backupLocalAccountData('sync-conflict-' + choice, userId)) return false;
+
+        try {
+            const remoteKey = BACKUP_PREFIX + 'cloud_' + userId + '_' + Date.now();
+            localStorage.setItem(remoteKey, JSON.stringify({
+                createdAt: new Date().toISOString(),
+                reason: 'sync-conflict-remote-version',
+                remoteVersion: conflict.remoteVersion,
+                data: conflict.remoteData
+            }));
+        } catch (error) {
+            console.error('Nuvio remote conflict backup failed; refusing resolution:', error);
+            emit('nuvio:sync-error', { message: 'تعذر حفظ نسخة السحابة الاحتياطية؛ لم نغيّر أي بيانات.' });
+            return false;
+        }
+
+        if (choice === 'remote') {
+            pendingConflict = null;
+            applySnapshot(conflict.remoteData);
+            lastRemoteVersion = conflict.remoteVersion;
+            dirty = false;
+            localStorage.setItem(OWNER_KEY, userId);
+            emit('nuvio:sync-resolved', { choice, version: lastRemoteVersion });
+            return true;
+        }
+
+        lastRemoteVersion = conflict.remoteVersion;
+        pendingConflict = null;
+        dirty = true;
+        try {
+            await writeSnapshot();
+        } catch (error) {
+            handleSyncError(error);
+            return false;
+        }
+        const resolved = !pendingConflict && !dirty;
+        if (resolved) emit('nuvio:sync-resolved', { choice, version: lastRemoteVersion });
+        return resolved;
     }
 
     function snapshot() {
@@ -45,7 +103,10 @@
             nuvio_water: app?.waterData || {},
             nuvio_prayer: app?.prayerData || {},
             nuvio_user_profile: app?.userProfile || {},
-            schemaVersion: 19
+            nuvio_timer_state: (() => { try { return JSON.parse(localStorage.getItem('nuvio_timer_state') || 'null'); } catch { return null; } })(),
+            nuvio_ai_history: (() => { try { return JSON.parse(localStorage.getItem('nuvio_ai_history') || '[]'); } catch { return []; } })(),
+            nuvio_ai_settings: (() => { try { return JSON.parse(localStorage.getItem('nuvio_ai_settings') || '{}'); } catch { return {}; } })(),
+            schemaVersion: 20
         };
     }
 
@@ -66,6 +127,9 @@
             const water = get('waterData', 'nuvio_water');
             const prayer = get('prayerData', 'nuvio_prayer');
             const profile = get('userProfile', 'nuvio_user_profile');
+            const timerState = get('timerState', 'nuvio_timer_state');
+            const aiHistory = get('aiHistory', 'nuvio_ai_history');
+            const aiSettings = get('aiSettings', 'nuvio_ai_settings');
 
             if (Array.isArray(tasks)) app.tasks = tasks;
             if (Array.isArray(sessions)) app.focusSessions = sessions;
@@ -97,11 +161,17 @@
                 localStorage.setItem(key, JSON.stringify(value));
             });
 
+            localStorage.removeItem(DIRTY_KEY);
+            if (timerState && typeof timerState === 'object' && !Array.isArray(timerState)) localStorage.setItem('nuvio_timer_state', JSON.stringify(timerState));
+            if (Array.isArray(aiHistory)) localStorage.setItem('nuvio_ai_history', JSON.stringify(aiHistory));
+            if (aiSettings && typeof aiSettings === 'object' && !Array.isArray(aiSettings)) localStorage.setItem('nuvio_ai_settings', JSON.stringify(aiSettings));
             app.applyTheme?.();
             app.applyLanguage?.();
             app.renderAll?.();
             app.renderHabits?.();
             app.renderNotes?.();
+            emit('nuvio:remote-state-applied', {});
+            if (timerState && typeof timerState === 'object' && !Array.isArray(timerState)) app.restoreTimerState?.();
         } finally {
             applying = false;
         }
@@ -114,21 +184,42 @@
         });
     }
 
+    function backupLocalAccountData(reason, nextUserId) {
+        const data = {};
+        DATA_KEYS.forEach(key => { const value = localStorage.getItem(key); if (value !== null) data[key] = value; });
+        if (!Object.keys(data).length) return true;
+        const owner = localStorage.getItem(OWNER_KEY) || 'unclaimed';
+        const key = BACKUP_PREFIX + owner + '_' + Date.now();
+        try {
+            localStorage.setItem(key, JSON.stringify({ createdAt: new Date().toISOString(), reason, previousOwner: owner, nextUserId: nextUserId || null, data }));
+            emit('nuvio:local-backup-created', { key, reason });
+            return true;
+        } catch (error) {
+            console.error('Nuvio local backup failed; refusing destructive cleanup:', error);
+            emit('nuvio:sync-error', { message: 'تعذر إنشاء نسخة احتياطية محلية؛ أوقفنا تبديل البيانات لحمايتها.' });
+            return false;
+        }
+    }
+
     function clearLocalAccountData() {
         DATA_KEYS.forEach(key => localStorage.removeItem(key));
-        localStorage.removeItem('nuvio_pre_import_backup');
-
-        // Device-only backups are cleared; cloud account rows are not touched.
-        Object.keys(localStorage).forEach(key => {
-            if (key.startsWith(BACKUP_PREFIX)) localStorage.removeItem(key);
-        });
+        // Keep recovery backups and pre-import backups intact.
     }
 
     function resetForDifferentAccount(nextUserId) {
+        if (!backupLocalAccountData('account-switch', nextUserId)) {
+            ready = false;
+            userId = null;
+            clearTimeout(timer);
+            generation += 1;
+            if (channel) { client.removeChannel(channel); channel = null; }
+            return;
+        }
         clearTimeout(timer);
         ready = false;
         dirty = false;
         pendingSave = false;
+        pendingConflict = null;
         lastRemoteVersion = 0;
         generation += 1;
 
@@ -155,11 +246,12 @@
         busy = true;
         const writeUserId = userId;
         const writeGeneration = generation;
+        const localRevision = localStorage.getItem(DIRTY_KEY);
 
         try {
             const { data: row, error: readError } = await client
                 .from(TABLE)
-                .select('version')
+                .select('data,version')
                 .eq('user_id', writeUserId)
                 .maybeSingle();
 
@@ -177,9 +269,7 @@
             if (row) {
                 if ((Number(row.version) || 0) !== lastRemoteVersion) {
                     dirty = true;
-                    emit('nuvio:sync-conflict', {
-                        message: 'هناك نسخة أحدث على السحابة. احتفظنا بالتعديلات المحلية ولم نستبدلها.'
-                    });
+                    setPendingConflict(row.data, Number(row.version), 'هناك نسخة أحدث على السحابة. اختر النسخة التي تريد الاحتفاظ بها.');
                     return;
                 }
                 const { data, error } = await client
@@ -193,9 +283,13 @@
                 if (error) throw error;
                 if (!data) {
                     dirty = true;
-                    emit('nuvio:sync-conflict', {
-                        message: 'تم تعديل البيانات من جهاز آخر. احتفظنا بالتعديلات المحلية ولم نستبدلها.'
-                    });
+                    const { data: latest, error: latestError } = await client
+                        .from(TABLE)
+                        .select('data,version')
+                        .eq('user_id', writeUserId)
+                        .maybeSingle();
+                    if (latestError) throw latestError;
+                    if (latest) setPendingConflict(latest.data, Number(latest.version), 'تم تعديل البيانات من جهاز آخر أثناء الحفظ. اختر النسخة التي تريد الاحتفاظ بها.');
                     return;
                 }
             } else {
@@ -203,9 +297,13 @@
                 if (error) {
                     if (error.code === '23505') {
                         dirty = true;
-                        emit('nuvio:sync-conflict', {
-                            message: 'تم إنشاء سجل الحساب من جهاز آخر. أعد المزامنة قبل الحفظ.'
-                        });
+                        const { data: latest, error: latestError } = await client
+                            .from(TABLE)
+                            .select('data,version')
+                            .eq('user_id', writeUserId)
+                            .maybeSingle();
+                        if (latestError) throw latestError;
+                        if (latest) setPendingConflict(latest.data, Number(latest.version), 'تم إنشاء بيانات الحساب من جهاز آخر. اختر النسخة التي تريد الاحتفاظ بها.');
                         return;
                     }
                     throw error;
@@ -214,7 +312,8 @@
 
             if (writeGeneration === generation && writeUserId === userId) {
                 lastRemoteVersion = nextVersion;
-                dirty = false;
+                if (localStorage.getItem(DIRTY_KEY) === localRevision) localStorage.removeItem(DIRTY_KEY);
+                dirty = Boolean(localStorage.getItem(DIRTY_KEY));
             }
         } finally {
             busy = false;
@@ -250,9 +349,7 @@
             const remoteVersion = Number(row.version) || 0;
             if (remoteVersion > lastRemoteVersion) {
                 if (dirty) {
-                    emit('nuvio:sync-conflict', {
-                        message: 'هناك تعديلات محلية وأخرى على جهاز مختلف. لم نستبدل أيًا منهما تلقائيًا.'
-                    });
+                    setPendingConflict(row.data, remoteVersion, 'هناك تعديلات محلية وأخرى على جهاز مختلف. اختر النسخة التي تريد الاحتفاظ بها.');
                     return;
                 }
 
@@ -268,8 +365,12 @@
     }
 
     function scheduleSave() {
-        if (!userId || applying) return;
+        if (applying) return;
         dirty = true;
+        try { localStorage.setItem(DIRTY_KEY, String(Date.now())); } catch (error) {
+            emit('nuvio:sync-error', { message: 'تعذر تسجيل حالة التعديل المحلي؛ صدّر نسخة احتياطية قبل تغيير الحساب.' });
+        }
+        if (!userId) return;
         clearTimeout(timer);
         timer = setTimeout(() => {
             writeSnapshot().catch(handleSyncError);
@@ -287,6 +388,7 @@
             userId = null;
             ready = false;
             dirty = false;
+            pendingConflict = null;
             clearTimeout(timer);
             if (channel) {
                 client.removeChannel(channel);
@@ -303,9 +405,10 @@
         }
 
         userId = nextUserId;
+        pendingConflict = null;
         const startGeneration = ++generation;
         ready = false;
-        dirty = false;
+        dirty = Boolean(localStorage.getItem(DIRTY_KEY));
         clearTimeout(timer);
 
         try {
@@ -318,26 +421,22 @@
             if (error) throw error;
             if (startGeneration !== generation || userId !== nextUserId) return;
 
+            let initialLocalConflict = null;
+            const hasUnsentLocalChanges = Boolean(localStorage.getItem(DIRTY_KEY));
             if (row) {
-                if (!ownerId && hasLocalData()) {
-                    clearLocalAccountData();
-                    localStorage.setItem(OWNER_KEY, nextUserId);
-                    window.location.reload();
-                    return;
-                }
-                applySnapshot(row.data);
                 lastRemoteVersion = Number(row.version) || 0;
-                localStorage.setItem(OWNER_KEY, nextUserId);
-                dirty = false;
-            } else {
-                const unclaimedLocalData = !ownerId && hasLocalData();
-                if (unclaimedLocalData) {
-                    clearLocalAccountData();
+                if ((!ownerId && hasLocalData()) || hasUnsentLocalChanges) {
+                    if (!backupLocalAccountData('initial-device-cloud-conflict', nextUserId)) throw new Error('Local backup failed; refusing to replace local data.');
                     localStorage.setItem(OWNER_KEY, nextUserId);
-                    window.location.reload();
-                    return;
+                    dirty = true;
+                    initialLocalConflict = { data: row.data, version: lastRemoteVersion };
+                } else {
+                    applySnapshot(row.data);
+                    localStorage.setItem(OWNER_KEY, nextUserId);
+                    dirty = false;
                 }
-
+            } else {
+                // With no cloud row, preserve and claim existing unassigned device data.
                 localStorage.setItem(OWNER_KEY, nextUserId);
                 ready = true;
                 await writeSnapshot();
@@ -359,9 +458,7 @@
                     if (!incomingVersion || incomingVersion <= lastRemoteVersion || applying) return;
 
                     if (dirty) {
-                        emit('nuvio:sync-conflict', {
-                            message: 'وصل تحديث من جهاز آخر بينما لديك تعديلات محلية. لم نستبدل بياناتك.'
-                        });
+                        setPendingConflict(payload.new.data, incomingVersion, 'وصل تحديث من جهاز آخر بينما لديك تعديلات محلية. اختر النسخة التي تريد الاحتفاظ بها.');
                         return;
                     }
 
@@ -371,6 +468,10 @@
                 .subscribe();
 
             emit('nuvio:sync-ready', { userId: nextUserId });
+            if (initialLocalConflict) {
+                setPendingConflict(initialLocalConflict.data, initialLocalConflict.version,
+                    'وجدنا بيانات مختلفة على هذا الجهاز وفي السحابة. اختر أي نسخة تريد استخدامها.');
+            }
         } catch (error) {
             ready = false;
             handleSyncError(error);
@@ -394,7 +495,7 @@
     });
     window.addEventListener('online', syncNow);
 
-    window.NuvioSync = { scheduleSave, syncNow };
+    window.NuvioSync = { scheduleSave, syncNow, resolveConflict };
 
     client.auth.getSession()
         .then(({ data, error }) => {
