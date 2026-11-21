@@ -48,6 +48,7 @@ Object.assign(NuvioApp.prototype, {
         this.timerState.paused = false;
         this.timerState.endAt = Date.now() + this.timerState.timeLeft * 1000;
         this.persistTimerState();
+        window.NuvioSync?.scheduleSave();
 
         const tsb = document.getElementById('timerStartBtn');
         const tpb = document.getElementById('timerPauseBtn');
@@ -70,6 +71,7 @@ Object.assign(NuvioApp.prototype, {
         this.timerState.endAt = null;
         clearInterval(this.timerState.interval);
         this.persistTimerState();
+        window.NuvioSync?.scheduleSave();
 
         const tsb = document.getElementById('timerStartBtn');
         const tpb = document.getElementById('timerPauseBtn');
@@ -88,6 +90,7 @@ Object.assign(NuvioApp.prototype, {
         this.timerState.timeLeft = this.timerState.totalTime;
         this.timerState.endAt = null;
         this.persistTimerState();
+        window.NuvioSync?.scheduleSave();
         this.updateTimerDisplay();
 
         const tsb = document.getElementById('timerStartBtn');
