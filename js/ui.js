@@ -272,7 +272,7 @@ Object.assign(NuvioApp.prototype, {
         }
     },
 
-    addNotification(type, message, time = null) {
+    addNotification(type, message, time = null, taskId = null) {
         const now = new Date();
         const requested = time ? new Date(time) : null;
         const scheduledAt = requested && Number.isFinite(requested.getTime()) && requested.getTime() > now.getTime()
@@ -281,6 +281,7 @@ Object.assign(NuvioApp.prototype, {
             id: 'notif-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
             type: ['task', 'focus', 'reminder'].includes(type) ? type : 'reminder',
             message: String(message || '').trim().slice(0, 240),
+            taskId: taskId || null,
             time: now.toISOString(),
             scheduledAt,
             firedAt: scheduledAt ? null : now.toISOString(),
