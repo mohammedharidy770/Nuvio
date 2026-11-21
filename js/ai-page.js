@@ -660,6 +660,7 @@
             } else if (action.type === 'complete_task') {
                 task.status = task.status === 'completed' ? 'pending' : 'completed';
                 task.completedAt = task.status === 'completed' ? new Date().toISOString() : null;
+                if (task.status === 'completed') window.app.createNextRecurringTask?.(task);
                 count++;
                 changedTasks = true;
             } else if (action.type === 'start_task') {
