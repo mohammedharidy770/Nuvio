@@ -5,6 +5,7 @@ const ALLOWED_ORIGINS = new Set([
     'https://nuvio-blue.vercel.app',
     'https://mohammedharidy770.github.io',
     'https://nuvio-mohammedharidy770.vercel.app',
+    'https://nuvio-git-fix-stability-and-data-safety-mohammedharidy770.vercel.app',
     'https://nuvio-git-main-mohammedharidy770.vercel.app'
 ]);
 const isAllowedOrigin = origin => ALLOWED_ORIGINS.has(origin);
