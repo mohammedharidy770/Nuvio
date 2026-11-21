@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nuvio-v32';
+const CACHE_NAME = 'nuvio-v33';
 const STATIC_ASSETS = [
     './',
     './index.html',
@@ -17,10 +17,10 @@ const STATIC_ASSETS = [
     './css/motion.css?v=1',
     './css/ai-chat.css?v=2',
     './css/ai-page.css?v=7',
-    './js/app.js',
+    './js/app.js?v=2',
     './js/supabase-config.js',
     './js/supabase-client.js',
-    './js/auth.js?v=2',
+    './js/auth.js?v=3',
     './js/cloud-sync.js?v=5',
     './js/i18n.js',
     './js/storage.js',
