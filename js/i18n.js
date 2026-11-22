@@ -42,8 +42,13 @@ Object.assign(NuvioApp.prototype, {
                 'reports.focusHours': 'ساعات التركيز', 'reports.completedTasks': 'المهام المكتملة',
                 'reports.activityMap': 'خريطة النشاط', 'reports.monthlyOverview': 'نظرة شهرية',
                 'reports.thisWeek': 'هذا الأسبوع', 'reports.thisMonth': 'هذا الشهر',
-                'reports.totalTasks': 'إجمالي المهام', 'reports.completed': 'مكتملة',
-                'reports.focusHoursLabel': 'ساعات تركيز', 'reports.avgProductivity': 'متوسط الإنتاجية',
+                'reports.totalTasks': 'مهام أُضيفت', 'reports.completed': 'مكتملة',
+                'reports.focusHoursLabel': 'ساعات تركيز', 'reports.avgProductivity': 'نسبة الإكمال',
+                'reports.periodOverview': 'ملخص الفترة', 'reports.last7Days': 'آخر 7 أيام',
+                'reports.last30Days': 'آخر 30 يومًا',
+                'reports.periodSelector': 'فترة التقرير', 'reports.completedLegend': 'تصنيفات المهام المكتملة',
+                'reports.focusChartLabel': 'ساعات التركيز يوميًا',
+                'reports.completedChartLabel': 'المهام المكتملة حسب الفئة',
                 'settings.appearance': 'المظهر', 'settings.darkMode': 'الوضع الداكن',
                 'settings.darkModeDesc': 'تفعيل الوضع الداكن للواجهة',
                 'settings.language': 'اللغة', 'settings.appLanguage': 'لغة التطبيق',
@@ -58,6 +63,32 @@ Object.assign(NuvioApp.prototype, {
                 'settings.dataManagement': 'إدارة البيانات', 'settings.about': 'عن التطبيق',
                 'settings.account': 'الحساب', 'settings.logout': 'تسجيل الخروج',
                 'settings.logoutDesc': 'الخروج من حسابك على هذا الجهاز',
+                'ai.newConversation': 'محادثة جديدة', 'ai.previousChats': 'المحادثات السابقة',
+                'ai.settings': 'إعدادات AI Nuvio', 'ai.backToApp': 'العودة إلى Nuvio',
+                'ai.openChats': 'قائمة المحادثات', 'ai.clearConversation': 'مسح المحادثة',
+                'ai.messagePlaceholder': 'اسأل AI Nuvio أو اطلب تنفيذ مهمة...',
+                'ai.messageLabel': 'رسالة الذكاء الاصطناعي', 'ai.send': 'إرسال',
+                'ai.hint': 'يتحكم في مهامك وأقسام الموقع مباشرة.',
+                'ai.sidebarLabel': 'محادثات الذكاء الاصطناعي', 'ai.closeSettings': 'إغلاق الإعدادات',
+                'ai.copyResponse': 'نسخ الرد', 'ai.copyFailed': 'تعذر نسخ الرد.',
+                'ai.responseStyle': 'أسلوب الرد', 'ai.responseStyleHelp': 'اختر طريقة تواصل المساعد',
+                'ai.toneConcise': 'مختصر ومباشر', 'ai.toneFriendly': 'ودود وشرح بسيط',
+                'ai.toneDetailed': 'تفصيلي', 'ai.actions': 'تنفيذ الإجراءات',
+                'ai.actionsHelp': 'السماح للمساعد بتعديل مهامك',
+                'ai.resetSettings': 'استعادة الإعدادات الافتراضية',
+                'ai.welcomeTitle': 'كيف يمكنني مساعدتك؟',
+                'ai.welcomeDescription': 'خطط ليومك، نظّم مهامك، أو اسأل عن أي شيء في Nuvio.',
+                'ai.suggestionPlan': 'خطط يومي', 'ai.suggestionPlanHelp': 'رتّب مهام اليوم حسب الأولوية',
+                'ai.suggestionAnalyze': 'حلل مهامي', 'ai.suggestionAnalyzeHelp': 'اعرض ترتيبًا واقعيًا للإنجاز',
+                'ai.suggestionFocus': 'ابدأ تركيز', 'ai.suggestionFocusHelp': 'اقترح مهمة وجدول جلسة قصيرة',
+                'ai.suggestionHabit': 'ابنِ عادة', 'ai.suggestionHabitHelp': 'قدّم خطة بسيطة قابلة للاستمرار',
+                'ai.retry': 'إعادة المحاولة',
+                'ai.networkError': 'تعذر الاتصال بالمساعد. تحقق من اتصالك وحاول مرة أخرى.',
+                'ai.loginRequired': 'سجّل الدخول لاستخدام المساعد.',
+                'ai.confirmTitle': 'تأكيد', 'ai.cancel': 'إلغاء', 'ai.delete': 'حذف',
+                'ai.deleteConversation': 'هل تريد حذف هذه المحادثة نهائيًا؟',
+                'ai.clearMessages': 'هل تريد مسح رسائل هذه المحادثة؟',
+                'ai.deleteSelected': 'هل تريد حذف العنصر المحدد؟',
                 'settings.personalOS': 'نظام التشغيل الشخصي',
                 'modal.newTask': 'مهمة جديدة', 'modal.editTask': 'تعديل المهمة',
                 'modal.taskDetails': 'تفاصيل المهمة',
@@ -232,8 +263,13 @@ Object.assign(NuvioApp.prototype, {
                 'reports.focusHours': 'Focus Hours', 'reports.completedTasks': 'Completed Tasks',
                 'reports.activityMap': 'Activity Map', 'reports.monthlyOverview': 'Monthly Overview',
                 'reports.thisWeek': 'This Week', 'reports.thisMonth': 'This Month',
-                'reports.totalTasks': 'Total Tasks', 'reports.completed': 'Completed',
-                'reports.focusHoursLabel': 'Focus Hours', 'reports.avgProductivity': 'Avg Productivity',
+                'reports.totalTasks': 'Tasks created', 'reports.completed': 'Completed',
+                'reports.focusHoursLabel': 'Focus Hours', 'reports.avgProductivity': 'Completion rate',
+                'reports.periodOverview': 'Period summary', 'reports.last7Days': 'Last 7 days',
+                'reports.last30Days': 'Last 30 days',
+                'reports.periodSelector': 'Report period', 'reports.completedLegend': 'Completed task categories',
+                'reports.focusChartLabel': 'Daily focus hours',
+                'reports.completedChartLabel': 'Completed tasks by category',
                 'settings.appearance': 'Appearance', 'settings.darkMode': 'Dark Mode',
                 'settings.darkModeDesc': 'Enable dark mode for the interface',
                 'settings.language': 'Language', 'settings.appLanguage': 'App Language',
@@ -248,6 +284,32 @@ Object.assign(NuvioApp.prototype, {
                 'settings.dataManagement': 'Data Management', 'settings.about': 'About',
                 'settings.account': 'Account', 'settings.logout': 'Sign Out',
                 'settings.logoutDesc': 'Sign out of your account on this device',
+                'ai.newConversation': 'New chat', 'ai.previousChats': 'Recent chats',
+                'ai.settings': 'AI Nuvio settings', 'ai.backToApp': 'Back to Nuvio',
+                'ai.openChats': 'Open conversations', 'ai.clearConversation': 'Clear conversation',
+                'ai.messagePlaceholder': 'Ask AI Nuvio or request a task...',
+                'ai.messageLabel': 'AI assistant message', 'ai.send': 'Send',
+                'ai.hint': 'Manage your tasks and navigate the app directly.',
+                'ai.sidebarLabel': 'AI conversations', 'ai.closeSettings': 'Close settings',
+                'ai.copyResponse': 'Copy response', 'ai.copyFailed': 'Could not copy the response.',
+                'ai.responseStyle': 'Response style', 'ai.responseStyleHelp': 'Choose how the assistant communicates',
+                'ai.toneConcise': 'Concise and direct', 'ai.toneFriendly': 'Friendly with simple explanations',
+                'ai.toneDetailed': 'Detailed', 'ai.actions': 'Perform actions',
+                'ai.actionsHelp': 'Allow the assistant to update your tasks',
+                'ai.resetSettings': 'Restore default settings',
+                'ai.welcomeTitle': 'How can I help you?',
+                'ai.welcomeDescription': 'Plan your day, organize your tasks, or ask anything about Nuvio.',
+                'ai.suggestionPlan': 'Plan my day', 'ai.suggestionPlanHelp': 'Prioritize today’s tasks',
+                'ai.suggestionAnalyze': 'Review my tasks', 'ai.suggestionAnalyzeHelp': 'Suggest a realistic order',
+                'ai.suggestionFocus': 'Start focusing', 'ai.suggestionFocusHelp': 'Choose a task and plan a short session',
+                'ai.suggestionHabit': 'Build a habit', 'ai.suggestionHabitHelp': 'Create a simple, sustainable plan',
+                'ai.retry': 'Try again',
+                'ai.networkError': 'Could not reach the assistant. Check your connection and try again.',
+                'ai.loginRequired': 'Sign in to use the assistant.',
+                'ai.confirmTitle': 'Confirm', 'ai.cancel': 'Cancel', 'ai.delete': 'Delete',
+                'ai.deleteConversation': 'Delete this conversation permanently?',
+                'ai.clearMessages': 'Clear the messages in this conversation?',
+                'ai.deleteSelected': 'Delete the selected item?',
                 'settings.personalOS': 'Personal Operating System',
                 'modal.newTask': 'New Task', 'modal.editTask': 'Edit Task',
                 'modal.taskDetails': 'Task Details',
@@ -392,6 +454,8 @@ Object.assign(NuvioApp.prototype, {
 
         document.documentElement.lang = lang;
         document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
+        const aiSection = document.getElementById('aiSection');
+        if (aiSection) aiSection.dir = isRTL ? 'rtl' : 'ltr';
 
         // Update all translated elements
         document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -404,6 +468,11 @@ Object.assign(NuvioApp.prototype, {
             const key = el.getAttribute('data-i18n-placeholder');
             const translation = this.t(key);
             if (translation) el.placeholder = translation;
+        });
+        document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+            const key = el.getAttribute('data-i18n-aria-label');
+            const translation = this.t(key);
+            if (translation) el.setAttribute('aria-label', translation);
         });
         // Update user name in sidebar
         const sidebarName = document.getElementById('sidebarUserName');
@@ -419,7 +488,10 @@ Object.assign(NuvioApp.prototype, {
             reports: this.t('pages.reports'),
             settings: this.t('pages.settings'),
             habits: this.t('nav.habits'),
-            prayer: this.t('nav.prayer')
+            prayer: this.t('nav.prayer'),
+            sleep: this.t('nav.sleep'),
+            water: this.t('nav.water'),
+            notes: this.t('nav.notes')
         };
         document.getElementById('pageTitle').textContent = titles[this.currentSection] || 'Nuvio';
 
@@ -468,6 +540,9 @@ Object.assign(NuvioApp.prototype, {
 
         this.populateFormOptions();
         this.renderAll();
+        this.updateAccountSettings(this.accountSession);
+        window.NuvioAuth?.applyLanguage?.();
+        window.NuvioAI?.refreshLanguage?.();
     },
 
     toggleLanguage() {

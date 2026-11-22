@@ -41,7 +41,7 @@
                 </div>
             </aside>
 
-            <main class="nuvio-auth-card">
+            <div class="nuvio-auth-card">
                 <div class="nuvio-auth-mobile-brand">
                     <span class="nuvio-auth-brand-mark">N</span>
                     <span>NUVIO</span>
@@ -49,7 +49,7 @@
                 <div class="nuvio-auth-heading">
                     <span class="nuvio-auth-heading-icon"><i class="fas fa-lock"></i></span>
                     <h2 id="nuvio-auth-title">تسجيل الدخول</h2>
-                    <p>أهلاً بعودتك، سجّل دخولك للمتابعة</p>
+                    <p id="nuvio-auth-subtitle">أهلاً بعودتك، سجّل دخولك للمتابعة</p>
                 </div>
 
                 <form id="nuvio-auth-form">
@@ -80,7 +80,7 @@
                     <button type="button" id="nuvio-auth-switch">إنشاء حساب جديد</button>
                 </div>
                 <div id="nuvio-auth-message" role="status"></div>
-            </main>
+            </div>
         </div>
     `;
 
@@ -99,36 +99,67 @@
 
     let mode = 'login';
 
+    function isEnglish() {
+        return window.app?.settings?.language === 'en';
+    }
+
+    function authText(ar, en) {
+        return isEnglish() ? en : ar;
+    }
+
     function showMessage(text, success = false) {
         message.textContent = text;
         message.style.color = success ? '#86efac' : '#fca5a5';
     }
 
-    function setMode(nextMode) {
-        mode = nextMode;
-        message.textContent = '';
+    function renderModeText() {
         const isRecovery = mode === 'recovery';
+        const arrow = isEnglish() ? 'fa-arrow-right' : 'fa-arrow-left';
+        screen.dir = isEnglish() ? 'ltr' : 'rtl';
         emailField.hidden = isRecovery;
         emailInput.required = !isRecovery;
         resetLinks.hidden = isRecovery;
-        passwordInput.value = '';
+        screen.querySelector('.nuvio-auth-kicker').textContent = authText('مساحتك للتركيز والإنتاجية', 'Your space for focus and productivity');
+        screen.querySelector('.nuvio-auth-showcase-copy h1').innerHTML = isEnglish()
+            ? 'Organize your day,<br>reach your goals.'
+            : 'رتّب يومك،<br>وحقّق أهدافك.';
+        screen.querySelector('.nuvio-auth-showcase-copy p').textContent = authText(
+            'مهام، عادات، وتركيز في مساحة واحدة هادئة وسريعة.',
+            'Tasks, habits, and focus in one calm, fast workspace.'
+        );
+        emailField.querySelector('label').textContent = authText('البريد الإلكتروني', 'Email address');
+        passwordInput.closest('.nuvio-auth-field').querySelector('label').textContent = authText('كلمة المرور', 'Password');
+        screen.querySelector('#nuvio-auth-subtitle').textContent = mode === 'login'
+            ? authText('أهلاً بعودتك، سجّل دخولك للمتابعة', 'Welcome back. Sign in to continue.')
+            : mode === 'recovery'
+                ? authText('اختر كلمة مرور جديدة لحسابك', 'Choose a new password for your account.')
+                : authText('أنشئ حسابك وابدأ تنظيم يومك', 'Create an account and start organizing your day.');
 
         if (mode === 'login') {
-            title.textContent = 'تسجيل الدخول';
-            submitButton.innerHTML = '<span>تسجيل الدخول</span><i class="fas fa-arrow-left"></i>';
-            switchButton.textContent = 'إنشاء حساب جديد';
+            title.textContent = authText('تسجيل الدخول', 'Sign in');
+            submitButton.innerHTML = `<span>${authText('تسجيل الدخول', 'Sign in')}</span><i class="fas ${arrow}"></i>`;
+            switchButton.textContent = authText('إنشاء حساب جديد', 'Create an account');
+            resetButton.textContent = authText('نسيت كلمة المرور؟', 'Forgot password?');
             passwordInput.autocomplete = 'current-password';
         } else if (mode === 'recovery') {
-            title.textContent = 'تعيين كلمة مرور جديدة';
-            submitButton.innerHTML = '<span>حفظ كلمة المرور</span><i class="fas fa-arrow-left"></i>';
-            switchButton.textContent = 'العودة لتسجيل الدخول';
+            title.textContent = authText('تعيين كلمة مرور جديدة', 'Set a new password');
+            submitButton.innerHTML = `<span>${authText('حفظ كلمة المرور', 'Save password')}</span><i class="fas ${arrow}"></i>`;
+            switchButton.textContent = authText('العودة لتسجيل الدخول', 'Back to sign in');
             passwordInput.autocomplete = 'new-password';
         } else {
-            title.textContent = 'إنشاء حساب جديد';
-            submitButton.innerHTML = '<span>إنشاء الحساب</span><i class="fas fa-arrow-left"></i>';
-            switchButton.textContent = 'لديك حساب بالفعل؟ تسجيل الدخول';
+            title.textContent = authText('إنشاء حساب جديد', 'Create an account');
+            submitButton.innerHTML = `<span>${authText('إنشاء الحساب', 'Create account')}</span><i class="fas ${arrow}"></i>`;
+            switchButton.textContent = authText('لديك حساب بالفعل؟ تسجيل الدخول', 'Already have an account? Sign in');
+            resetButton.textContent = authText('نسيت كلمة المرور؟', 'Forgot password?');
             passwordInput.autocomplete = 'new-password';
         }
+    }
+
+    function setMode(nextMode) {
+        mode = nextMode;
+        message.textContent = '';
+        passwordInput.value = '';
+        renderModeText();
     }
 
     switchButton.addEventListener('click', function () {
@@ -142,19 +173,19 @@
         const password = passwordInput.value;
 
         if (password.length < 6) {
-            showMessage('كلمة المرور يجب ألا تقل عن 6 أحرف.');
+            showMessage(authText('كلمة المرور يجب ألا تقل عن 6 أحرف.', 'Password must be at least 6 characters.'));
             return;
         }
 
         submitButton.disabled = true;
-        submitButton.innerHTML = '<span>جارٍ التنفيذ...</span>';
+        submitButton.innerHTML = `<span>${authText('جارٍ التنفيذ...', 'Working...')}</span>`;
         showMessage('');
 
         try {
             if (mode === 'recovery') {
                 const { error } = await supabase.auth.updateUser({ password });
                 if (error) throw error;
-                showMessage('تم تحديث كلمة المرور بنجاح. يمكنك تسجيل الدخول الآن.', true);
+                showMessage(authText('تم تحديث كلمة المرور بنجاح. يمكنك تسجيل الدخول الآن.', 'Password updated. You can now sign in.'), true);
                 screen.hidden = true;
             } else if (mode === 'signup') {
                 const { data, error } = await supabase.auth.signUp({
@@ -169,11 +200,11 @@
                 if (error) throw error;
 
                 if (data.session) {
-                    showMessage('تم إنشاء الحساب بنجاح.', true);
+                    showMessage(authText('تم إنشاء الحساب بنجاح.', 'Account created successfully.'), true);
                     screen.hidden = true;
                 } else {
                     showMessage(
-                        'تم إنشاء الحساب. راجع بريدك الإلكتروني لتأكيده.',
+                        authText('تم إنشاء الحساب. راجع بريدك الإلكتروني لتأكيده.', 'Account created. Check your email to confirm it.'),
                         true
                     );
                 }
@@ -185,33 +216,26 @@
 
                 if (error) throw error;
 
-                showMessage('تم تسجيل الدخول بنجاح.', true);
+                showMessage(authText('تم تسجيل الدخول بنجاح.', 'Signed in successfully.'), true);
                 screen.hidden = true;
             }
         } catch (error) {
             console.error('Nuvio Auth:', error);
 
             const errors = {
-                'Invalid login credentials':
-                    'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
-                'User already registered':
-                    'هذا البريد مسجل بالفعل. سجّل الدخول.',
-                'Email not confirmed':
-                    'يجب تأكيد البريد الإلكتروني أولًا.'
+                'Invalid login credentials': authText('البريد الإلكتروني أو كلمة المرور غير صحيحة.', 'Email or password is incorrect.'),
+                'User already registered': authText('هذا البريد مسجل بالفعل. سجّل الدخول.', 'This email is already registered. Sign in instead.'),
+                'Email not confirmed': authText('يجب تأكيد البريد الإلكتروني أولًا.', 'Confirm your email address first.')
             };
 
             showMessage(
                 errors[error.message] ||
                 error.message ||
-                'حدث خطأ. حاول مرة أخرى.'
+                authText('حدث خطأ. حاول مرة أخرى.', 'Something went wrong. Please try again.')
             );
         } finally {
             submitButton.disabled = false;
-            submitButton.innerHTML = mode === 'recovery'
-                ? '<span>حفظ كلمة المرور</span><i class="fas fa-arrow-left"></i>'
-                : mode === 'login'
-                    ? '<span>تسجيل الدخول</span><i class="fas fa-arrow-left"></i>'
-                    : '<span>إنشاء الحساب</span><i class="fas fa-arrow-left"></i>';
+            renderModeText();
         }
     });
 
@@ -219,7 +243,7 @@
         const email = emailInput.value.trim();
 
         if (!email) {
-            showMessage('اكتب بريدك الإلكتروني أولًا.');
+            showMessage(authText('اكتب بريدك الإلكتروني أولًا.', 'Enter your email address first.'));
             emailInput.focus();
             return;
         }
@@ -238,20 +262,20 @@
             if (error) throw error;
 
             showMessage(
-                'إذا كان البريد مسجلًا، ستصلك رسالة لاستعادة كلمة المرور.',
+                authText('إذا كان البريد مسجلًا، ستصلك رسالة لاستعادة كلمة المرور.', 'If the email is registered, you will receive a password reset message.'),
                 true
             );
         } catch (error) {
             console.error(error);
-            showMessage('تعذر إرسال رسالة الاستعادة. حاول لاحقًا.');
+            showMessage(authText('تعذر إرسال رسالة الاستعادة. حاول لاحقًا.', 'Could not send the reset email. Please try again later.'));
         } finally {
             resetButton.disabled = false;
         }
     });
 
     async function initializeAuth() {
-        screen.hidden = false;
-        showMessage('جارٍ التحقق من الحساب...');
+        screen.hidden = true;
+        showMessage('');
 
         try {
             const { data, error } = await supabase.auth.getSession();
@@ -260,27 +284,30 @@
 
             if (data.session) {
                 screen.hidden = true;
+                window.app?.checkWelcomeScreen?.();
             } else {
-                screen.hidden = false;
-                showMessage('سجّل الدخول أو أنشئ حسابًا للمتابعة.');
+                screen.hidden = true;
+                window.app?.checkWelcomeScreen?.();
             }
         } catch (error) {
             console.error(error);
-            screen.hidden = false;
-            showMessage('تعذر الاتصال. تحقق من الإنترنت وحاول مجددًا.');
+            screen.hidden = true;
+            window.app?.checkWelcomeScreen?.();
         }
     }
 
     supabase.auth.onAuthStateChange(function (event, session) {
+        window.app?.updateAccountSettings?.(session);
         if (event === 'PASSWORD_RECOVERY') {
             screen.hidden = false;
+            document.getElementById('welcomeScreen')?.classList.add('hidden');
             setMode('recovery');
-            showMessage('أدخل كلمة المرور الجديدة لحسابك.');
+            showMessage(authText('أدخل كلمة المرور الجديدة لحسابك.', 'Enter a new password for your account.'));
         } else if (session) {
             screen.hidden = true;
+            window.app?.checkWelcomeScreen?.();
         } else if (event === 'SIGNED_OUT') {
-            screen.hidden = false;
-            setMode('login');
+            screen.hidden = true;
         }
     });
 
@@ -288,6 +315,21 @@
         signOut: async function () {
             const { error } = await supabase.auth.signOut();
             if (error) throw error;
+        },
+
+        showLogin: function () {
+            setMode('login');
+            screen.hidden = false;
+            document.getElementById('welcomeScreen')?.classList.add('hidden');
+            showMessage(window.app?.settings?.language === 'en'
+                ? 'Sign in or create an account to continue.'
+                : 'سجّل الدخول أو أنشئ حسابًا للمتابعة.');
+            emailInput.focus();
+        },
+
+        applyLanguage: function () {
+            screen.dir = isEnglish() ? 'ltr' : 'rtl';
+            renderModeText();
         },
 
         getUser: cloud.getUser,

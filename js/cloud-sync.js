@@ -10,12 +10,15 @@
     const TABLE = 'nuvio_data';
     const OWNER_KEY = 'nuvio_local_owner_id';
     const DIRTY_KEY = 'nuvio_local_dirty_at';
+    const SUPPRESSED_CONFLICTS_KEY = 'nuvio_sync_conflict_suppressed';
+    const CONFLICT_BACKUP_KEY = 'nuvio_sync_conflict_backup';
     const BACKUP_PREFIX = 'nuvio_account_backup_';
     const DATA_KEYS = [
         'nuvio_tasks', 'nuvio_sessions', 'nuvio_settings', 'nuvio_notifications',
         'nuvio_habits', 'nuvio_notes', 'nuvio_sleep', 'nuvio_water',
         'nuvio_prayer', 'nuvio_user_profile', 'nuvio_timer_state',
-        'nuvio_ai_history', 'nuvio_ai_settings', DIRTY_KEY
+        'nuvio_ai_history', 'nuvio_ai_settings', DIRTY_KEY,
+        SUPPRESSED_CONFLICTS_KEY, CONFLICT_BACKUP_KEY
     ];
 
     let userId = null;
@@ -37,12 +40,61 @@
     function setPendingConflict(remoteData, remoteVersion, message) {
         const version = Number(remoteVersion);
         if (!remoteData || !Number.isFinite(version) || version < 1) return;
+        const signature = conflictSignature(remoteData, userId);
+        let suppressed = [];
+        try {
+            const stored = JSON.parse(localStorage.getItem(SUPPRESSED_CONFLICTS_KEY) || '[]');
+            if (Array.isArray(stored)) suppressed = stored;
+        } catch {
+            suppressed = [];
+        }
+        if (suppressed.includes(signature)) {
+            pendingConflict = null;
+            return;
+        }
         pendingConflict = {
             remoteData,
             remoteVersion: version,
-            detectedAt: new Date().toISOString()
+            detectedAt: new Date().toISOString(),
+            signature
         };
         emit('nuvio:sync-conflict', { message, remoteVersion: version });
+    }
+
+    function conflictSignature(remoteData, accountId) {
+        const value = stableSerialize({ accountId, local: snapshot(), remote: remoteData });
+        let hash = 2166136261;
+        for (let index = 0; index < value.length; index += 1) {
+            hash ^= value.charCodeAt(index);
+            hash = Math.imul(hash, 16777619);
+        }
+        return (accountId || 'unknown') + ':' + (hash >>> 0).toString(36);
+    }
+
+    function backupConflictOnce(remoteData, accountId) {
+        const signature = conflictSignature(remoteData, accountId);
+        if (localStorage.getItem(CONFLICT_BACKUP_KEY) === signature) return true;
+        if (!backupLocalAccountData('initial-device-cloud-conflict', accountId)) return false;
+        try {
+            localStorage.setItem(CONFLICT_BACKUP_KEY, signature);
+        } catch (error) {
+            console.warn('Nuvio could not record the sync-conflict backup marker:', error);
+        }
+        return true;
+    }
+
+    function dismissConflict() {
+        if (!pendingConflict) return false;
+        try {
+            const stored = JSON.parse(localStorage.getItem(SUPPRESSED_CONFLICTS_KEY) || '[]');
+            const suppressed = Array.isArray(stored) ? stored : [];
+            suppressed.push(pendingConflict.signature);
+            localStorage.setItem(SUPPRESSED_CONFLICTS_KEY, JSON.stringify(suppressed.slice(-20)));
+        } catch (error) {
+            console.error('Nuvio conflict suppression failed:', error);
+        }
+        pendingConflict = null;
+        return true;
     }
 
     async function resolveConflict(choice) {
@@ -71,6 +123,8 @@
             applySnapshot(conflict.remoteData);
             lastRemoteVersion = conflict.remoteVersion;
             dirty = false;
+            localStorage.removeItem(SUPPRESSED_CONFLICTS_KEY);
+            localStorage.removeItem(CONFLICT_BACKUP_KEY);
             localStorage.setItem(OWNER_KEY, userId);
             emit('nuvio:sync-resolved', { choice, version: lastRemoteVersion });
             return true;
@@ -87,6 +141,10 @@
         }
         const resolved = !pendingConflict && !dirty;
         if (resolved) emit('nuvio:sync-resolved', { choice, version: lastRemoteVersion });
+        if (resolved) {
+            localStorage.removeItem(SUPPRESSED_CONFLICTS_KEY);
+            localStorage.removeItem(CONFLICT_BACKUP_KEY);
+        }
         return resolved;
     }
 
@@ -513,7 +571,7 @@
                     dirty = false;
                 }
                 if ((!ownerId && hasLocalData()) || (hasUnsentLocalChanges && !localMatchesCloud)) {
-                    if (!backupLocalAccountData('initial-device-cloud-conflict', nextUserId)) throw new Error('Local backup failed; refusing to replace local data.');
+                    if (!backupConflictOnce(row.data, nextUserId)) throw new Error('Local backup failed; refusing to replace local data.');
                     localStorage.setItem(OWNER_KEY, nextUserId);
                     dirty = true;
                     initialLocalConflict = { data: row.data, version: lastRemoteVersion };
@@ -582,7 +640,7 @@
     });
     window.addEventListener('online', syncNow);
 
-    window.NuvioSync = { scheduleSave, syncNow, resolveConflict };
+    window.NuvioSync = { scheduleSave, syncNow, resolveConflict, dismissConflict };
 
     client.auth.getSession()
         .then(({ data, error }) => {

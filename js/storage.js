@@ -6,10 +6,24 @@ Object.assign(NuvioApp.prototype, {
             const settings = localStorage.getItem('nuvio_settings');
             const notifications = localStorage.getItem('nuvio_notifications');
 
-            if (tasks) this.tasks = JSON.parse(tasks);
-            if (sessions) this.focusSessions = JSON.parse(sessions);
-            if (settings) this.settings = { ...this.settings, ...JSON.parse(settings) };
-            if (notifications) this.notifications = JSON.parse(notifications);
+            if (tasks) {
+                const parsed = JSON.parse(tasks);
+                if (Array.isArray(parsed)) this.tasks = parsed.filter(item => item && typeof item === 'object');
+            }
+            if (sessions) {
+                const parsed = JSON.parse(sessions);
+                if (Array.isArray(parsed)) this.focusSessions = parsed.filter(item => item && typeof item === 'object');
+            }
+            if (settings) {
+                const parsed = JSON.parse(settings);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    this.settings = { ...this.settings, ...parsed };
+                }
+            }
+            if (notifications) {
+                const parsed = JSON.parse(notifications);
+                if (Array.isArray(parsed)) this.notifications = parsed.filter(item => item && typeof item === 'object');
+            }
         } catch (e) {
             console.error('Error loading data:', e);
         }
@@ -177,6 +191,9 @@ Object.assign(NuvioApp.prototype, {
                     if (data[key] !== undefined && !Array.isArray(data[key])) {
                         throw new Error('Invalid ' + key);
                     }
+                    if (Array.isArray(data[key]) && data[key].some(item => !item || typeof item !== 'object' || Array.isArray(item))) {
+                        throw new Error('Invalid ' + key + ' item');
+                    }
                 });
                 ['settings', 'waterData', 'prayerData', 'userProfile'].forEach(key => {
                     if (data[key] !== undefined && (!data[key] || typeof data[key] !== 'object' || Array.isArray(data[key]))) {
@@ -287,7 +304,10 @@ Object.assign(NuvioApp.prototype, {
     loadHabits() {
         try {
             const habits = localStorage.getItem('nuvio_habits');
-            if (habits) this.habits = JSON.parse(habits);
+            if (habits) {
+                const parsed = JSON.parse(habits);
+                if (Array.isArray(parsed)) this.habits = parsed.filter(item => item && typeof item === 'object');
+            }
         } catch (e) {
             console.error('Error loading habits:', e);
         }
@@ -305,7 +325,15 @@ Object.assign(NuvioApp.prototype, {
     loadUserProfile() {
         try {
             const profile = localStorage.getItem('nuvio_user_profile');
-            if (profile) this.userProfile = JSON.parse(profile);
+            if (profile) {
+                const parsed = JSON.parse(profile);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    this.userProfile = {
+                        name: typeof parsed.name === 'string' ? parsed.name.slice(0, 30) : '',
+                        avatar: typeof parsed.avatar === 'string' ? parsed.avatar : null
+                    };
+                }
+            }
         } catch (e) {
             console.error('Error loading user profile:', e);
         }
@@ -330,6 +358,7 @@ Object.assign(NuvioApp.prototype, {
         }
 
         this.hideWelcomeScreen();
+        this.applyUserProfile();
         
         // Reset welcome screen title for next time
         const sub = document.getElementById('welcomeSubtitle');
@@ -342,7 +371,10 @@ Object.assign(NuvioApp.prototype, {
     loadSleepRecords() {
         try {
             const records = localStorage.getItem('nuvio_sleep');
-            if (records) this.sleepRecords = JSON.parse(records);
+            if (records) {
+                const parsed = JSON.parse(records);
+                if (Array.isArray(parsed)) this.sleepRecords = parsed.filter(item => item && typeof item === 'object');
+            }
         } catch (e) {
             console.error('Error loading sleep:', e);
         }
@@ -360,7 +392,12 @@ Object.assign(NuvioApp.prototype, {
     loadWaterData() {
         try {
             const data = localStorage.getItem('nuvio_water');
-            if (data) this.waterData = { ...this.waterData, ...JSON.parse(data) };
+            if (data) {
+                const parsed = JSON.parse(data);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    this.waterData = { ...this.waterData, ...parsed };
+                }
+            }
             
             // Reset today if new day
             const today = new Date().toDateString();
@@ -390,7 +427,10 @@ Object.assign(NuvioApp.prototype, {
     loadNotes() {
         try {
             const notes = localStorage.getItem('nuvio_notes');
-            if (notes) this.notes = JSON.parse(notes);
+            if (notes) {
+                const parsed = JSON.parse(notes);
+                if (Array.isArray(parsed)) this.notes = parsed.filter(item => item && typeof item === 'object');
+            }
         } catch (e) {
             console.error('Error loading notes:', e);
         }
@@ -408,7 +448,12 @@ Object.assign(NuvioApp.prototype, {
     loadPrayerSettings() {
         try {
             const prayer = localStorage.getItem('nuvio_prayer');
-            if (prayer) this.prayerData = { ...this.prayerData, ...JSON.parse(prayer) };
+            if (prayer) {
+                const parsed = JSON.parse(prayer);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    this.prayerData = { ...this.prayerData, ...parsed };
+                }
+            }
         } catch (e) {
             console.error('Error loading prayer settings:', e);
         }

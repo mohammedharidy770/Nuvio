@@ -11,27 +11,34 @@ Object.assign(NuvioApp.prototype, {
             document.body.appendChild(overlay);
         }
         const isAr = this.settings.language === 'ar';
+        overlay.setAttribute('dir', isAr ? 'rtl' : 'ltr');
+        overlay.setAttribute('lang', isAr ? 'ar' : 'en');
         const message = String(detail.message || (isAr
             ? 'وجدنا اختلافًا بين بيانات هذا الجهاز والسحابة.'
             : 'We found different data on this device and in the cloud.'));
         overlay.innerHTML = `
-            <div class="modal-content" style="max-width:520px">
+            <div class="modal-content">
                 <div class="modal-header">
                     <h2 id="nuvioSyncConflictTitle">${isAr ? 'اختلاف في بيانات المزامنة' : 'Sync data conflict'}</h2>
                 </div>
                 <div class="modal-body">
                     <p>${window.NuvioSecurity.escapeHTML(message)}</p>
-                    <p style="color:var(--text-muted);font-size:.9rem">${isAr
+                    <p class="sync-conflict-note">${isAr
                         ? 'سنحتفظ بنسخة احتياطية من بيانات الجهاز والسحابة قبل تنفيذ اختيارك.'
                         : 'We will back up both device and cloud data before applying your choice.'}</p>
-                    <div class="form-actions" style="display:grid;grid-template-columns:1fr;gap:10px">
+                    <div class="form-actions sync-conflict-actions">
                         <button type="button" class="btn-primary" id="nuvioUseDevice">${isAr ? 'استخدم بيانات هذا الجهاز' : 'Use this device data'}</button>
                         <button type="button" class="btn-secondary" id="nuvioUseCloud">${isAr ? 'استخدم بيانات السحابة' : 'Use cloud data'}</button>
+                        <button type="button" class="sync-conflict-later" id="nuvioDismissConflict">${isAr ? 'تذكّرني لاحقًا' : 'Remind me later'}</button>
                     </div>
                 </div>
             </div>`;
         const deviceButton = overlay.querySelector('#nuvioUseDevice');
         const cloudButton = overlay.querySelector('#nuvioUseCloud');
+        const dismissButton = overlay.querySelector('#nuvioDismissConflict');
+        dismissButton?.addEventListener('click', () => {
+            if (window.NuvioSync?.dismissConflict()) overlay.remove();
+        });
         const choose = async choice => {
             deviceButton.disabled = true;
             cloudButton.disabled = true;
@@ -51,12 +58,64 @@ Object.assign(NuvioApp.prototype, {
         cloudButton.addEventListener('click', () => choose('remote'));
     },
 
+    async handleAccountAction() {
+        try {
+            if (!window.NuvioAuth) throw new Error('Authentication is unavailable');
+            const session = await window.NuvioAuth?.getSession?.();
+            if (session?.user) {
+                await this.signOut();
+                return;
+            }
+            window.NuvioAuth?.showLogin?.();
+        } catch (error) {
+            console.error('Nuvio account action:', error);
+            this.showToast(
+                this.settings.language === 'ar' ? 'تعذر التحقق من الحساب. حاول مرة أخرى.' : 'Could not verify the account. Please try again.',
+                'error'
+            );
+        }
+    },
+
+    updateAccountSettings(session) {
+        this.accountSession = session || null;
+        const isAr = this.settings.language === 'ar';
+        const signedIn = Boolean(session?.user);
+        const status = document.getElementById('accountStatusLabel');
+        const description = document.getElementById('accountStatusDescription');
+        const button = document.getElementById('accountActionButton');
+        if (status) status.textContent = signedIn
+            ? (isAr ? 'تم تسجيل الدخول' : 'Signed in')
+            : (isAr ? 'غير مسجل الدخول' : 'Not signed in');
+        if (description) description.textContent = signedIn
+            ? String(session.user.email || (isAr ? 'حسابك متصل' : 'Your account is connected'))
+            : (isAr ? 'سجّل الدخول لمزامنة بياناتك بين أجهزتك' : 'Sign in to sync your data across devices');
+        if (button) {
+            button.disabled = false;
+            button.className = signedIn ? 'btn-danger logout-btn' : 'btn-primary logout-btn';
+            button.innerHTML = signedIn
+                ? `<i class="fas fa-right-from-bracket"></i><span>${isAr ? 'تسجيل الخروج' : 'Sign out'}</span>`
+                : `<i class="fas fa-right-to-bracket"></i><span>${isAr ? 'تسجيل الدخول' : 'Sign in'}</span>`;
+            button.setAttribute('aria-label', signedIn
+                ? (isAr ? 'تسجيل الخروج' : 'Sign out')
+                : (isAr ? 'تسجيل الدخول' : 'Sign in'));
+        }
+    },
+
     setupEventListeners() {
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 e.preventDefault();
+                if (item.dataset.section === 'ai') {
+                    window.location.href = item.href;
+                    return;
+                }
                 this.showSection(item.dataset.section);
             });
+        });
+
+        document.getElementById('accountActionButton')?.addEventListener('click', () => this.handleAccountAction());
+        window.addEventListener('resize', () => {
+            if (this.currentSection === 'reports') this.renderReports();
         });
 
         document.getElementById('menuToggle').addEventListener('click', () => {
@@ -166,7 +225,13 @@ Object.assign(NuvioApp.prototype, {
     },
 
     showSection(section) {
+        const standaloneAI = new URLSearchParams(window.location.search).get('view') === 'ai';
+        if (standaloneAI && section !== 'ai') {
+            window.location.href = './index.html?section=' + encodeURIComponent(section);
+            return;
+        }
         this.currentSection = section;
+        document.body.classList.toggle('ai-standalone', standaloneAI && section === 'ai');
 
         document.querySelectorAll('.nav-item').forEach(item => {
             item.classList.toggle('active', item.dataset.section === section);
@@ -185,7 +250,10 @@ Object.assign(NuvioApp.prototype, {
             ai: 'AI Nuvio',
             settings: this.t('pages.settings'),
             habits: this.t('nav.habits'),
-            prayer: this.t('nav.prayer')
+            prayer: this.t('nav.prayer'),
+            sleep: this.t('nav.sleep'),
+            water: this.t('nav.water'),
+            notes: this.t('nav.notes')
         };
         document.getElementById('pageTitle').textContent = titles[section] || 'Nuvio';
 
@@ -511,8 +579,18 @@ Object.assign(NuvioApp.prototype, {
     },
 
     checkWelcomeScreen() {
+        if (this.currentSection === 'ai') {
+            document.getElementById('welcomeScreen')?.classList.add('hidden');
+            return;
+        }
         const screen = document.getElementById('welcomeScreen');
         if (!screen) return;
+
+        const authScreen = document.getElementById('nuvio-auth-screen');
+        if (authScreen && !authScreen.hidden) {
+            screen.classList.add('hidden');
+            return;
+        }
 
         if (this.userProfile.name) {
             screen.classList.add('hidden');
@@ -664,7 +742,7 @@ Object.assign(NuvioApp.prototype, {
 
         if (!confirm(message)) return;
 
-        const button = document.getElementById('logoutButton');
+        const button = document.getElementById('accountActionButton');
         if (button) button.disabled = true;
 
         try {

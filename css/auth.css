@@ -16,6 +16,14 @@
 }
 
 #nuvio-auth-screen[hidden] { display: none !important; }
+html[dir="ltr"] #nuvio-auth-screen { direction: ltr; }
+html[dir="ltr"] #nuvio-auth-screen .nuvio-auth-input-wrap > i {
+    right: auto;
+    left: 15px;
+}
+html[dir="ltr"] #nuvio-auth-screen .nuvio-auth-card input {
+    padding: 0 14px 0 44px;
+}
 
 .nuvio-auth-orb {
     position: absolute;

@@ -3,33 +3,35 @@ Object.assign(NuvioApp.prototype, {
         const period = document.getElementById('reportPeriod');
         const periodVal = period ? period.value : 'week';
         const now = new Date();
-        let startDate = new Date();
+        const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        const startDate = new Date(endDate);
+        startDate.setDate(startDate.getDate() - (periodVal === 'week' ? 7 : 30));
+        const isInRange = value => {
+            const date = new Date(value);
+            return !Number.isNaN(date.getTime()) && date >= startDate && date < endDate;
+        };
+        const periodTasks = this.tasks.filter(task => isInRange(task.createdAt));
+        const completedTasks = periodTasks.filter(task => task.status === 'completed');
+        const focusMinutes = this.focusSessions
+            .filter(session => session.type === 'pomodoro' && isInRange(session.date))
+            .reduce((sum, session) => sum + (Number(session.duration) || 0), 0);
 
-        if (periodVal === 'week') {
-            startDate.setDate(startDate.getDate() - 7);
-        } else {
-            startDate.setMonth(startDate.getMonth() - 1);
-        }
-
-        this.renderFocusHoursChart(startDate, now);
-        this.renderCompletedTasksChart(startDate, now);
+        this.renderFocusHoursChart(startDate, endDate);
+        this.renderCompletedTasksChart(completedTasks);
         this.renderActivityMap();
 
-        const monthTasks = this.tasks.filter(t => new Date(t.createdAt) >= startDate);
-        const monthCompleted = monthTasks.filter(t => t.status === 'completed').length;
-        const monthFocusHours = this.focusSessions
-            .filter(s => new Date(s.date) >= startDate && s.type === 'pomodoro')
-            .reduce((sum, s) => sum + s.duration, 0) / 60;
-        const avgProductivity = monthTasks.length > 0 ? Math.round((monthCompleted / monthTasks.length) * 100) : 0;
+        const avgProductivity = periodTasks.length > 0
+            ? Math.round((completedTasks.length / periodTasks.length) * 100)
+            : 0;
 
         const mot = document.getElementById('moTotalTasks');
         const moc = document.getElementById('moCompleted');
         const mof = document.getElementById('moFocusHours');
         const moa = document.getElementById('moAvgProductivity');
 
-        if (mot) mot.textContent = monthTasks.length;
-        if (moc) moc.textContent = monthCompleted;
-        if (mof) mof.textContent = Math.round(monthFocusHours * 10) / 10;
+        if (mot) mot.textContent = periodTasks.length;
+        if (moc) moc.textContent = completedTasks.length;
+        if (mof) mof.textContent = Math.round(focusMinutes / 60 * 10) / 10;
         if (moa) moa.textContent = avgProductivity + '%';
     },
 
@@ -38,65 +40,80 @@ Object.assign(NuvioApp.prototype, {
         if (!canvas) return;
 
         const ctx = canvas.getContext('2d');
+        if (!ctx) return;
         const dpr = window.devicePixelRatio || 1;
         const rect = canvas.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
         canvas.width = rect.width * dpr;
         canvas.height = rect.height * dpr;
         ctx.scale(dpr, dpr);
 
         const width = rect.width;
         const height = rect.height;
-        const padding = 30;
-
+        const left = 38;
+        const right = 10;
+        const top = 14;
+        const bottom = 25;
+        const keyFor = date => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+        const hoursByDay = new Map();
+        this.focusSessions.forEach(session => {
+            if (session.type !== 'pomodoro') return;
+            const date = new Date(session.date);
+            if (Number.isNaN(date.getTime()) || date < startDate || date >= endDate) return;
+            const key = keyFor(date);
+            hoursByDay.set(key, (hoursByDay.get(key) || 0) + (Number(session.duration) || 0) / 60);
+        });
         const days = [];
-        const dayCount = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-
-        for (let i = 0; i <= dayCount; i++) {
-            const date = new Date(startDate);
-            date.setDate(date.getDate() + i);
-            const dateStr = date.toDateString();
-
-            const hours = this.focusSessions
-                .filter(s => new Date(s.date).toDateString() === dateStr && s.type === 'pomodoro')
-                .reduce((sum, s) => sum + s.duration, 0) / 60;
-
-            days.push(hours);
+        for (const date = new Date(startDate); date < endDate; date.setDate(date.getDate() + 1)) {
+            days.push({ date: new Date(date), hours: hoursByDay.get(keyFor(date)) || 0 });
         }
-
-        const maxHours = Math.max(...days, 1);
+        const maxHours = Math.max(...days.map(day => day.hours), 1);
 
         ctx.clearRect(0, 0, width, height);
-
-        ctx.strokeStyle = this.settings.darkMode ? '#262626' : '#dee2e6';
+        ctx.strokeStyle = this.settings.darkMode ? '#34373d' : '#e5e7eb';
+        ctx.fillStyle = this.settings.darkMode ? '#a3a3a3' : '#6b7280';
+        ctx.font = '11px Cairo, sans-serif';
         ctx.lineWidth = 1;
         for (let i = 0; i <= 4; i++) {
-            const y = height - padding - (i / 4) * (height - padding * 2);
+            const value = maxHours * i / 4;
+            const y = height - bottom - (i / 4) * (height - top - bottom);
             ctx.beginPath();
-            ctx.moveTo(padding, y);
-            ctx.lineTo(width - padding, y);
+            ctx.moveTo(left, y);
+            ctx.lineTo(width - right, y);
             ctx.stroke();
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(value.toFixed(value % 1 ? 1 : 0), left - 7, y);
         }
 
-        const barWidth = (width - padding * 2) / days.length * 0.7;
-        const spacing = (width - padding * 2) / days.length;
-
-        days.forEach((hours, i) => {
-            const x = padding + i * spacing + (spacing - barWidth) / 2;
-            const barHeight = (hours / maxHours) * (height - padding * 2);
-            const y = height - padding - barHeight;
-
+        const plotWidth = width - left - right;
+        const spacing = plotWidth / Math.max(days.length, 1);
+        const barWidth = spacing * 0.66;
+        days.forEach((day, i) => {
+            const x = left + i * spacing + (spacing - barWidth) / 2;
+            const barHeight = (day.hours / maxHours) * (height - top - bottom);
+            const y = height - bottom - barHeight;
             ctx.fillStyle = '#dc2626';
             ctx.fillRect(x, y, barWidth, barHeight);
+            const labelStep = days.length <= 7 ? 1 : Math.ceil(days.length / 6);
+            if (i % labelStep === 0 || i === days.length - 1) {
+                ctx.fillStyle = this.settings.darkMode ? '#a3a3a3' : '#6b7280';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'alphabetic';
+                ctx.fillText(String(day.date.getDate()), x + barWidth / 2, height - 5);
+            }
         });
     },
 
-    renderCompletedTasksChart(startDate, endDate) {
+    renderCompletedTasksChart(completedTasks) {
         const canvas = document.getElementById('completedTasksChart');
         if (!canvas) return;
 
         const ctx = canvas.getContext('2d');
+        if (!ctx) return;
         const dpr = window.devicePixelRatio || 1;
         const rect = canvas.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
         canvas.width = rect.width * dpr;
         canvas.height = rect.height * dpr;
         ctx.scale(dpr, dpr);
@@ -108,20 +125,35 @@ Object.assign(NuvioApp.prototype, {
         const categoryData = {};
         Object.keys(this.categories).forEach(cat => categoryData[cat] = 0);
 
-        this.tasks.filter(t => t.status === 'completed' && new Date(t.completedAt) >= startDate)
-            .forEach(t => {
-                if (categoryData[t.category] !== undefined) {
-                    categoryData[t.category]++;
-                }
+        completedTasks.forEach(task => {
+            const category = categoryData[task.category] !== undefined ? task.category : 'personal';
+            categoryData[category] = (categoryData[category] || 0) + 1;
+        });
+        const legend = document.getElementById('completedTasksLegend');
+        if (legend) {
+            legend.replaceChildren();
+            Object.entries(categoryData).filter(([, count]) => count > 0).forEach(([category, count]) => {
+                const item = document.createElement('span');
+                item.className = 'report-legend-item';
+                const swatch = document.createElement('i');
+                swatch.className = 'report-legend-swatch';
+                swatch.style.backgroundColor = this.categories[category].color;
+                const name = this.settings.language === 'ar'
+                    ? this.categories[category].nameAr
+                    : this.categories[category].nameEn;
+                item.append(swatch, document.createTextNode(`${name} (${count})`));
+                legend.appendChild(item);
             });
+        }
 
         const total = Object.values(categoryData).reduce((a, b) => a + b, 0);
         if (total === 0) {
             ctx.clearRect(0, 0, width, height);
             ctx.fillStyle = this.settings.darkMode ? '#737373' : '#6c757d';
-            ctx.font = '14px Cairo';
+            ctx.font = '14px Cairo, sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(this.settings.language === 'ar' ? 'لا توجد بيانات' : 'No data', width / 2, height / 2);
+            ctx.textBaseline = 'middle';
+            ctx.fillText(this.settings.language === 'ar' ? 'لا توجد مهام مكتملة في الفترة' : 'No completed tasks in this period', width / 2, height / 2);
             return;
         }
 
@@ -154,11 +186,11 @@ Object.assign(NuvioApp.prototype, {
         ctx.fill();
 
         ctx.fillStyle = this.settings.darkMode ? '#f5f5f5' : '#1a1a1a';
-        ctx.font = 'bold 20px Cairo';
+        ctx.font = 'bold 20px Cairo, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(total, centerX, centerY - 5);
-        ctx.font = '12px Cairo';
+        ctx.font = '12px Cairo, sans-serif';
         ctx.fillStyle = this.settings.darkMode ? '#a3a3a3' : '#6c757d';
         ctx.fillText(this.settings.language === 'ar' ? 'مهمة' : 'Tasks', centerX, centerY + 15);
     },

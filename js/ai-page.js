@@ -10,6 +10,7 @@
     let activeId = null;
     let sending = false;
     const SETTINGS_KEY = 'nuvio_ai_settings';
+    const aiT = key => window.app?.t?.('ai.' + key) || key;
 
     const dom = {
         section: null,
@@ -20,6 +21,7 @@
         title: null,
         newChat: null,
         clear: null,
+        back: null,
         mobileMenu: null,
         sidebar: null,
         settingsPanel: null,
@@ -29,7 +31,27 @@
     function loadHistory() {
         try {
             const value = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-            conversations = Array.isArray(value) ? value : [];
+            conversations = Array.isArray(value)
+                ? value.filter(chat =>
+                    chat && typeof chat === 'object'
+                    && typeof chat.id === 'string'
+                    && Array.isArray(chat.messages)
+                ).map(chat => {
+                    const title = typeof chat.title === 'string' ? chat.title.trim() : '';
+                    return {
+                        id: chat.id,
+                        title: !title || ['محادثة جديدة', 'New conversation', 'newConversation'].includes(title)
+                            ? aiT('newConversation')
+                            : title.slice(0, 48),
+                        messages: chat.messages.filter(item =>
+                            item && typeof item === 'object'
+                            && ['user', 'assistant'].includes(item.role)
+                            && typeof item.content === 'string'
+                        ).slice(-100),
+                        updatedAt: Number(chat.updatedAt) || Date.now()
+                    };
+                }).slice(0, 30)
+                : [];
         } catch (error) {
             conversations = [];
             console.error('Could not load AI history:', error);
@@ -37,8 +59,18 @@
     }
 
     function saveHistory() {
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(conversations.slice(0, 30)));
-        window.NuvioSync?.scheduleSave();
+        try {
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(conversations.slice(0, 30)));
+            window.NuvioSync?.scheduleSave();
+        } catch (error) {
+            console.error('Could not save AI history:', error);
+            window.app?.showToast?.(
+                window.app.settings.language === 'ar'
+                    ? 'تعذر حفظ المحادثة على الجهاز.'
+                    : 'Could not save the conversation on this device.',
+                'error'
+            );
+        }
     }
 
     function currentChat() {
@@ -48,7 +80,7 @@
     function createChat() {
         const chat = {
             id: 'chat-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
-            title: 'محادثة جديدة',
+            title: aiT('newConversation'),
             messages: [],
             updatedAt: Date.now()
         };
@@ -61,6 +93,39 @@
 
     function escapeText(value) {
         return String(value ?? '');
+    }
+
+    function askForConfirmation(message) {
+        return new Promise(resolve => {
+            const overlay = document.createElement('div');
+            overlay.className = 'ai-confirm-backdrop';
+            overlay.setAttribute('role', 'presentation');
+            overlay.innerHTML = `
+                <div class="ai-confirm" role="dialog" aria-modal="true" aria-label="${aiT('confirmTitle')}">
+                    <div class="ai-confirm-icon"><i class="fas fa-triangle-exclamation"></i></div>
+                    <p></p>
+                    <div class="ai-confirm-actions">
+                        <button type="button" class="ai-confirm-cancel">${aiT('cancel')}</button>
+                        <button type="button" class="ai-confirm-delete">${aiT('delete')}</button>
+                    </div>
+                </div>`;
+            overlay.querySelector('p').textContent = message;
+            const finish = result => {
+                overlay.remove();
+                resolve(result);
+            };
+            overlay.querySelector('.ai-confirm-cancel').addEventListener('click', () => finish(false));
+            overlay.querySelector('.ai-confirm-delete').addEventListener('click', () => finish(true));
+            overlay.addEventListener('click', event => {
+                if (event.target === overlay) finish(false);
+            });
+            overlay.addEventListener('keydown', event => {
+                if (event.key === 'Escape') finish(false);
+                if (event.key === 'Enter') finish(true);
+            });
+            document.body.appendChild(overlay);
+            overlay.querySelector('.ai-confirm-cancel').focus();
+        });
     }
 
     function renderHistory() {
@@ -81,8 +146,8 @@
             const remove = document.createElement('button');
             remove.type = 'button';
             remove.className = 'ai-history-delete';
-            remove.title = 'حذف المحادثة';
-            remove.setAttribute('aria-label', 'حذف المحادثة');
+            remove.title = aiT('delete');
+            remove.setAttribute('aria-label', aiT('delete'));
             remove.innerHTML = '<i class="fas fa-trash-can"></i>';
             remove.addEventListener('click', () => deleteConversation(chat.id));
             row.append(button, remove);
@@ -90,9 +155,10 @@
         });
     }
 
-    function deleteConversation(id) {
+    async function deleteConversation(id) {
         const index = conversations.findIndex(chat => chat.id === id);
-        if (index === -1 || !window.confirm('هل تريد حذف هذه المحادثة نهائيًا؟')) return;
+        if (index === -1) return;
+        if (!await askForConfirmation(aiT('deleteConversation'))) return;
         conversations.splice(index, 1);
         saveHistory();
         if (activeId === id) {
@@ -105,7 +171,10 @@
     function appendMessage(role, text) {
         const message = document.createElement('div');
         message.className = `ai-message ai-message-${role}`;
-        message.textContent = escapeText(text);
+        const content = document.createElement('span');
+        content.className = 'ai-message-text';
+        content.textContent = escapeText(text);
+        message.appendChild(content);
         if (role === 'assistant') {
             addCopyButton(message);
         }
@@ -119,15 +188,30 @@
         copy.type = 'button';
         copy.className = 'ai-copy-message';
         copy.innerHTML = '<i class="fas fa-copy"></i>';
-        copy.title = 'نسخ الرد';
-        copy.setAttribute('aria-label', 'نسخ الرد');
+        copy.title = aiT('copyResponse');
+        copy.setAttribute('aria-label', aiT('copyResponse'));
         copy.addEventListener('click', async () => {
-            const reply = [...message.childNodes]
-                .filter(node => node !== copy)
-                .map(node => node.textContent || '')
-                .join('');
-            await navigator.clipboard.writeText(reply.trim());
-            copy.innerHTML = '<i class="fas fa-check"></i>';
+            const reply = message.querySelector('.ai-message-text')?.textContent || '';
+            try {
+                if (navigator.clipboard?.writeText) {
+                    await navigator.clipboard.writeText(reply.trim());
+                } else {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = reply.trim();
+                    textarea.style.position = 'fixed';
+                    textarea.style.opacity = '0';
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    textarea.remove();
+                }
+                copy.innerHTML = '<i class="fas fa-check"></i>';
+            } catch (error) {
+                window.app?.showToast?.(
+                    aiT('copyFailed'),
+                    'error'
+                );
+            }
             setTimeout(() => { copy.innerHTML = '<i class="fas fa-copy"></i>'; }, 1200);
         });
         message.appendChild(copy);
@@ -159,15 +243,30 @@
         welcome.className = 'ai-welcome';
         welcome.innerHTML = `
             <div class="ai-welcome-mark" aria-hidden="true">N</div>
-            <h1>كيف يمكنني مساعدتك؟</h1>
-            <p>خطط ليومك، نظّم مهامك، أو اسأل عن أي شيء في Nuvio.</p>
+            <h1>${aiT('welcomeTitle')}</h1>
+            <p>${aiT('welcomeDescription')}</p>
             <div class="ai-suggestions">
-                <button data-prompt="جهز لي خطة يومية مرتبة حسب وقتي ومهامي"><i class="fas fa-calendar-day"></i><span>خطط يومي</span><small>رتّب مهام اليوم حسب الأولوية</small></button>
-                <button data-prompt="حلل مهامي واقترح أفضل طريقة لإنجازها"><i class="fas fa-list-check"></i><span>حلل مهامي</span><small>اعرض ترتيبًا واقعيًا للإنجاز</small></button>
-                <button data-prompt="اقترح جلسة تركيز لمدة 25 دقيقة"><i class="fas fa-clock"></i><span>ابدأ تركيز</span><small>اقترح مهمة وجدول جلسة قصيرة</small></button>
-                <button data-prompt="اشرح لي أفضل طريقة لبناء عادة يومية مستمرة"><i class="fas fa-seedling"></i><span>ابنِ عادة</span><small>قدّم خطة بسيطة قابلة للاستمرار</small></button>
+                <button data-prompt-key="plan"><i class="fas fa-calendar-day"></i><span>${aiT('suggestionPlan')}</span><small>${aiT('suggestionPlanHelp')}</small></button>
+                <button data-prompt-key="analyze"><i class="fas fa-list-check"></i><span>${aiT('suggestionAnalyze')}</span><small>${aiT('suggestionAnalyzeHelp')}</small></button>
+                <button data-prompt-key="focus"><i class="fas fa-clock"></i><span>${aiT('suggestionFocus')}</span><small>${aiT('suggestionFocusHelp')}</small></button>
+                <button data-prompt-key="habit"><i class="fas fa-seedling"></i><span>${aiT('suggestionHabit')}</span><small>${aiT('suggestionHabitHelp')}</small></button>
             </div>`;
-        welcome.querySelectorAll('[data-prompt]').forEach(button => {
+        const prompts = {
+            plan: window.app?.settings?.language === 'en'
+                ? 'Create a daily plan based on my time and tasks'
+                : 'جهز لي خطة يومية مرتبة حسب وقتي ومهامي',
+            analyze: window.app?.settings?.language === 'en'
+                ? 'Analyze my tasks and suggest the best way to complete them'
+                : 'حلل مهامي واقترح أفضل طريقة لإنجازها',
+            focus: window.app?.settings?.language === 'en'
+                ? 'Suggest a 25-minute focus session'
+                : 'اقترح جلسة تركيز لمدة 25 دقيقة',
+            habit: window.app?.settings?.language === 'en'
+                ? 'Explain a simple way to build a sustainable daily habit'
+                : 'اشرح لي أفضل طريقة لبناء عادة يومية مستمرة'
+        };
+        welcome.querySelectorAll('[data-prompt-key]').forEach(button => {
+            button.dataset.prompt = prompts[button.dataset.promptKey];
             button.addEventListener('click', () => {
                 dom.input.value = button.dataset.prompt;
                 dom.input.dispatchEvent(new Event('input'));
@@ -219,7 +318,20 @@
         // for long answers, which made the chat feel sluggish on lower-end devices.
         const message = appendMessage('assistant', escapeText(text));
         message.classList.add('ai-message-enter');
-        addCopyButton(message);
+        return message;
+    }
+
+    function appendRetryButton(message, failedPrompt) {
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'ai-retry';
+        retry.textContent = aiT('retry');
+        retry.addEventListener('click', () => {
+            dom.input.value = failedPrompt;
+            dom.input.dispatchEvent(new Event('input'));
+            sendMessage();
+        });
+        message.appendChild(retry);
     }
 
     function parseJSON(value) {
@@ -438,18 +550,18 @@
         return partial.length === 1 ? partial[0] : null;
     }
 
-    function executeActions(actions) {
+    async function executeActions(actions) {
         if (!window.app || !Array.isArray(actions)) return 0;
         let count = 0;
         let changedTasks = false;
 
-        actions.forEach(action => {
-            if (!action?.type) return;
+        for (const action of actions) {
+            if (!action?.type) continue;
 
             if (['delete_task', 'delete_note', 'delete_habit'].includes(action.type)) {
-                const label = action.type === 'delete_task' ? 'المهمة'
-                    : action.type === 'delete_note' ? 'الملاحظة' : 'العادة';
-                if (!window.confirm(`هل تريد حذف ${label} المحددة؟`)) return;
+                // Destructive actions are confirmed before execution.
+                const confirmed = await askForConfirmation(aiT('deleteSelected'));
+                if (!confirmed) continue;
             }
 
             if (action.type === 'navigate') {
@@ -458,19 +570,19 @@
                     window.app.showSection(action.section);
                     count++;
                 }
-                return;
+                continue;
             }
 
             if (action.type === 'set_theme') {
                 const dark = action.dark !== false;
                 if (window.app.settings.darkMode !== dark) window.app.toggleTheme();
                 count++;
-                return;
+                continue;
             }
 
             if (action.type === 'add_habit') {
                 const input = action.habit || {};
-                if (!input.title) return;
+                if (!input.title) continue;
                 window.app.habits.unshift({
                     id: 'habit-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
                     title: String(input.title).trim().slice(0, 150),
@@ -487,7 +599,7 @@
                 window.app.saveHabits();
                 window.app.renderHabits();
                 count++;
-                return;
+                continue;
             }
 
             if (action.type === 'complete_habit' || action.type === 'toggle_habit') {
@@ -503,7 +615,7 @@
                     window.app.toggleHabitToday(habit.id);
                     count++;
                 }
-                return;
+                continue;
             }
 
             if (action.type === 'delete_habit') {
@@ -514,12 +626,12 @@
                 const partial = matches.length ? matches : window.app.habits.filter(habit =>
                     habit.title?.toLowerCase().includes(value)
                 );
-                if (partial.length !== 1) return;
+                if (partial.length !== 1) continue;
                 window.app.habits = window.app.habits.filter(habit => habit.id !== partial[0].id);
                 window.app.saveHabits();
                 window.app.renderHabits();
                 count++;
-                return;
+                continue;
             }
 
             if (action.type === 'add_water_glass') {
@@ -527,7 +639,7 @@
                     window.app.addWaterGlass();
                     count++;
                 }
-                return;
+                continue;
             }
 
             if (action.type === 'set_water_goal') {
@@ -536,18 +648,18 @@
                     window.app.updateWaterGoal(goal);
                     count++;
                 }
-                return;
+                continue;
             }
 
             if (action.type === 'add_note') {
                 const input = action.note || {};
                 const title = String(input.title || '').trim().slice(0, 150);
-                if (!title || !Array.isArray(window.app.notes)) return;
+                if (!title || !Array.isArray(window.app.notes)) continue;
                 const content = String(input.content || '').trim().slice(0, 10000);
                 const duplicate = window.app.notes.some(note =>
                     note.title.toLowerCase() === title.toLowerCase() && note.content === content
                 );
-                if (duplicate) return;
+                if (duplicate) continue;
                 window.app.notes.unshift({
                     id: 'note-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
                     title, content,
@@ -559,12 +671,12 @@
                 window.app.saveNotes();
                 window.app.renderNotes();
                 count++;
-                return;
+                continue;
             }
 
             if (action.type === 'update_note') {
                 const note = findNote(action.note);
-                if (!note) return;
+                if (!note) continue;
                 const changes = action.changes || {};
                 if (typeof changes.title === 'string' && changes.title.trim()) note.title = changes.title.trim().slice(0, 150);
                 if (typeof changes.content === 'string') note.content = changes.content.slice(0, 10000);
@@ -573,51 +685,51 @@
                 window.app.saveNotes();
                 window.app.renderNotes();
                 count++;
-                return;
+                continue;
             }
 
             if (action.type === 'delete_note') {
                 const note = findNote(action.note);
-                if (!note) return;
+                if (!note) continue;
                 window.app.notes = window.app.notes.filter(item => item.id !== note.id);
                 window.app.saveNotes();
                 window.app.renderNotes();
                 count++;
-                return;
+                continue;
             }
 
             if (action.type === 'add_reminder') {
                 const reminder = action.reminder || {};
                 const remindAt = new Date(reminder.remindAt);
                 const message = String(reminder.message || '').trim().slice(0, 240);
-                if (!message || Number.isNaN(remindAt.getTime()) || remindAt <= new Date()) return;
+                if (!message || Number.isNaN(remindAt.getTime()) || remindAt <= new Date()) continue;
                 window.app.addNotification('reminder', message, remindAt);
                 count++;
-                return;
+                continue;
             }
 
             if (action.type === 'start_focus') {
                 window.app.startTimer();
                 count++;
-                return;
+                continue;
             }
 
             if (action.type === 'clear_notifications') {
                 window.app.clearNotifications();
                 count++;
-                return;
+                continue;
             }
 
             if (action.type === 'add_task') {
                 const input = action.task || {};
-                if (!input.title) return;
+                if (!input.title) continue;
                 const due = input.dueDate && !Number.isNaN(Date.parse(input.dueDate))
                     ? new Date(input.dueDate).toISOString()
                     : null;
                 const duplicate = due && window.app.tasks.some(task =>
                     task.title === String(input.title).trim() && task.dueDate === due
                 );
-                if (duplicate) return;
+                if (duplicate) continue;
 
                 window.app.tasks.unshift({
                     id: 'task-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
@@ -650,11 +762,11 @@
                 }
                 count++;
                 changedTasks = true;
-                return;
+                continue;
             }
 
             const task = findTask(action.task);
-            if (!task) return;
+            if (!task) continue;
 
             if (action.type === 'delete_task') {
                 window.app.tasks = window.app.tasks.filter(item => item.id !== task.id);
@@ -684,7 +796,7 @@
                 if (Object.prototype.hasOwnProperty.call(changes, 'dueDate')) {
                     const nextDate = changes.dueDate === null ? null : new Date(changes.dueDate);
                     if (changes.dueDate === null || !Number.isNaN(nextDate.getTime())) task.dueDate = nextDate ? nextDate.toISOString() : null;
-                    else return;
+                    else continue;
                     window.app.notifications = window.app.notifications.filter(item => item.taskId !== task.id);
                     if (task.dueDate && Number(task.reminder) > 0) {
                         const remindAt = new Date(new Date(task.dueDate).getTime() - Number(task.reminder) * 60000);
@@ -699,7 +811,7 @@
                 const hasOtherChange = Boolean(changes.title || changes.description !== undefined || changes.category || changes.priority || changes.estimatedTime);
                 if (hasOtherChange || Object.prototype.hasOwnProperty.call(changes, 'dueDate')) { count++; changedTasks = true; }
             }
-        });
+        }
 
         if (changedTasks) {
             window.app.saveData();
@@ -850,7 +962,7 @@
             const localScheduleActions = parseSchedule(text);
             if (localScheduleActions.length) {
                 typing.remove();
-                const scheduleCount = settings.actionsEnabled ? executeActions(localScheduleActions) : 0;
+                const scheduleCount = settings.actionsEnabled ? await executeActions(localScheduleActions) : 0;
                 const scheduleReply = settings.actionsEnabled
                     ? (scheduleCount === localScheduleActions.length
                         ? 'تم حفظ جدولك كاملًا. مهام المذاكرة ستبدأ تلقائيًا في مواعيدها.'
@@ -869,7 +981,7 @@
                 return;
             }
             const session = await window.NuvioCloud?.getSession();
-            if (!session?.access_token) throw new Error('سجّل الدخول لاستخدام Nuvio AI.');
+            if (!session?.access_token) throw new Error(aiT('loginRequired'));
 
             const response = await fetch(API_URL, {
                 method: 'POST',
@@ -884,6 +996,7 @@
                     preferences: settings
                 })
             });
+            if (response.status === 401) throw new Error(aiT('loginRequired'));
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'تعذر الاتصال بالمساعد');
             typing.remove();
@@ -935,7 +1048,7 @@
                 }
             }
             const actions = settings.actionsEnabled ? result.actions : [];
-            const count = executeActions(actions);
+            const count = await executeActions(actions);
             const requestedTaskUpdate = actions.some(action => action?.type === 'update_task');
             const reply = count
                 ? `${result.reply || 'تم تنفيذ الطلب.'}\nتم حفظ ${count} تعديل داخل الموقع.`
@@ -947,8 +1060,13 @@
             saveHistory();
         } catch (error) {
             typing.remove();
-            const reply = error.message || 'تعذر الاتصال بالمساعد، حاول مرة أخرى.';
-            await animateReply(reply);
+            const isNetworkError = error instanceof TypeError
+                || /failed to fetch|networkerror|load failed/i.test(String(error.message || ''));
+            const reply = isNetworkError
+                ? aiT('networkError')
+                : error.message || aiT('networkError');
+            const message = await animateReply(reply);
+            if (isNetworkError) appendRetryButton(message, text);
             chat.messages.push({ role: 'assistant', content: reply });
             saveHistory();
         } finally {
@@ -967,6 +1085,7 @@
         dom.title = document.getElementById('chatTitle');
         dom.newChat = document.getElementById('newChat');
         dom.clear = document.getElementById('clearChat');
+        dom.back = document.getElementById('aiBackToApp');
         dom.mobileMenu = document.getElementById('mobileMenu');
         dom.sidebar = document.getElementById('aiSidebar');
         dom.settingsPanel = document.getElementById('aiSettingsPanel');
@@ -976,9 +1095,11 @@
 
         loadHistory();
         dom.newChat?.addEventListener('click', createChat);
-        dom.clear?.addEventListener('click', () => {
+        dom.back?.addEventListener('click', () => { window.location.href = './index.html'; });
+        dom.clear?.addEventListener('click', async () => {
             const chat = currentChat();
-            if (!chat || !window.confirm('هل تريد مسح هذه المحادثة؟')) return;
+            if (!chat) return;
+            if (!await askForConfirmation(aiT('clearMessages'))) return;
             conversations = conversations.filter(item => item.id !== chat.id);
             saveHistory();
             activeId = null;
@@ -1024,7 +1145,7 @@
         });
         dom.send.addEventListener('click', sendMessage);
         dom.input.addEventListener('keydown', event => {
-            if (event.key === 'Enter' && !event.shiftKey) {
+            if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
                 event.preventDefault();
                 sendMessage();
             }
@@ -1051,4 +1172,11 @@
     });
 
     initialize();
+    window.NuvioAI = {
+        refreshLanguage() {
+            if (currentChat()?.messages.length === 0) render();
+            else renderHistory();
+            syncSettings();
+        }
+    };
 })();

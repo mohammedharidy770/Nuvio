@@ -28,7 +28,12 @@ class NuvioApp {
             taskReminder: true
         };
 
-        this.currentSection = 'dashboard';
+        const pageParams = new URLSearchParams(window.location.search);
+        const requestedSection = pageParams.get('section');
+        const validSections = ['dashboard', 'tasks', 'focus', 'calendar', 'reports', 'settings', 'habits', 'prayer', 'sleep', 'water', 'notes'];
+        this.currentSection = pageParams.get('view') === 'ai'
+            ? 'ai'
+            : validSections.includes(requestedSection) ? requestedSection : 'dashboard';
         this.currentFilter = 'all';
         this.currentSort = 'newest';
         this.selectedDate = new Date();
@@ -94,6 +99,7 @@ class NuvioApp {
     }
 
     init() {
+        const pageParams = new URLSearchParams(window.location.search);
         this.loadData();
         this.restoreTimerState?.();
         this.loadHabits();
@@ -116,6 +122,7 @@ class NuvioApp {
         }
         this.updateTime();
         this.renderAll();
+        if (pageParams.has('view') || pageParams.has('section')) this.showSection(this.currentSection);
         this.startClock();
         this.checkOverdueTasks();
         window.addEventListener('nuvio:sync-ready', () => {
@@ -124,8 +131,16 @@ class NuvioApp {
             this.startNotificationScheduler?.();
             this.startScheduleAutomation?.();
         }, { once: true });
+        if (window.NuvioAuth?.getSession) {
+            window.NuvioAuth.getSession()
+                .then(session => this.updateAccountSettings(session))
+                .catch(error => {
+                    console.error('Could not load Nuvio account status:', error);
+                    this.updateAccountSettings(null);
+                });
+        }
         const helpSeen = localStorage.getItem('nuvio_help_seen');
-        if (!helpSeen) {
+        if (!helpSeen && this.currentSection !== 'ai') {
             setTimeout(() => this.showHelp(), 800);
         }
 
