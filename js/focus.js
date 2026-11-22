@@ -175,8 +175,16 @@ Object.assign(NuvioApp.prototype, {
 
         const tm = document.getElementById('timerMinutes');
         const ts = document.getElementById('timerSeconds');
-        if (tm) tm.textContent = String(minutes).padStart(2, '0');
-        if (ts) ts.textContent = String(seconds).padStart(2, '0');
+        if (tm) {
+            tm.textContent = String(minutes).padStart(2, '0');
+            tm.setAttribute('lang', 'en');
+            tm.setAttribute('dir', 'ltr');
+        }
+        if (ts) {
+            ts.textContent = String(seconds).padStart(2, '0');
+            ts.setAttribute('lang', 'en');
+            ts.setAttribute('dir', 'ltr');
+        }
 
         const circle = document.getElementById('timerProgress');
         if (circle) {
