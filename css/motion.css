@@ -261,3 +261,24 @@ body::after {
         transition-duration: .01ms !important;
     }
 }
+
+
+/* Lightweight interaction motion: animate compositor-friendly properties only */
+.nav-item,
+.header-btn,
+.btn-primary,
+.btn-secondary,
+.btn-outline,
+.btn-danger,
+.task-item,
+.habit-item {
+    transition: transform .16s ease, opacity .16s ease, border-color .16s ease, background-color .16s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
+}
