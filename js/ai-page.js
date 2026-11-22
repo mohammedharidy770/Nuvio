@@ -214,15 +214,11 @@
     }
 
     async function animateReply(text) {
-        const message = appendMessage('assistant', '');
-        const copy = message.querySelector('.ai-copy-message');
-        copy?.remove();
-        const chunks = Array.from(escapeText(text));
-        for (let index = 0; index < chunks.length; index++) {
-            message.textContent += chunks[index];
-            if (index % 3 === 0) scrollToLatest();
-            await new Promise(resolve => setTimeout(resolve, chunks[index] === '\n' ? 5 : 7));
-        }
+        // Render the complete response in one DOM update. The previous character-by-
+        // character loop created hundreds of timers and repeated smooth-scroll calls
+        // for long answers, which made the chat feel sluggish on lower-end devices.
+        const message = appendMessage('assistant', escapeText(text));
+        message.classList.add('ai-message-enter');
         addCopyButton(message);
     }
 
