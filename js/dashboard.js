@@ -12,19 +12,23 @@ Object.assign(NuvioApp.prototype, {
                 if (this.currentSection === 'notes') this.renderNotes();
         if (this.currentSection === 'prayer') { this.renderPrayerTimes(); this.updatePrayerCountdown(); }
                 if (this.currentSection === 'focus') {
-            this.timerState.totalTime = this.settings.pomodoroDuration * 60;
-            if (!this.timerState.running && !this.timerState.paused) {
-                this.timerState.timeLeft = this.timerState.totalTime;
-            }
-            this.setTimerMode(this.timerState.mode || 'pomodoro');
+            // Rendering must not reset, pause, or restart the active timer.
+            this.updateTimerDisplay?.();
+            this.syncTimerButtons?.();
+            this.renderFocusStats?.();
         }
     },
 
     renderDashboard() {
         const today = new Date().toDateString();
-        const todayTasks = this.tasks.filter(t => {
-            if (t.completedAt) return new Date(t.completedAt).toDateString() === today;
-            return t.status !== 'completed';
+        const todayTasks = this.tasks.filter(task => {
+            if (task.completedAt) {
+                const completedAt = new Date(task.completedAt);
+                return !Number.isNaN(completedAt.getTime()) && completedAt.toDateString() === today;
+            }
+            if (task.status === 'completed' || !task.dueDate) return false;
+            const dueDate = new Date(task.dueDate);
+            return !Number.isNaN(dueDate.getTime()) && dueDate.toDateString() === today;
         });
 
         const completedToday = this.tasks.filter(t => 

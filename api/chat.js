@@ -5,9 +5,22 @@ const ALLOWED_ORIGINS = new Set([
     'https://nuvio-blue.vercel.app',
     'https://mohammedharidy770.github.io',
     'https://nuvio-mohammedharidy770.vercel.app',
+    'https://nuvio-git-fix-stability-and-data-safety-mohammedharidy770.vercel.app',
     'https://nuvio-git-main-mohammedharidy770.vercel.app'
 ]);
-const isAllowedOrigin = origin => ALLOWED_ORIGINS.has(origin);
+const isAllowedOrigin = origin => {
+    if (ALLOWED_ORIGINS.has(origin)) return true;
+
+    // Allow only HTTPS preview deployments belonging to this Nuvio Vercel project.
+    try {
+        const url = new URL(origin);
+        return url.protocol === 'https:' &&
+            url.origin === origin &&
+            /^nuvio-[a-z0-9-]+-mohammedharidy770\.vercel\.app$/i.test(url.hostname);
+    } catch {
+        return false;
+    }
+};
 
 async function consumeUserQuota(req) {
     const authorization = req.headers.authorization;
@@ -150,18 +163,21 @@ function sanitizeAction(action) {
         if (!title) return null;
         const dueDate = validDate(x.dueDate);
         const estimatedTime = Math.min(1440, Math.max(1, parseInt(x.estimatedTime, 10) || 25));
-        const autoStart = x.autoStart === true || Boolean(validDate(x.endDate));
+        const autoStart = x.autoStart === true;
         let endDate = validDate(x.endDate);
         if (autoStart && dueDate && !endDate) {
             endDate = new Date(Date.parse(dueDate) + estimatedTime * 60000).toISOString();
         }
+        const repeat = ['none', 'daily', 'weekly', 'monthly'].includes(x.repeat) ? x.repeat : 'none';
+        const reminderValue = Number(x.reminder);
+        const reminder = [0, 15, 30, 60, 1440].includes(reminderValue) ? reminderValue : 0;
         return { type, task: {
             title, description: clean(x.description, 1000),
             category: SAFE_CATEGORIES.includes(x.category) ? x.category : 'study',
             priority: SAFE_PRIORITIES.includes(x.priority) ? x.priority : 'medium',
             dueDate, endDate, autoStart,
             estimatedTime,
-            repeat: 'none', reminder: 0,
+            repeat, reminder,
             tags: Array.isArray(x.tags) ? x.tags.slice(0,10).map(v => clean(String(v),40)).filter(Boolean) : []
         }};
     }
@@ -284,8 +300,9 @@ ${actionsEnabled
 - لا تحذف أو تستبدل بيانات مهمة أو ملاحظة أو عادة إلا بطلب واضح. إذا كان الهدف غير محدد أو توجد عناصر متشابهة، اسأل قبل إصدار إجراء الحذف.
 - لا تدّعِ تنفيذ إجراء. لا تقل تم أو خليته إلا إذا أصدرت action صالحًا محدد الهدف. إذا لم تستطع تحديد المهمة، اسأل عن اسمها.
 - لا تُصدر أكثر من 30 إجراء في الرسالة الواحدة.
-- أعد JSON صالحًا فقط، دون Markdown أو نص خارج JSON، بالشكل:
-{"reply":"رد عربي طبيعي","actions":[{"type":"add_task","task":{"title":"عنوان","description":"","category":"study","priority":"medium","dueDate":"ISO datetime أو null","endDate":"ISO datetime أو null","autoStart":true أو false,"estimatedTime":45,"repeat":"none","reminder":0,"tags":[]}}]}
+- أنشئ أيضًا title لاسم المحادثة تلقائيًا من موضوع أول طلب للمستخدم. اجعله عنوانًا عربيًا قصيرًا وواضحًا من 2 إلى 5 كلمات، يصف الموضوع الأساسي فقط، وليس جملة أمر أو ردًا على المستخدم. لا تستخدم عناوين عامة مثل "محادثة جديدة" أو "مساعدة".
+أعد JSON صالحًا فقط، دون Markdown أو نص خارج JSON، بالشكل:
+{"title":"عنوان المحادثة المختصر","reply":"رد عربي طبيعي","actions":[{"type":"add_task","task":{"title":"عنوان","description":"","category":"study","priority":"medium","dueDate":"ISO datetime أو null","endDate":"ISO datetime أو null","autoStart":true أو false,"estimatedTime":45,"repeat":"none","reminder":0,"tags":[]}}]}
 
 الإجراءات المدعومة:
 0) add_reminder: reminder {message, remindAt} لإشعار مستقبلي محدد الوقت.
@@ -363,6 +380,8 @@ ${actionsEnabled
             return res.status(502).json({ error: 'Groq returned an invalid structured response.' });
         }
 
+        if (typeof parsed.title !== 'string') parsed.title = '';
+        parsed.title = parsed.title.replace(/[\\u0000-\\u001f\\u007f]/g, ' ').trim().slice(0, 48);
         if (typeof parsed.reply !== 'string') parsed.reply = 'تمت معالجة طلبك.';
         if (!Array.isArray(parsed.actions)) parsed.actions = [];
         parsed.actions = actionsEnabled ? parsed.actions.slice(0, 30).map(sanitizeAction).filter(Boolean) : [];

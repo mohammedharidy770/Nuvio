@@ -110,7 +110,8 @@ class NuvioApp {
         this.setupEventListeners();
         const firstRun = localStorage.getItem("nuvio_first_run");
         if (!firstRun) {
-            this.addDemoData();
+            // Never seed demo content automatically: app initialization can run
+            // before cloud sync restores an existing account's real data.
             localStorage.setItem("nuvio_first_run", "true");
         }
         this.updateTime();
