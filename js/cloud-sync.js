@@ -177,6 +177,26 @@
         }
     }
 
+    function stableSerialize(value) {
+        if (Array.isArray(value)) return '[' + value.map(stableSerialize).join(',') + ']';
+        if (value && typeof value === 'object') {
+            return '{' + Object.keys(value).sort().map(key =>
+                JSON.stringify(key) + ':' + stableSerialize(value[key])
+            ).join(',') + '}';
+        }
+        return JSON.stringify(value);
+    }
+
+    function snapshotsMatch(localData, remoteData) {
+        if (!remoteData || typeof remoteData !== 'object') return false;
+        try {
+            return stableSerialize(localData) === stableSerialize(remoteData);
+        } catch (error) {
+            console.warn('Nuvio could not compare local and cloud snapshots:', error);
+            return false;
+        }
+    }
+
     function hasLocalData() {
         const read = key => {
             try {
@@ -484,7 +504,15 @@
             const hasUnsentLocalChanges = Boolean(localStorage.getItem(DIRTY_KEY)) && hasLocalData();
             if (row) {
                 lastRemoteVersion = Number(row.version) || 0;
-                if ((!ownerId && hasLocalData()) || hasUnsentLocalChanges) {
+                // A stale dirty marker can survive a refresh even when the actual
+                // local snapshot is already identical to the cloud copy. Treat that
+                // as synchronized instead of showing the same conflict repeatedly.
+                const localMatchesCloud = hasUnsentLocalChanges && snapshotsMatch(snapshot(), row.data);
+                if (localMatchesCloud) {
+                    localStorage.removeItem(DIRTY_KEY);
+                    dirty = false;
+                }
+                if ((!ownerId && hasLocalData()) || (hasUnsentLocalChanges && !localMatchesCloud)) {
                     if (!backupLocalAccountData('initial-device-cloud-conflict', nextUserId)) throw new Error('Local backup failed; refusing to replace local data.');
                     localStorage.setItem(OWNER_KEY, nextUserId);
                     dirty = true;
