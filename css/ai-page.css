@@ -375,3 +375,61 @@ body:not(.ai-page-body) .integrated-ai * { box-sizing:border-box; }
 @media (max-width: 768px) {
     .ai-section .ai-message { max-width: 94%; }
 }
+
+
+/* Chat bubble sizing: stable dimensions for short and long Arabic messages */
+.ai-section .ai-message {
+    display: block;
+    box-sizing: border-box;
+    inline-size: fit-content;
+    min-inline-size: 0;
+    min-block-size: 46px;
+    max-inline-size: min(88%, 760px);
+    padding: 11px 17px;
+    line-height: 1.75;
+    border-radius: 17px;
+    text-align: start;
+}
+.ai-section .ai-message-user {
+    align-self: flex-end;
+    margin-inline: 0;
+    border-end-start-radius: 7px;
+}
+.ai-section .ai-message-assistant {
+    align-self: flex-start;
+    padding-inline-end: 46px;
+    border-end-end-radius: 7px;
+}
+.ai-section .ai-copy-message {
+    inline-size: 28px;
+    block-size: 28px;
+}
+.ai-section .ai-suggestions button,
+.ai-section .ai-new-chat,
+.ai-section .ai-send,
+.ai-section .ai-history-row,
+.ai-section .ai-copy-message {
+    transition: background-color .16s ease, border-color .16s ease, color .16s ease, transform .16s ease, box-shadow .16s ease;
+}
+.ai-section .ai-suggestions button:hover {
+    transform: translateY(-2px);
+}
+.ai-section .ai-send:hover,
+.ai-section .ai-new-chat:hover {
+    transform: translateY(-1px);
+}
+@media (max-width: 768px) {
+    .ai-section .ai-message { max-inline-size: 94%; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ai-section .ai-message,
+    .ai-section .ai-suggestions button,
+    .ai-section .ai-new-chat,
+    .ai-section .ai-send,
+    .ai-section .ai-history-row,
+    .ai-section .ai-copy-message {
+        animation: none !important;
+        transition: none !important;
+        transform: none !important;
+    }
+}
