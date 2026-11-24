@@ -134,7 +134,7 @@
         pendingConflict = null;
         dirty = true;
         try {
-            await writeSnapshot();
+            await writeSnapshot({ allowEmptyOverwrite: true });
         } catch (error) {
             handleSyncError(error);
             return false;
@@ -321,6 +321,56 @@
         return false;
     }
 
+    function snapshotHasUserData(data) {
+        if (!data || typeof data !== 'object') return false;
+        const get = (current, legacy) => data[current] !== undefined ? data[current] : data[legacy];
+        const hasItems = value => Array.isArray(value) && value.length > 0;
+
+        if ([
+            get('tasks', 'nuvio_tasks'),
+            get('focusSessions', 'nuvio_sessions'),
+            get('notifications', 'nuvio_notifications'),
+            get('habits', 'nuvio_habits'),
+            get('notes', 'nuvio_notes'),
+            get('sleepRecords', 'nuvio_sleep')
+        ].some(hasItems)) return true;
+
+        const profile = get('userProfile', 'nuvio_user_profile');
+        if (profile && (String(profile.name || '').trim() || profile.avatar)) return true;
+
+        const aiHistory = get('aiHistory', 'nuvio_ai_history');
+        if (Array.isArray(aiHistory) && aiHistory.some(chat =>
+            Array.isArray(chat?.messages) && chat.messages.length > 0
+        )) return true;
+
+        const aiSettings = get('aiSettings', 'nuvio_ai_settings');
+        if (aiSettings && typeof aiSettings === 'object' && Object.keys(aiSettings).length > 0) return true;
+
+        const settings = get('settings', 'nuvio_settings');
+        if (settings && typeof settings === 'object' && !Array.isArray(settings)) {
+            const defaults = {
+                pomodoroDuration: 25, shortBreakDuration: 5, longBreakDuration: 15,
+                darkMode: false, language: 'ar', timerNotification: true, taskReminder: true
+            };
+            if (Object.entries(settings).some(([key, value]) =>
+                Object.prototype.hasOwnProperty.call(defaults, key) && value !== defaults[key]
+            )) return true;
+        }
+
+        const water = get('waterData', 'nuvio_water');
+        if (water && typeof water === 'object' && !Array.isArray(water) &&
+            (Number(water.today) > 0 || Number(water.goal || 8) !== 8 ||
+                water.reminder === true || (water.history && Object.keys(water.history).length > 0))) return true;
+
+        const prayer = get('prayerData', 'nuvio_prayer');
+        if (prayer && typeof prayer === 'object' && !Array.isArray(prayer) &&
+            ((prayer.city && prayer.city !== 'Cairo') ||
+                (prayer.method && String(prayer.method) !== '5') ||
+                prayer.times || prayer.location)) return true;
+
+        return false;
+    }
+
     function backupLocalAccountData(reason, nextUserId) {
         const data = {};
         DATA_KEYS.forEach(key => { const value = localStorage.getItem(key); if (value !== null) data[key] = value; });
@@ -373,7 +423,7 @@
         window.location.reload();
     }
 
-    async function writeSnapshot() {
+    async function writeSnapshot(options = {}) {
         if (!userId || !ready || applying || !navigator.onLine) return;
         if (busy) {
             pendingSave = true;
@@ -394,6 +444,12 @@
 
             if (readError) throw readError;
             if (writeGeneration !== generation || writeUserId !== userId) return;
+
+            if (row && snapshotHasUserData(row.data) && !hasLocalData() && !options.allowEmptyOverwrite) {
+                dirty = true;
+                setPendingConflict(row.data, Number(row.version), 'توجد بيانات محفوظة على السحابة بينما هذا الجهاز لا يحتوي على بيانات محلية. اختر النسخة التي تريد الاحتفاظ بها.');
+                return;
+            }
 
             const nextVersion = (Number(row?.version) || 0) + 1;
             const payload = {
@@ -485,6 +541,11 @@
 
             const remoteVersion = Number(row.version) || 0;
             if (remoteVersion > lastRemoteVersion) {
+                if (hasLocalData() && !snapshotHasUserData(row.data)) {
+                    setPendingConflict(row.data, remoteVersion, 'بيانات هذا الجهاز موجودة، لكن نسخة السحابة تبدو فارغة. اختر بيانات هذا الجهاز للحفاظ على مهامك أو نسخة السحابة.');
+                    return;
+                }
+
                 if (dirty) {
                     setPendingConflict(row.data, remoteVersion, 'هناك تعديلات محلية وأخرى على جهاز مختلف. اختر النسخة التي تريد الاحتفاظ بها.');
                     return;
@@ -559,7 +620,9 @@
             if (startGeneration !== generation || userId !== nextUserId) return;
 
             let initialLocalConflict = null;
-            const hasUnsentLocalChanges = Boolean(localStorage.getItem(DIRTY_KEY)) && hasLocalData();
+            const localHasData = hasLocalData();
+            const remoteHasData = snapshotHasUserData(row?.data);
+            const hasUnsentLocalChanges = Boolean(localStorage.getItem(DIRTY_KEY)) && localHasData;
             if (row) {
                 lastRemoteVersion = Number(row.version) || 0;
                 // A stale dirty marker can survive a refresh even when the actual
@@ -570,7 +633,9 @@
                     localStorage.removeItem(DIRTY_KEY);
                     dirty = false;
                 }
-                if ((!ownerId && hasLocalData()) || (hasUnsentLocalChanges && !localMatchesCloud)) {
+                if ((!ownerId && localHasData) ||
+                    (localHasData && !remoteHasData && !localMatchesCloud) ||
+                    (hasUnsentLocalChanges && !localMatchesCloud)) {
                     if (!backupConflictOnce(row.data, nextUserId)) throw new Error('Local backup failed; refusing to replace local data.');
                     localStorage.setItem(OWNER_KEY, nextUserId);
                     dirty = true;
@@ -604,6 +669,11 @@
 
                     if (dirty) {
                         setPendingConflict(payload.new.data, incomingVersion, 'وصل تحديث من جهاز آخر بينما لديك تعديلات محلية. اختر النسخة التي تريد الاحتفاظ بها.');
+                        return;
+                    }
+
+                    if (hasLocalData() && !snapshotHasUserData(payload.new.data)) {
+                        setPendingConflict(payload.new.data, incomingVersion, 'بيانات هذا الجهاز موجودة، لكن نسخة السحابة تبدو فارغة. اختر بيانات هذا الجهاز للحفاظ على مهامك أو نسخة السحابة.');
                         return;
                     }
 
