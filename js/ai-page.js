@@ -169,16 +169,103 @@
         else render();
     }
 
+    function appendInlineMarkdown(parent, value) {
+        const pattern = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+        const parts = String(value).split(pattern);
+        parts.forEach(part => {
+            if (!part) return;
+            if (part.startsWith('**') && part.endsWith('**')) {
+                const strong = document.createElement('strong');
+                strong.textContent = part.slice(2, -2);
+                parent.appendChild(strong);
+            } else if (part.startsWith('`') && part.endsWith('`')) {
+                const code = document.createElement('code');
+                code.textContent = part.slice(1, -1);
+                parent.appendChild(code);
+            } else {
+                parent.appendChild(document.createTextNode(part));
+            }
+        });
+    }
+
+    function renderAssistantText(container, value) {
+        const lines = String(value ?? '').replace(/\r\n?/g, '\n').split('\n');
+        const fragment = document.createDocumentFragment();
+        let index = 0;
+
+        while (index < lines.length) {
+            const line = lines[index];
+            if (!line.trim()) { index += 1; continue; }
+
+            if (/^\s*```/.test(line)) {
+                const codeLines = [];
+                index += 1;
+                while (index < lines.length && !/^\s*```/.test(lines[index])) {
+                    codeLines.push(lines[index]);
+                    index += 1;
+                }
+                if (index < lines.length) index += 1;
+                const pre = document.createElement('pre');
+                const code = document.createElement('code');
+                code.textContent = codeLines.join('\n');
+                pre.appendChild(code);
+                fragment.appendChild(pre);
+                continue;
+            }
+
+            const heading = line.match(/^\s{0,3}(#{1,3})\s+(.+)$/);
+            if (heading) {
+                const element = document.createElement('h' + heading[1].length);
+                appendInlineMarkdown(element, heading[2]);
+                fragment.appendChild(element);
+                index += 1;
+                continue;
+            }
+
+            const listMatch = line.match(/^\s*(?:[-*]\s+|\d+[.)]\s+)/);
+            if (listMatch) {
+                const ordered = /^\s*\d+[.)]\s+/.test(line);
+                const list = document.createElement(ordered ? 'ol' : 'ul');
+                while (index < lines.length) {
+                    const itemMatch = lines[index].match(/^\s*(?:[-*]\s+|\d+[.)]\s+)(.+)$/);
+                    if (!itemMatch) break;
+                    const item = document.createElement('li');
+                    appendInlineMarkdown(item, itemMatch[1]);
+                    list.appendChild(item);
+                    index += 1;
+                }
+                fragment.appendChild(list);
+                continue;
+            }
+
+            const paragraphLines = [];
+            while (index < lines.length && lines[index].trim()
+                && !/^\s*```/.test(lines[index])
+                && !/^\s{0,3}#{1,3}\s+/.test(lines[index])
+                && !/^\s*(?:[-*]\s+|\d+[.)]\s+)/.test(lines[index])) {
+                paragraphLines.push(lines[index]);
+                index += 1;
+            }
+            const paragraph = document.createElement('p');
+            paragraphLines.forEach((part, partIndex) => {
+                if (partIndex) paragraph.appendChild(document.createElement('br'));
+                appendInlineMarkdown(paragraph, part);
+            });
+            fragment.appendChild(paragraph);
+        }
+
+        container.replaceChildren(fragment);
+    }
+
     function appendMessage(role, text) {
         const message = document.createElement('div');
         message.className = `ai-message ai-message-${role}`;
-        const content = document.createElement('span');
+        const content = document.createElement('div');
         content.className = 'ai-message-text';
-        content.textContent = escapeText(text);
+        if (role === 'assistant' && text) renderAssistantText(content, text);
+        else content.textContent = escapeText(text);
         message.appendChild(content);
-        if (role === 'assistant') {
-            addCopyButton(message);
-        }
+        if (role === 'assistant') addCopyButton(message);
         dom.messages.appendChild(message);
         scrollToLatest();
         return message;
@@ -363,7 +450,7 @@
         if (!content) return message;
 
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !fullText) {
-            content.textContent = fullText;
+            renderAssistantText(content, fullText);
             return message;
         }
 
@@ -379,7 +466,7 @@
             if (step % 6 === 0) scrollToLatest();
             await new Promise(resolve => setTimeout(resolve, 24));
         }
-        content.textContent = fullText;
+        renderAssistantText(content, fullText);
         content.classList.remove('is-streaming');
         scrollToLatest();
         return message;
