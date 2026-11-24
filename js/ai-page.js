@@ -10,6 +10,7 @@
     let activeId = null;
     let sending = false;
     const SETTINGS_KEY = 'nuvio_ai_settings';
+    const AI_SKILLS = ['planner', 'study_coach', 'writer', 'nuvio_guide'];
     const aiT = key => window.app?.t?.('ai.' + key) || key;
 
     const dom = {
@@ -277,30 +278,72 @@
     }
 
     function getAISettings() {
+        let saved = {};
         try {
-            return { tone: 'concise', actionsEnabled: true, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') };
-        } catch {
-            return { tone: 'concise', actionsEnabled: true };
+            const parsed = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) saved = parsed;
+        } catch (error) {
+            console.error('Could not load AI settings:', error);
         }
+        return {
+            tone: ['concise', 'friendly', 'detailed'].includes(saved.tone) ? saved.tone : 'concise',
+            actionsEnabled: saved.actionsEnabled !== false,
+            skills: Array.isArray(saved.skills) ? [...new Set(saved.skills.filter(skill => AI_SKILLS.includes(skill)))] : [],
+            memory: typeof saved.memory === 'string' ? saved.memory.slice(0, 4000) : '',
+            memoryEnabled: saved.memoryEnabled === true
+        };
     }
 
     function saveAISettings(settings) {
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+        const normalized = {
+            tone: ['concise', 'friendly', 'detailed'].includes(settings.tone) ? settings.tone : 'concise',
+            actionsEnabled: settings.actionsEnabled !== false,
+            skills: Array.isArray(settings.skills) ? [...new Set(settings.skills.filter(skill => AI_SKILLS.includes(skill)))] : [],
+            memory: typeof settings.memory === 'string' ? settings.memory.trim().slice(0, 4000) : '',
+            memoryEnabled: settings.memoryEnabled === true
+        };
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(normalized));
         window.NuvioSync?.scheduleSave();
     }
 
     function openSettings(open) {
         dom.settingsPanel?.classList.toggle('open', open);
+        dom.settingsPanel?.setAttribute('aria-hidden', String(!open));
         dom.settingsBackdrop?.classList.toggle('open', open);
         document.body.style.overflow = open ? 'hidden' : '';
+        if (open) {
+            requestAnimationFrame(() => document.getElementById('aiResponseTone')?.focus());
+        } else {
+            document.getElementById('openAISettings')?.focus();
+        }
     }
 
     function syncSettings() {
         const settings = getAISettings();
         const tone = document.getElementById('aiResponseTone');
         const actions = document.getElementById('aiAutoActions');
+        const memory = document.getElementById('aiPersonalMemory');
+        const useMemory = document.getElementById('aiUseMemory');
         if (tone) tone.value = settings.tone;
         if (actions) actions.checked = settings.actionsEnabled;
+        if (memory) memory.value = settings.memory;
+        if (useMemory) useMemory.checked = settings.memoryEnabled;
+        document.querySelectorAll('[data-ai-skill]').forEach(button => {
+            const selected = settings.skills.includes(button.dataset.aiSkill);
+            button.classList.toggle('selected', selected);
+            button.setAttribute('aria-pressed', String(selected));
+        });
+        updateMemoryCount(settings.memory.length);
+    }
+
+    function updateMemoryCount(length) {
+        const count = document.getElementById('aiMemoryCount');
+        if (count) count.textContent = `${length} / 4000`;
+    }
+
+    function setMemoryStatus(message) {
+        const status = document.getElementById('aiMemoryStatus');
+        if (status) status.textContent = message;
     }
 
     function showTyping() {
@@ -313,11 +356,32 @@
     }
 
     async function animateReply(text) {
-        // Render the complete response in one DOM update. The previous character-by-
-        // character loop created hundreds of timers and repeated smooth-scroll calls
-        // for long answers, which made the chat feel sluggish on lower-end devices.
-        const message = appendMessage('assistant', escapeText(text));
+        const fullText = escapeText(text);
+        const message = appendMessage('assistant', '');
         message.classList.add('ai-message-enter');
+        const content = message.querySelector('.ai-message-text');
+        if (!content) return message;
+
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !fullText) {
+            content.textContent = fullText;
+            return message;
+        }
+
+        const segments = typeof Intl.Segmenter === 'function'
+            ? Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(fullText), item => item.segment)
+            : Array.from(fullText);
+        const steps = Math.min(36, Math.max(8, Math.ceil(segments.length / 5)));
+        const chunkSize = Math.ceil(segments.length / steps);
+        content.classList.add('is-streaming');
+
+        for (let index = chunkSize, step = 0; index < segments.length; index += chunkSize, step += 1) {
+            content.textContent = segments.slice(0, index).join('');
+            if (step % 6 === 0) scrollToLatest();
+            await new Promise(resolve => setTimeout(resolve, 24));
+        }
+        content.textContent = fullText;
+        content.classList.remove('is-streaming');
+        scrollToLatest();
         return message;
     }
 
@@ -726,6 +790,8 @@
                 const due = input.dueDate && !Number.isNaN(Date.parse(input.dueDate))
                     ? new Date(input.dueDate).toISOString()
                     : null;
+                const estimatedTime = Math.min(1440, Math.max(1, parseInt(input.estimatedTime, 10) || 25));
+                const autoStart = input.autoStart === true || (input.autoStart !== false && Boolean(due));
                 const duplicate = due && window.app.tasks.some(task =>
                     task.title === String(input.title).trim() && task.dueDate === due
                 );
@@ -741,11 +807,11 @@
                     dueDate: due,
                     endDate: input.endDate && !Number.isNaN(Date.parse(input.endDate))
                         ? new Date(input.endDate).toISOString()
-                        : (input.autoStart && due
-                            ? new Date(Date.parse(due) + Math.min(1440, Math.max(1, parseInt(input.estimatedTime, 10) || 25)) * 60000).toISOString()
+                        : (autoStart && due
+                            ? new Date(Date.parse(due) + estimatedTime * 60000).toISOString()
                             : null),
-                    autoStart: input.autoStart === true,
-                    estimatedTime: Math.min(1440, Math.max(1, parseInt(input.estimatedTime, 10) || 25)),
+                    autoStart,
+                    estimatedTime,
                     actualTime: 0,
                     repeat: ['none', 'daily', 'weekly', 'monthly'].includes(input.repeat) ? input.repeat : 'none',
                     reminder: [0, 15, 30, 60, 1440].includes(Number(input.reminder)) ? Number(input.reminder) : 0,
@@ -927,7 +993,7 @@
                     priority: isStudy ? 'high' : 'medium',
                     dueDate: startDate.toISOString(),
                     endDate: endDate ? endDate.toISOString() : null,
-                    autoStart: isStudy,
+                    autoStart: !entry.single,
                     estimatedTime: entry.single ? 25 : Math.max(1, Math.round((endDate - startDate) / 60000)),
                     tags: ['جدول اليوم']
                 }
@@ -965,7 +1031,7 @@
                 const scheduleCount = settings.actionsEnabled ? await executeActions(localScheduleActions) : 0;
                 const scheduleReply = settings.actionsEnabled
                     ? (scheduleCount === localScheduleActions.length
-                        ? 'تم حفظ جدولك كاملًا. مهام المذاكرة ستبدأ تلقائيًا في مواعيدها.'
+                        ? 'تم حفظ جدولك كاملًا. المهام المجدولة ستبدأ تلقائيًا في مواعيدها.'
                         : 'تمت إضافة ' + scheduleCount + ' من ' + localScheduleActions.length + ' نشاطًا. راجع المهام للتأكد من الباقي.')
                     : 'تم تحليل الجدول، لكن تنفيذ الأوامر متوقف من إعدادات المساعد.';
                 if (isFirstMessage) {
@@ -975,9 +1041,9 @@
                     renderHistory();
                     saveHistory();
                 }
-                await animateReply(scheduleReply);
                 chat.messages.push({ role: 'assistant', content: scheduleReply });
                 saveHistory();
+                await animateReply(scheduleReply);
                 return;
             }
             const session = await window.NuvioCloud?.getSession();
@@ -993,7 +1059,13 @@
                     message: text,
                     context: getAppContext(),
                     history: chat.messages.slice(-11, -1),
-                    preferences: settings
+                    preferences: {
+                        tone: settings.tone,
+                        actionsEnabled: settings.actionsEnabled,
+                        skills: settings.skills,
+                        memoryEnabled: settings.memoryEnabled,
+                        memory: settings.memoryEnabled ? settings.memory : ''
+                    }
                 })
             });
             if (response.status === 401) throw new Error(aiT('loginRequired'));
@@ -1055,9 +1127,9 @@
                 : requestedTaskUpdate
                     ? 'لم يتم تعديل أي مهمة. لم أجد مهامًا مطابقة أو تعذر حفظ التواريخ. راجع المهام وحاول مرة أخرى.'
                     : result.reply || escapeText(data.reply);
-            await animateReply(reply);
             chat.messages.push({ role: 'assistant', content: reply });
             saveHistory();
+            await animateReply(reply);
         } catch (error) {
             typing.remove();
             const isNetworkError = error instanceof TypeError
@@ -1065,10 +1137,10 @@
             const reply = isNetworkError
                 ? aiT('networkError')
                 : error.message || aiT('networkError');
-            const message = await animateReply(reply);
-            if (isNetworkError) appendRetryButton(message, text);
             chat.messages.push({ role: 'assistant', content: reply });
             saveHistory();
+            const message = await animateReply(reply);
+            if (isNetworkError) appendRetryButton(message, text);
         } finally {
             sending = false;
             dom.send.disabled = false;
@@ -1139,8 +1211,75 @@
         document.getElementById('aiAutoActions')?.addEventListener('change', event => {
             saveAISettings({ ...getAISettings(), actionsEnabled: event.target.checked });
         });
+        document.querySelectorAll('[data-ai-skill]').forEach(button => {
+            button.addEventListener('click', () => {
+                const settings = getAISettings();
+                const skill = button.dataset.aiSkill;
+                const skills = settings.skills.includes(skill)
+                    ? settings.skills.filter(item => item !== skill)
+                    : [...settings.skills, skill];
+                saveAISettings({ ...settings, skills });
+                syncSettings();
+            });
+        });
+        const memoryInput = document.getElementById('aiPersonalMemory');
+        memoryInput?.addEventListener('input', () => updateMemoryCount(memoryInput.value.length));
+        document.getElementById('saveAIMemory')?.addEventListener('click', () => {
+            const settings = getAISettings();
+            const memory = memoryInput?.value.trim().slice(0, 4000) || '';
+            saveAISettings({ ...settings, memory });
+            if (memoryInput) memoryInput.value = memory;
+            updateMemoryCount(memory.length);
+            setMemoryStatus(aiT('memorySaved'));
+        });
+        document.getElementById('aiUseMemory')?.addEventListener('change', event => {
+            const settings = getAISettings();
+            const memory = memoryInput?.value.trim().slice(0, 4000) || '';
+            saveAISettings({ ...settings, memory, memoryEnabled: event.target.checked });
+            if (memoryInput) memoryInput.value = memory;
+            updateMemoryCount(memory.length);
+            setMemoryStatus(aiT(event.target.checked ? 'memoryEnabled' : 'memoryDisabled'));
+        });
+        document.getElementById('clearAIMemory')?.addEventListener('click', () => {
+            if (!window.confirm(aiT('memoryClearConfirm'))) return;
+            saveAISettings({ ...getAISettings(), memory: '', memoryEnabled: false });
+            if (memoryInput) memoryInput.value = '';
+            const useMemory = document.getElementById('aiUseMemory');
+            if (useMemory) useMemory.checked = false;
+            updateMemoryCount(0);
+            setMemoryStatus(aiT('memoryCleared'));
+        });
+        document.getElementById('copyAIMemoryPrompt')?.addEventListener('click', async () => {
+            const prompt = aiT('memoryPrompt');
+            try {
+                if (navigator.clipboard?.writeText) {
+                    await navigator.clipboard.writeText(prompt);
+                } else {
+                    const copyInput = document.createElement('textarea');
+                    copyInput.value = prompt;
+                    copyInput.style.position = 'fixed';
+                    copyInput.style.opacity = '0';
+                    document.body.appendChild(copyInput);
+                    copyInput.select();
+                    const copied = document.execCommand('copy');
+                    copyInput.remove();
+                    if (!copied) throw new Error('Clipboard copy was rejected.');
+                }
+                setMemoryStatus(aiT('memoryPromptCopied'));
+            } catch (error) {
+                console.error('Could not copy the AI memory prompt:', error);
+                window.app?.showToast?.(aiT('copyFailed'), 'error');
+            }
+        });
         document.getElementById('resetAISettings')?.addEventListener('click', () => {
-            saveAISettings({ tone: 'concise', actionsEnabled: true });
+            const settings = getAISettings();
+            saveAISettings({
+                tone: 'concise',
+                actionsEnabled: true,
+                skills: [],
+                memory: settings.memory,
+                memoryEnabled: settings.memoryEnabled
+            });
             syncSettings();
         });
         dom.send.addEventListener('click', sendMessage);

@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="./css/auth.css?v=2">
     <link rel="stylesheet" href="./css/motion.css?v=2">
     <link rel="stylesheet" href="./css/ai-chat.css?v=3">
-    <link rel="stylesheet" href="./css/ai-page.css?v=14">
+    <link rel="stylesheet" href="./css/ai-page.css?v=18">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
 </head>
@@ -842,24 +842,74 @@
                 </div>
             </div>
             <div class="ai-settings-backdrop" id="aiSettingsBackdrop"></div>
-            <aside class="ai-settings-panel" id="aiSettingsPanel" aria-label="إعدادات AI Nuvio" data-i18n-aria-label="ai.settings">
+            <aside class="ai-settings-panel" id="aiSettingsPanel" role="dialog" aria-modal="true" aria-hidden="true" aria-label="إعدادات AI Nuvio" data-i18n-aria-label="ai.settings">
                 <div class="ai-settings-header">
-                    <strong data-i18n="ai.settings">إعدادات AI Nuvio</strong>
+                    <div>
+                        <strong data-i18n="ai.settings">إعدادات AI Nuvio</strong>
+                        <small data-i18n="ai.settingsSubtitle">خصص طريقة عمل مساعدك</small>
+                    </div>
                     <button id="closeAISettings" aria-label="إغلاق" data-i18n-aria-label="ai.closeSettings"><i class="fas fa-times"></i></button>
                 </div>
-                <label class="ai-setting-row">
-                    <span><strong data-i18n="ai.responseStyle">أسلوب الرد</strong><small data-i18n="ai.responseStyleHelp">اختر طريقة تواصل المساعد</small></span>
-                    <select id="aiResponseTone">
-                        <option value="concise" data-i18n="ai.toneConcise">مختصر ومباشر</option>
-                        <option value="friendly" data-i18n="ai.toneFriendly">ودود وشرح بسيط</option>
-                        <option value="detailed" data-i18n="ai.toneDetailed">تفصيلي</option>
-                    </select>
-                </label>
-                <label class="ai-setting-row">
-                    <span><strong data-i18n="ai.actions">تنفيذ الإجراءات</strong><small data-i18n="ai.actionsHelp">السماح للمساعد بتعديل مهامك</small></span>
-                    <input type="checkbox" id="aiAutoActions" checked>
-                </label>
-                <button class="ai-settings-reset" id="resetAISettings" data-i18n="ai.resetSettings">استعادة الإعدادات الافتراضية</button>
+                <div class="ai-settings-content">
+                    <section class="ai-settings-group">
+                        <div class="ai-settings-group-heading">
+                            <span class="ai-settings-group-icon"><i class="fas fa-sliders"></i></span>
+                            <div><strong data-i18n="ai.preferences">التفضيلات</strong><small data-i18n="ai.preferencesHelp">اختر أسلوب الرد وصلاحيات المساعد</small></div>
+                        </div>
+                        <label class="ai-setting-row">
+                            <span><strong data-i18n="ai.responseStyle">أسلوب الرد</strong><small data-i18n="ai.responseStyleHelp">اختر طريقة تواصل المساعد</small></span>
+                            <select id="aiResponseTone">
+                                <option value="concise" data-i18n="ai.toneConcise">مختصر ومباشر</option>
+                                <option value="friendly" data-i18n="ai.toneFriendly">ودود وشرح بسيط</option>
+                                <option value="detailed" data-i18n="ai.toneDetailed">تفصيلي</option>
+                            </select>
+                        </label>
+                        <label class="ai-setting-row">
+                            <span><strong data-i18n="ai.actions">تنفيذ الإجراءات</strong><small data-i18n="ai.actionsHelp">السماح للمساعد بتعديل مهامك</small></span>
+                            <input type="checkbox" id="aiAutoActions" checked>
+                        </label>
+                    </section>
+                    <section class="ai-settings-group">
+                        <div class="ai-settings-group-heading">
+                            <span class="ai-settings-group-icon"><i class="fas fa-wand-magic-sparkles"></i></span>
+                            <div><strong data-i18n="ai.skills">مهارات المساعد</strong><small data-i18n="ai.skillsHelp">فعّل المهارات المناسبة لمحادثاتك</small></div>
+                        </div>
+                        <div class="ai-skill-grid">
+                            <button type="button" class="ai-skill-card" data-ai-skill="planner" aria-pressed="false">
+                                <i class="fas fa-calendar-check"></i><strong data-i18n="ai.skillPlanner">التخطيط والتنظيم</strong><small data-i18n="ai.skillPlannerHelp">حوّل الأهداف إلى خطوات عملية</small>
+                            </button>
+                            <button type="button" class="ai-skill-card" data-ai-skill="study_coach" aria-pressed="false">
+                                <i class="fas fa-graduation-cap"></i><strong data-i18n="ai.skillStudy">مدرب الدراسة</strong><small data-i18n="ai.skillStudyHelp">شرح تدريجي وأسئلة للمراجعة</small>
+                            </button>
+                            <button type="button" class="ai-skill-card" data-ai-skill="writer" aria-pressed="false">
+                                <i class="fas fa-pen-nib"></i><strong data-i18n="ai.skillWriter">الكتابة والتحرير</strong><small data-i18n="ai.skillWriterHelp">صياغة وتلخيص وتحسين النصوص</small>
+                            </button>
+                            <button type="button" class="ai-skill-card" data-ai-skill="nuvio_guide" aria-pressed="false">
+                                <i class="fas fa-compass"></i><strong data-i18n="ai.skillGuide">خبير Nuvio</strong><small data-i18n="ai.skillGuideHelp">مساعدة في استخدام التطبيق ومهامه</small>
+                            </button>
+                        </div>
+                    </section>
+                    <section class="ai-settings-group ai-memory-group">
+                        <div class="ai-settings-group-heading">
+                            <span class="ai-settings-group-icon"><i class="fas fa-brain"></i></span>
+                            <div><strong data-i18n="ai.memory">ذاكرة المساعد</strong><small data-i18n="ai.memoryHelp">أضف ملخصًا عنك ليخصص المساعد ردوده</small></div>
+                        </div>
+                        <p class="ai-memory-howto" data-i18n="ai.memoryHowTo">اطلب من ChatGPT تلخيص تفضيلاتك وأهدافك، ثم الصق الملخص هنا. تجنب كلمات المرور والبيانات شديدة الحساسية.</p>
+                        <button type="button" class="ai-memory-copy-prompt" id="copyAIMemoryPrompt"><i class="fas fa-copy"></i><span data-i18n="ai.copyMemoryPrompt">نسخ طلب تجهيز الملخص</span></button>
+                        <textarea id="aiPersonalMemory" maxlength="4000" rows="5" data-i18n-placeholder="ai.memoryPlaceholder" placeholder="الصق ملخصك الشخصي هنا..."></textarea>
+                        <div class="ai-memory-meta"><span id="aiMemoryCount">0 / 4000</span><span id="aiMemoryStatus" role="status" aria-live="polite"></span></div>
+                        <div class="ai-memory-actions">
+                            <button type="button" class="ai-memory-save" id="saveAIMemory" data-i18n="ai.saveMemory">حفظ الملخص</button>
+                            <button type="button" class="ai-memory-clear" id="clearAIMemory" data-i18n="ai.clearMemory">مسح الذاكرة</button>
+                        </div>
+                        <label class="ai-setting-row ai-memory-toggle">
+                            <span><strong data-i18n="ai.useMemory">استخدام الذاكرة</strong><small data-i18n="ai.useMemoryHelp">لن تُرسل إلى AI إلا عند تفعيل هذا الخيار</small></span>
+                            <input type="checkbox" id="aiUseMemory">
+                        </label>
+                        <p class="ai-memory-privacy" data-i18n="ai.memoryPrivacy">تُحفظ الذاكرة ضمن إعداداتك وتُزامن مع حساب Nuvio. لا تضع معلومات لا تريد حفظها أو إرسالها عند تفعيل الخيار.</p>
+                    </section>
+                    <button class="ai-settings-reset" id="resetAISettings" data-i18n="ai.resetSettings">استعادة الإعدادات الافتراضية</button>
+                </div>
             </aside>
         </section>
 
@@ -1110,7 +1160,8 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="taskDueDate" data-i18n="form.dueDate">موعد النهاية</label>
+                        <label for="taskDueDate" data-i18n="form.dueDate">موعد البدء</label>
+                        <small data-i18n="form.autoStartHint">تبدأ تلقائيًا في الموعد وتكتمل بعد الوقت المقدر؛ يجب أن يكون التطبيق مفتوحًا.</small>
                         <input type="datetime-local" id="taskDueDate">
                     </div>
                     <div class="form-group">
@@ -1388,18 +1439,18 @@
     <script src="./js/supabase-client.js"></script>
     <script src="./js/app.js?v=4"></script>
     <script src="./js/auth.js?v=8"></script>
-    <script src="./js/i18n.js?v=6"></script>
+    <script src="./js/i18n.js?v=9"></script>
     <script src="./js/storage.js"></script>
     <script src="./js/ui.js?v=8"></script>
     <script src="./js/dashboard.js?v=2"></script>
-    <script src="./js/tasks.js?v=5"></script>
-    <script src="./js/focus.js?v=7"></script>
+    <script src="./js/tasks.js?v=6"></script>
+    <script src="./js/focus.js?v=8"></script>
     <script src="./js/habits.js"></script>
     <script src="./js/tracking.js"></script>
     <script src="./js/prayer-reports.js"></script>
     <script src="./js/main.js?v=2"></script>
     <script src="./js/cloud-sync.js?v=8"></script>
-    <script src="./js/ai-page.js?v=32"></script>
+    <script src="./js/ai-page.js?v=35"></script>
     <!-- زر عائم لفتح الشات بالذكاء الاصطناعي -->
 <button type="button" id="ai-chat-btn" class="ai-chat-fab" aria-label="فتح AI Nuvio"><i class="fas fa-robot" aria-hidden="true"></i></button>
 

@@ -537,7 +537,12 @@
                 .maybeSingle();
 
             if (error) throw error;
-            if (syncGeneration !== generation || syncUserId !== userId || !row) return;
+            if (syncGeneration !== generation || syncUserId !== userId) return;
+            if (!row) {
+                lastRemoteVersion = 0;
+                if (dirty || hasLocalData()) pendingSave = true;
+                return;
+            }
 
             const remoteVersion = Number(row.version) || 0;
             if (remoteVersion > lastRemoteVersion) {
@@ -559,6 +564,10 @@
             handleSyncError(error);
         } finally {
             busy = false;
+            if (pendingSave && ready && userId) {
+                pendingSave = false;
+                setTimeout(() => writeSnapshot().catch(handleSyncError), 0);
+            }
         }
     }
 
@@ -665,7 +674,7 @@
                     filter: 'user_id=eq.' + nextUserId
                 }, payload => {
                     const incomingVersion = Number(payload.new?.version) || 0;
-                    if (!incomingVersion || incomingVersion <= lastRemoteVersion || applying) return;
+                    if (!incomingVersion || incomingVersion <= lastRemoteVersion || applying || busy) return;
 
                     if (dirty) {
                         setPendingConflict(payload.new.data, incomingVersion, 'وصل تحديث من جهاز آخر بينما لديك تعديلات محلية. اختر النسخة التي تريد الاحتفاظ بها.');
@@ -680,7 +689,11 @@
                     applySnapshot(payload.new.data);
                     lastRemoteVersion = incomingVersion;
                 })
-                .subscribe();
+                .subscribe(status => {
+                    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                        console.warn('Nuvio realtime channel unavailable; periodic sync will retry.');
+                    }
+                });
 
             emit('nuvio:sync-ready', { userId: nextUserId });
             if (initialLocalConflict) {
@@ -708,7 +721,18 @@
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') syncNow();
     });
-    window.addEventListener('online', syncNow);
+    window.addEventListener('online', () => {
+        client.auth.getSession()
+            .then(({ data, error }) => {
+                if (error) throw error;
+                return start(data.session);
+            })
+            .then(syncNow)
+            .catch(handleSyncError);
+    });
+    setInterval(() => {
+        if (document.visibilityState === 'visible') syncNow();
+    }, 15000);
 
     window.NuvioSync = { scheduleSave, syncNow, resolveConflict, dismissConflict };
 

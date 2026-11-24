@@ -39,6 +39,9 @@ Object.assign(NuvioApp.prototype, {
             title: task.title,
             status: 'pending',
             dueDate: nextDate.toISOString(),
+            endDate: task.autoStart !== false
+                ? new Date(nextDate.getTime() + Math.min(1440, Math.max(1, Number(task.estimatedTime) || 25)) * 60000).toISOString()
+                : null,
             actualTime: 0,
             createdAt: new Date().toISOString(),
             completedAt: null,
@@ -260,7 +263,11 @@ Object.assign(NuvioApp.prototype, {
         const description = document.getElementById('taskDescription').value.trim();
         const category = document.getElementById('taskCategory').value;
         const priority = document.getElementById('taskPriority').value;
-        const dueDate = document.getElementById('taskDueDate').value;
+        const dueDateInput = document.getElementById('taskDueDate').value;
+        const parsedDueDate = dueDateInput ? new Date(dueDateInput) : null;
+        const dueDate = parsedDueDate && !Number.isNaN(parsedDueDate.getTime())
+            ? parsedDueDate.toISOString()
+            : null;
         const estimatedTime = parseInt(document.getElementById('taskEstimatedTime').value) || 25;
         const repeat = document.getElementById('taskRepeat').value;
         const reminder = parseInt(document.getElementById('taskReminderSelect').value) || 0;
@@ -282,7 +289,11 @@ Object.assign(NuvioApp.prototype, {
                 this.tasks[index] = {
                     ...existingTask,
                     title, description, category, priority,
-                    dueDate: dueDate || null, estimatedTime, repeat, reminder, tags
+                    dueDate, estimatedTime, repeat, reminder, tags,
+                    autoStart: Boolean(dueDate) && existingTask.autoStart !== false,
+                    endDate: dueDate && existingTask.autoStart !== false
+                        ? new Date(new Date(dueDate).getTime() + estimatedTime * 60000).toISOString()
+                        : null
                 };
                 if (dueDate && reminder > 0) {
                     const remindAt = new Date(new Date(dueDate).getTime() - reminder * 60000);
@@ -297,7 +308,8 @@ Object.assign(NuvioApp.prototype, {
                 id: 'task-' + Date.now(),
                 title, description, category, priority,
                 status: 'pending',
-                dueDate: dueDate || null,
+                dueDate,
+                autoStart: Boolean(dueDate),
                 estimatedTime, actualTime: 0, repeat, reminder, tags,
                 createdAt: new Date().toISOString(),
                 completedAt: null
