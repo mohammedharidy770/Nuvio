@@ -247,6 +247,9 @@ Object.assign(NuvioApp.prototype, {
             this.showToast(this.settings.language === 'ar' ? 'انتهت الاستراحة!' : 'Break ended!', 'info');
         }
 
+        // Clear the task link after recording the completed session so a later
+        // standalone Pomodoro cannot accidentally complete/count the previous task again.
+        this.timerState.currentTask = null;
         this.resetTimer();
         this.renderAll();
         this.renderFocusStats();
