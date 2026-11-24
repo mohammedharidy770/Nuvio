@@ -806,12 +806,18 @@
         padding: 20px;
     }
 
-    .dashboard-grid {
+    .dashboard-grid,
+    .dashboard-highlights {
         grid-template-columns: minmax(0, 1fr);
         gap: 16px;
     }
 
-    .dashboard-grid > .dash-card {
+    .settings-container {
+        gap: 16px;
+    }
+
+    .dashboard-grid > .dash-card,
+    .dashboard-highlights > .dash-card {
         min-width: 0;
         max-width: 100%;
     }

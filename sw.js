@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nuvio-v52';
+const CACHE_NAME = 'nuvio-v55';
 const STATIC_ASSETS = [
     './',
     './index.html',
@@ -16,9 +16,9 @@ const STATIC_ASSETS = [
     './css/responsive.css?v=11',
     './css/auth.css?v=2',
     './css/motion.css?v=2',
-    './css/ai-chat.css?v=2',
-    './css/ai-page.css?v=12',
-    './js/app.js?v=3',
+    './css/ai-chat.css?v=3',
+    './css/ai-page.css?v=14',
+    './js/app.js?v=4',
     './js/supabase-config.js',
     './js/supabase-client.js',
     './js/auth.js?v=8',
@@ -33,7 +33,7 @@ const STATIC_ASSETS = [
     './js/tracking.js',
     './js/prayer-reports.js',
     './js/main.js?v=2',
-    './js/ai-page.js?v=30'
+    './js/ai-page.js?v=32'
 ];
 
 self.addEventListener('install', (event) => {

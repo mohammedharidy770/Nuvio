@@ -242,7 +242,7 @@
         const welcome = document.createElement('div');
         welcome.className = 'ai-welcome';
         welcome.innerHTML = `
-            <div class="ai-welcome-mark" aria-hidden="true">N</div>
+            <img class="ai-welcome-mark" src="./assets/layer-group.svg" alt="" aria-hidden="true">
             <h1>${aiT('welcomeTitle')}</h1>
             <p>${aiT('welcomeDescription')}</p>
             <div class="ai-suggestions">
@@ -1179,4 +1179,103 @@
             syncSettings();
         }
     };
+
+    function initializeFloatingAIButton() {
+        const button = document.getElementById('ai-chat-btn');
+        if (!button) return;
+
+        const positionKey = 'nuvio_ai_button_position';
+        let pointerId = null;
+        let startX = 0;
+        let startY = 0;
+        let originX = 0;
+        let originY = 0;
+        let position = null;
+        let dragging = false;
+        let suppressClick = false;
+
+        const clampPosition = (left, top) => ({
+            left: Math.max(0, Math.min(left, window.innerWidth - button.offsetWidth)),
+            top: Math.max(0, Math.min(top, window.innerHeight - button.offsetHeight))
+        });
+        const setPosition = (left, top) => {
+            position = clampPosition(left, top);
+            button.style.setProperty('left', `${position.left}px`, 'important');
+            button.style.setProperty('top', `${position.top}px`, 'important');
+            button.style.setProperty('right', 'auto', 'important');
+            button.style.setProperty('bottom', 'auto', 'important');
+        };
+        const savePosition = () => {
+            if (!position) return;
+            try {
+                localStorage.setItem(positionKey, JSON.stringify(position));
+            } catch (error) {
+                console.warn('Could not save the AI button position:', error);
+            }
+        };
+
+        try {
+            const savedPosition = JSON.parse(localStorage.getItem(positionKey) || 'null');
+            if (savedPosition && Number.isFinite(savedPosition.left) && Number.isFinite(savedPosition.top)) {
+                setPosition(savedPosition.left, savedPosition.top);
+            }
+        } catch (error) {
+            console.warn('Could not restore the AI button position:', error);
+        }
+
+        button.addEventListener('pointerdown', event => {
+            if (event.pointerType === 'mouse' && event.button !== 0) return;
+            pointerId = event.pointerId;
+            startX = event.clientX;
+            startY = event.clientY;
+            const rect = button.getBoundingClientRect();
+            originX = rect.left;
+            originY = rect.top;
+            dragging = false;
+            button.setPointerCapture(pointerId);
+        });
+        button.addEventListener('pointermove', event => {
+            if (event.pointerId !== pointerId) return;
+            const deltaX = event.clientX - startX;
+            const deltaY = event.clientY - startY;
+            if (!dragging && Math.hypot(deltaX, deltaY) > 5) {
+                dragging = true;
+                button.classList.add('is-dragging');
+            }
+            if (dragging) setPosition(originX + deltaX, originY + deltaY);
+        });
+        const finishDrag = event => {
+            if (event.pointerId !== pointerId) return;
+            if (dragging) {
+                savePosition();
+                suppressClick = true;
+                setTimeout(() => { suppressClick = false; }, 0);
+            }
+            dragging = false;
+            pointerId = null;
+            button.classList.remove('is-dragging');
+        };
+        button.addEventListener('pointerup', finishDrag);
+        button.addEventListener('pointercancel', finishDrag);
+        button.addEventListener('click', event => {
+            if (suppressClick) {
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+            window.location.href = './index.html?view=ai';
+        });
+        window.addEventListener('resize', () => {
+            if (position) {
+                setPosition(position.left, position.top);
+                savePosition();
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeFloatingAIButton, { once: true });
+    } else {
+        initializeFloatingAIButton();
+    }
 })();

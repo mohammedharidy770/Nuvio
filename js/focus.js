@@ -185,6 +185,17 @@ Object.assign(NuvioApp.prototype, {
             ts.setAttribute('lang', 'en');
             ts.setAttribute('dir', 'ltr');
         }
+        const dashboardTimer = document.getElementById('dashboardFocusTime');
+        if (dashboardTimer) {
+            dashboardTimer.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+        const dashboardMode = document.getElementById('dashboardFocusMode');
+        const dashboardModeKey = {
+            pomodoro: 'timer.pomodoro',
+            short: 'timer.shortBreak',
+            long: 'timer.longBreak'
+        }[this.timerState.mode];
+        if (dashboardMode && dashboardModeKey) dashboardMode.textContent = this.t(dashboardModeKey);
 
         const circle = document.getElementById('timerProgress');
         if (circle) {

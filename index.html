@@ -17,8 +17,8 @@
     <link rel="stylesheet" href="./css/responsive.css?v=11">
     <link rel="stylesheet" href="./css/auth.css?v=2">
     <link rel="stylesheet" href="./css/motion.css?v=2">
-    <link rel="stylesheet" href="./css/ai-chat.css?v=2">
-    <link rel="stylesheet" href="./css/ai-page.css?v=12">
+    <link rel="stylesheet" href="./css/ai-chat.css?v=3">
+    <link rel="stylesheet" href="./css/ai-page.css?v=14">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
 </head>
@@ -104,7 +104,7 @@
     <i class="fas fa-sticky-note"></i>
     <span data-i18n="nav.notes">المذكرات</span>
 </a>
-                        <a href="./ai.html" class="nav-item ai-nav-item" data-section="ai">
+                        <a href="./index.html?view=ai" class="nav-item ai-nav-item" data-section="ai">
                             <span class="ai-nav-icon" aria-hidden="true"><i class="fas fa-robot"></i></span>
                             <span>AI Nuvio</span>
                         </a>
@@ -224,21 +224,21 @@
                         <h3><i class="fas fa-bolt"></i> <span data-i18n="dashboard.quickActions">إجراءات سريعة</span></h3>
                     </div>
                     <div class="quick-actions-grid">
-                        <button class="quick-action" onclick="app.openTaskModal()">
-                            <div class="qa-icon"><i class="fas fa-plus"></i></div>
-                            <span data-i18n="actions.newTask">مهمة جديدة</span>
-                        </button>
                         <button class="quick-action" onclick="app.startQuickFocus()">
                             <div class="qa-icon"><i class="fas fa-clock"></i></div>
                             <span data-i18n="actions.focusSession">جلسة تركيز</span>
+                        </button>
+                        <button class="quick-action" onclick="app.exportData()">
+                            <div class="qa-icon"><i class="fas fa-download"></i></div>
+                            <span data-i18n="actions.export">تصدير</span>
                         </button>
                         <button class="quick-action" onclick="app.showSection('reports')">
                             <div class="qa-icon"><i class="fas fa-chart-line"></i></div>
                             <span data-i18n="actions.report">التقرير</span>
                         </button>
-                        <button class="quick-action" onclick="app.exportData()">
-                            <div class="qa-icon"><i class="fas fa-download"></i></div>
-                            <span data-i18n="actions.export">تصدير</span>
+                        <button class="quick-action" onclick="app.showSection('settings')">
+                            <div class="qa-icon"><i class="fas fa-cog"></i></div>
+                            <span data-i18n="nav.settings">الإعدادات</span>
                         </button>
                     </div>
                 </div>
@@ -314,6 +314,45 @@
                             <span data-i18n="dashboard.completedTasks">المهام المكتملة</span>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <div class="dashboard-highlights">
+                <div class="dash-card dashboard-prayer-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-mosque"></i> <span data-i18n="prayer.nextPrayer">الصلاة القادمة</span></h3>
+                        <button class="btn-text" onclick="app.showSection('prayer')" data-i18n="actions.viewAll">عرض الكل</button>
+                    </div>
+                    <div class="countdown-display">
+                        <div class="countdown-icon">
+                            <i class="fas fa-mosque"></i>
+                        </div>
+                        <div class="countdown-info">
+                            <span class="countdown-name" id="dashboardNextPrayerName">--</span>
+                            <span class="countdown-time" id="dashboardNextPrayerCountdown">--:--:--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dash-card dashboard-focus-timer-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-clock"></i> <span data-i18n="dashboard.focusTimer">مؤقت التركيز</span></h3>
+                        <button class="btn-text" onclick="app.showSection('focus')" data-i18n="actions.viewAll">عرض الكل</button>
+                    </div>
+                    <div class="focus-metrics">
+                        <div class="focus-metric">
+                            <span class="fm-value" id="dashboardFocusTime">25:00</span>
+                            <span class="fm-label" id="dashboardFocusMode" data-i18n="timer.pomodoro">بومودورو</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dash-card dashboard-motivation-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-book-open"></i> <span data-i18n="dashboard.motivation">رسالة اليوم</span></h3>
+                    </div>
+                    <p id="dashboardMotivationQuote"></p>
+                    <span class="card-date" id="dashboardMotivationReference"></span>
                 </div>
             </div>
         </section>
@@ -635,6 +674,9 @@
             <div class="settings-container">
                 <div class="settings-card">
                     <div class="setting-group">
+                        <h3><i class="fas fa-cog"></i> <span data-i18n="settings.generalSettings">الإعدادات العامة</span></h3>
+                    </div>
+                    <div class="setting-group">
                         <h3><i class="fas fa-palette"></i> <span data-i18n="settings.appearance">المظهر</span></h3>
                         <div class="setting-item">
                             <div class="setting-info">
@@ -660,6 +702,8 @@
                             </select>
                         </div>
                     </div>
+                </div>
+                <div class="settings-card">
                     <div class="setting-group">
                         <h3><i class="fas fa-stopwatch"></i> <span data-i18n="settings.timer">إعدادات المؤقت</span></h3>
                         <div class="setting-item">
@@ -693,6 +737,8 @@
                             </div>
                         </div>
                     </div>
+                </div>
+                <div class="settings-card">
                     <div class="setting-group">
                         <h3><i class="fas fa-bell"></i> <span data-i18n="settings.notifications">الإشعارات</span></h3>
                         <div class="setting-item">
@@ -701,7 +747,7 @@
                                 <span class="setting-desc" data-i18n="settings.timerNotifDesc">إشعار عند انتهاء المؤقت</span>
                             </div>
                             <label class="toggle">
-                                <input type="checkbox" id="timerNotification" checked aria-label="إشعار انتهاء المؤقت">
+                                <input type="checkbox" id="timerNotification" checked onchange="app.toggleTimerNotification()" aria-label="إشعار انتهاء المؤقت">
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
@@ -716,6 +762,8 @@
                             </label>
                         </div>
                     </div>
+                </div>
+                <div class="settings-card">
                     <div class="setting-group">
                         <h3><i class="fas fa-database"></i> <span data-i18n="settings.dataManagement">إدارة البيانات</span></h3>
                         <div class="setting-actions">
@@ -730,6 +778,8 @@
                             </button>
                         </div>
                     </div>
+                </div>
+                <div class="settings-card">
                     <div class="setting-group">
                         <h3><i class="fas fa-user-shield"></i> <span data-i18n="settings.account">الحساب</span></h3>
                         <div class="setting-item account-setting">
@@ -743,6 +793,8 @@
                             </button>
                         </div>
                     </div>
+                </div>
+                <div class="settings-card">
                     <div class="setting-group about">
                         <h3><i class="fas fa-info-circle"></i> <span data-i18n="settings.about">عن التطبيق</span></h3>
                         <div class="about-content">
@@ -764,7 +816,7 @@
         <section class="section ai-section" id="aiSection">
             <div class="integrated-ai">
                 <aside class="ai-sidebar" id="aiSidebar" aria-label="محادثات الذكاء الاصطناعي" data-i18n-aria-label="ai.sidebarLabel">
-                    <div class="ai-brand"><span class="ai-brand-mark" aria-hidden="true">N</span><span>AI Nuvio</span></div>
+                    <div class="ai-brand"><img class="ai-brand-mark" src="./assets/layer-group.svg" alt="" aria-hidden="true"><span>AI Nuvio</span></div>
                     <button class="ai-new-chat" id="newChat" data-i18n="ai.newConversation">محادثة جديدة</button>
                     <div class="ai-history">
                         <div class="ai-history-title" data-i18n="ai.previousChats">المحادثات السابقة</div>
@@ -1334,7 +1386,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0" integrity="sha384-gnyZit14c5lnGcarmA166QQjjJXpucw25ogZXuwH3HxxY904zHkBqmxVpelsPorb" crossorigin="anonymous"></script>
     <script src="./js/supabase-config.js"></script>
     <script src="./js/supabase-client.js"></script>
-    <script src="./js/app.js?v=3"></script>
+    <script src="./js/app.js?v=4"></script>
     <script src="./js/auth.js?v=8"></script>
     <script src="./js/i18n.js?v=6"></script>
     <script src="./js/storage.js"></script>
@@ -1347,9 +1399,9 @@
     <script src="./js/prayer-reports.js"></script>
     <script src="./js/main.js?v=2"></script>
     <script src="./js/cloud-sync.js?v=7"></script>
-    <script src="./js/ai-page.js?v=30"></script>
+    <script src="./js/ai-page.js?v=32"></script>
     <!-- زر عائم لفتح الشات بالذكاء الاصطناعي -->
-<button onclick="window.location.href='./ai.html'" id="ai-chat-btn" class="ai-chat-fab" aria-label="فتح AI Nuvio"><i class="fas fa-robot" aria-hidden="true"></i></button>
+<button type="button" id="ai-chat-btn" class="ai-chat-fab" aria-label="فتح AI Nuvio"><i class="fas fa-robot" aria-hidden="true"></i></button>
 
 </body>
 </html>

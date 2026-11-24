@@ -105,3 +105,13 @@
 @media (max-width: 480px) {
     .ai-chat-fab { left: auto !important; right: 12px !important; }
 }
+
+.ai-chat-fab {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+}
+.ai-chat-fab.is-dragging {
+    cursor: grabbing;
+    transition: none;
+}

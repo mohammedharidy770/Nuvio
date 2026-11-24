@@ -1,3 +1,12 @@
+const dashboardMotivationQuotes = [
+    { ar: 'وَأَنْ لَيْسَ لِلْإِنْسَانِ إِلَّا مَا سَعَىٰ', en: 'A person will have only what they strive for.', referenceAr: 'سورة النجم، الآية 39', referenceEn: 'An-Najm 53:39' },
+    { ar: 'فَإِذَا فَرَغْتَ فَانْصَبْ', en: 'When you are free, devote yourself to what is good.', referenceAr: 'سورة الشرح، الآية 7', referenceEn: 'Ash-Sharh 94:7' },
+    { ar: 'وَقُلِ اعْمَلُوا فَسَيَرَى اللَّهُ عَمَلَكُمْ وَرَسُولُهُ وَالْمُؤْمِنُونَ', en: 'Say, “Work; Allah will see your deeds, and so will His Messenger and the believers.”', referenceAr: 'سورة التوبة، الآية 105', referenceEn: 'At-Tawbah 9:105' },
+    { ar: 'وَأَنَّ سَعْيَهُ سَوْفَ يُرَىٰ', en: 'And that their striving will soon be seen.', referenceAr: 'سورة النجم، الآية 40', referenceEn: 'An-Najm 53:40' },
+    { ar: 'إِنَّا لَا نُضِيعُ أَجْرَ مَنْ أَحْسَنَ عَمَلًا', en: 'We never let the reward of those who do good work be lost.', referenceAr: 'سورة الكهف، الآية 30', referenceEn: 'Al-Kahf 18:30' },
+    { ar: 'فَإِنَّ مَعَ الْعُسْرِ يُسْرًا', en: 'For indeed, with hardship comes ease.', referenceAr: 'سورة الشرح، الآية 6', referenceEn: 'Ash-Sharh 94:6' }
+];
+
 Object.assign(NuvioApp.prototype, {
     renderAll() {
         this.renderDashboard();
@@ -137,6 +146,31 @@ Object.assign(NuvioApp.prototype, {
         this.renderWeeklyChart();
         const pb = document.getElementById('pendingBadge');
         if (pb) pb.textContent = this.tasks.filter(t => t.status === 'pending').length;
+
+        if (!Number.isInteger(this.dashboardMotivationIndex)) {
+            let previousIndex = -1;
+            try {
+                const savedIndex = sessionStorage.getItem('nuvio_dashboard_motivation_index');
+                if (savedIndex !== null) previousIndex = Number(savedIndex);
+            } catch (error) {
+                console.warn('Could not read the previous dashboard motivation:', error);
+            }
+            const choices = dashboardMotivationQuotes
+                .map((_, index) => index)
+                .filter(index => index !== previousIndex);
+            this.dashboardMotivationIndex = choices[Math.floor(Math.random() * choices.length)];
+            try {
+                sessionStorage.setItem('nuvio_dashboard_motivation_index', String(this.dashboardMotivationIndex));
+            } catch (error) {
+                console.warn('Could not save the dashboard motivation:', error);
+            }
+        }
+        const quote = dashboardMotivationQuotes[this.dashboardMotivationIndex];
+        const quoteText = document.getElementById('dashboardMotivationQuote');
+        const quoteReference = document.getElementById('dashboardMotivationReference');
+        if (quoteText) quoteText.textContent = this.settings.language === 'ar' ? quote.ar : quote.en;
+        if (quoteReference) quoteReference.textContent = this.settings.language === 'ar' ? quote.referenceAr : quote.referenceEn;
+        this.updateTimerDisplay?.();
     },
 
     getCategoryLabel(key) {

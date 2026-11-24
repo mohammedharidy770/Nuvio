@@ -876,6 +876,90 @@ body.ai-standalone #aiSection .ai-messages {
   }
 }
 
+/* In AI view, keep the app controls but hide the app's section navigation. */
+body.ai-standalone .sidebar,
+body.ai-standalone .main-content > .section:not(#aiSection),
+body.ai-standalone #ai-chat-btn,
+body.ai-standalone .welcome-screen {
+    display: none !important;
+}
+body.ai-standalone .main-content {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100dvh;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden;
+}
+body.ai-standalone .top-header {
+    display: flex !important;
+    position: relative;
+    top: auto;
+    flex: 0 0 var(--header-height);
+    height: var(--header-height);
+}
+body.ai-standalone #menuToggle,
+body.ai-standalone #pageTitle,
+body.ai-standalone #btnNewTask {
+    display: none !important;
+}
+body.ai-standalone .header-title {
+    display: none;
+}
+body.ai-standalone .header-actions {
+    width: 100%;
+    justify-content: flex-end;
+}
+body.ai-standalone #aiSection {
+    position: relative;
+    inset: auto;
+    display: block !important;
+    flex: 1 1 auto;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    padding: 0 !important;
+}
+body.ai-standalone #aiSection .integrated-ai {
+    height: 100%;
+    grid-template-columns: 280px minmax(0, 1fr);
+}
+body.ai-standalone #aiSection .ai-section,
+body.ai-standalone #aiSection .ai-main {
+    height: 100%;
+}
+body.ai-standalone #aiSection .ai-messages {
+    min-height: 0;
+}
+.ai-section .ai-brand-mark,
+.ai-section .ai-welcome-mark {
+    object-fit: cover;
+    padding: 0;
+}
+@media (max-width: 768px) {
+    body.ai-standalone .top-header {
+        flex-basis: 56px;
+        height: 56px;
+    }
+    body.ai-standalone #aiSection .integrated-ai {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    body.ai-standalone #aiSection .ai-sidebar {
+        position: absolute;
+        inset: 0 0 0 auto;
+        width: min(300px, 88vw);
+        height: auto;
+        transform: translateX(105%);
+        z-index: 20;
+    }
+    body.ai-standalone #aiSection .ai-sidebar.open {
+        transform: none;
+    }
+}
+
 .ai-confirm-backdrop {
   position: fixed;
   inset: 0;

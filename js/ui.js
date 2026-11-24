@@ -29,7 +29,7 @@ Object.assign(NuvioApp.prototype, {
                     <div class="form-actions sync-conflict-actions">
                         <button type="button" class="btn-primary" id="nuvioUseDevice">${isAr ? 'استخدم بيانات هذا الجهاز' : 'Use this device data'}</button>
                         <button type="button" class="btn-secondary" id="nuvioUseCloud">${isAr ? 'استخدم بيانات السحابة' : 'Use cloud data'}</button>
-                        <button type="button" class="sync-conflict-later" id="nuvioDismissConflict">${isAr ? 'تذكّرني لاحقًا' : 'Remind me later'}</button>
+                        <button type="button" class="sync-conflict-later" id="nuvioDismissConflict">${isAr ? 'إخفاء هذا التعارض' : 'Dismiss this conflict'}</button>
                     </div>
                 </div>
             </div>`;
@@ -197,6 +197,8 @@ Object.assign(NuvioApp.prototype, {
         document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
         const toggle = document.getElementById('darkModeToggle');
         if (toggle) toggle.checked = isDark;
+        const timerNotificationToggle = document.getElementById('timerNotification');
+        if (timerNotificationToggle) timerNotificationToggle.checked = this.settings.timerNotification !== false;
         const reminderToggle = document.getElementById('taskReminderEnabled');
         if (reminderToggle) reminderToggle.checked = this.settings.taskReminder !== false;
 
@@ -221,6 +223,13 @@ Object.assign(NuvioApp.prototype, {
         const toggle = document.getElementById('taskReminderEnabled');
         if (!toggle) return;
         this.settings.taskReminder = toggle.checked;
+        this.saveData();
+    },
+
+    toggleTimerNotification() {
+        const toggle = document.getElementById('timerNotification');
+        if (!toggle) return;
+        this.settings.timerNotification = toggle.checked;
         this.saveData();
     },
 
@@ -297,7 +306,7 @@ Object.assign(NuvioApp.prototype, {
 
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         document.getElementById('currentDate').textContent = now.toLocaleDateString(locale, options);
-        document.getElementById('welcomeDate').textContent = `${this.t('dashboard.welcome')} — ${now.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}`;
+        document.getElementById('welcomeDate').textContent = this.userProfile?.name || this.t('user.name');
         document.getElementById('progressDate').textContent = now.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
     },
 

@@ -125,12 +125,12 @@ class NuvioApp {
         if (pageParams.has('view') || pageParams.has('section')) this.showSection(this.currentSection);
         this.startClock();
         this.checkOverdueTasks();
+        this.startNotificationScheduler?.();
+        this.startScheduleAutomation?.();
         window.addEventListener('nuvio:sync-ready', () => {
-            if (this.schedulersStarted) return;
-            this.schedulersStarted = true;
-            this.startNotificationScheduler?.();
-            this.startScheduleAutomation?.();
-        }, { once: true });
+            this.processScheduledNotifications?.();
+            this.checkScheduledFocusBlocks?.();
+        });
         if (window.NuvioAuth?.getSession) {
             window.NuvioAuth.getSession()
                 .then(session => this.updateAccountSettings(session))

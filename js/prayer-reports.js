@@ -303,6 +303,13 @@ Object.assign(NuvioApp.prototype, {
         if (!this.prayerData.times) return;
 
         const now = new Date();
+        const parsePrayerTime = value => {
+            const match = /^(\d{1,2}):(\d{2})/.exec(String(value || '').trim());
+            if (!match) return null;
+            const hours = Number(match[1]);
+            const minutes = Number(match[2]);
+            return hours < 24 && minutes < 60 ? { hours, minutes } : null;
+        };
         const prayers = [
             { name: this.t('prayer.fajr'), key: 'Fajr' },
             { name: this.t('prayer.sunrise'), key: 'Sunrise' },
@@ -319,9 +326,9 @@ Object.assign(NuvioApp.prototype, {
         for (const prayer of prayers) {
             const timeStr = this.prayerData.times[prayer.key];
             if (!timeStr) continue;
-
-            const [hours, minutes] = timeStr.split(':').map(Number);
-            const prayerTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
+            const time = parsePrayerTime(timeStr);
+            if (!time) continue;
+            const prayerTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), time.hours, time.minutes, 0);
 
             if (prayerTime > now) {
                 if (!nextPrayer || prayerTime < nextTime) {
@@ -335,9 +342,11 @@ Object.assign(NuvioApp.prototype, {
         if (!nextPrayer) {
             const fajrStr = this.prayerData.times['Fajr'];
             if (fajrStr) {
-                const [hours, minutes] = fajrStr.split(':').map(Number);
-                nextTime = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, hours, minutes, 0);
-                nextPrayer = { name: this.t('prayer.fajr'), key: 'Fajr' };
+                const time = parsePrayerTime(fajrStr);
+                if (time) {
+                    nextTime = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, time.hours, time.minutes, 0);
+                    nextPrayer = { name: this.t('prayer.fajr'), key: 'Fajr' };
+                }
             }
         }
 
@@ -345,8 +354,9 @@ Object.assign(NuvioApp.prototype, {
         for (const prayer of prayers) {
             const timeStr = this.prayerData.times[prayer.key];
             if (!timeStr) continue;
-            const [hours, minutes] = timeStr.split(':').map(Number);
-            const prayerTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
+            const time = parsePrayerTime(timeStr);
+            if (!time) continue;
+            const prayerTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), time.hours, time.minutes, 0);
             if (prayerTime <= now) {
                 prevTime = prayerTime;
             }
@@ -360,8 +370,13 @@ Object.assign(NuvioApp.prototype, {
 
             const npn = document.getElementById('nextPrayerName');
             const npc = document.getElementById('nextPrayerCountdown');
+            const dashboardPrayerName = document.getElementById('dashboardNextPrayerName');
+            const dashboardPrayerCountdown = document.getElementById('dashboardNextPrayerCountdown');
+            const countdown = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
             if (npn) npn.textContent = nextPrayer.name;
-            if (npc) npc.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            if (npc) npc.textContent = countdown;
+            if (dashboardPrayerName) dashboardPrayerName.textContent = nextPrayer.name;
+            if (dashboardPrayerCountdown) dashboardPrayerCountdown.textContent = countdown;
 
             // Update progress bar
             if (prevTime) {
