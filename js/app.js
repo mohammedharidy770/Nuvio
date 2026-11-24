@@ -126,6 +126,10 @@ class NuvioApp {
         this.startClock();
         this.checkOverdueTasks();
         this.startNotificationScheduler?.();
+        // Restore an active scheduled focus timer on every app load, not only
+        // when the user opens the Focus section. This lets elapsed timers finish
+        // and complete their linked task after a reload or tab suspension.
+        this.restoreTimerState?.();
         this.startScheduleAutomation?.();
         window.addEventListener('nuvio:sync-ready', () => {
             this.processScheduledNotifications?.();
