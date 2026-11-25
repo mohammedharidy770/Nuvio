@@ -313,7 +313,7 @@
                 const localHasData = hasUserData(local);
                 const remoteHasData = hasUserData(remote.state);
                 const localWasOwned = oldOwner === nextUserId;
-                if (localHasData && (!remoteHasData || (dirty && localWasOwned))) {
+                if (localHasData && (!remoteHasData || !localWasOwned || (dirty && localWasOwned))) {
                     raiseConflict(remote);
                 } else {
                     persistSnapshot(remote.state);
