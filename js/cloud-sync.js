@@ -28,6 +28,8 @@
     let applying = false;
     let dirty = false;
     let pendingSave = false;
+    let pendingRemoteCheck = false;
+    let remoteCheckScheduled = false;
     let generation = 0;
     let lastRemoteVersion = 0;
     let channel = null;
@@ -462,6 +464,23 @@
         window.location.reload();
     }
 
+    function schedulePendingWork() {
+        if (remoteCheckScheduled || !ready || !userId) return;
+        if (!pendingRemoteCheck && !pendingSave) return;
+        remoteCheckScheduled = true;
+        setTimeout(() => {
+            remoteCheckScheduled = false;
+            if (!ready || !userId || !navigator.onLine) return;
+            if (pendingRemoteCheck) {
+                pendingRemoteCheck = false;
+                syncNow();
+            } else if (pendingSave) {
+                pendingSave = false;
+                writeSnapshot().catch(handleSyncError);
+            }
+        }, 0);
+    }
+
     async function writeSnapshot(options = {}) {
         if (!userId || !ready || applying || !navigator.onLine) return;
         if (busy) {
@@ -549,10 +568,7 @@
             }
         } finally {
             busy = false;
-            if (pendingSave && ready && userId) {
-                pendingSave = false;
-                setTimeout(() => writeSnapshot().catch(handleSyncError), 0);
-            }
+            schedulePendingWork();
         }
     }
 
@@ -562,7 +578,11 @@
     }
 
     async function syncNow() {
-        if (!userId || !ready || busy || !navigator.onLine) return;
+        if (!userId || !ready || !navigator.onLine) return;
+        if (busy) {
+            pendingRemoteCheck = true;
+            return;
+        }
 
         busy = true;
         const syncUserId = userId;
@@ -603,10 +623,7 @@
             handleSyncError(error);
         } finally {
             busy = false;
-            if (pendingSave && ready && userId) {
-                pendingSave = false;
-                setTimeout(() => writeSnapshot().catch(handleSyncError), 0);
-            }
+            schedulePendingWork();
         }
     }
 
@@ -713,20 +730,12 @@
                     filter: 'user_id=eq.' + nextUserId
                 }, payload => {
                     const incomingVersion = Number(payload.new?.version) || 0;
-                    if (!incomingVersion || incomingVersion <= lastRemoteVersion || applying || busy) return;
+                    if (!incomingVersion || incomingVersion <= lastRemoteVersion || applying) return;
 
-                    if (dirty) {
-                        setPendingConflict(payload.new.data, incomingVersion, 'وصل تحديث من جهاز آخر بينما لديك تعديلات محلية. اختر النسخة التي تريد الاحتفاظ بها.');
-                        return;
-                    }
-
-                    if (hasLocalData() && !snapshotHasUserData(payload.new.data)) {
-                        setPendingConflict(payload.new.data, incomingVersion, 'بيانات هذا الجهاز موجودة، لكن نسخة السحابة تبدو فارغة. اختر بيانات هذا الجهاز للحفاظ على مهامك أو نسخة السحابة.');
-                        return;
-                    }
-
-                    applySnapshot(payload.new.data);
-                    lastRemoteVersion = incomingVersion;
+                    // Never discard a Realtime event just because a read/write is in progress.
+                    // Queue a fresh read after the active operation so the latest row is applied.
+                    pendingRemoteCheck = true;
+                    schedulePendingWork();
                 })
                 .subscribe(status => {
                     if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
