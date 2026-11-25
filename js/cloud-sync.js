@@ -64,10 +64,39 @@
 
     function hasUserData(data) {
         if (!data || typeof data !== 'object') return false;
-        return ['tasks', 'focusSessions', 'notifications', 'habits', 'notes', 'sleepRecords', 'aiHistory']
-            .some(key => Array.isArray(data[key]) && data[key].length > 0) ||
-            Object.keys(data.settings || {}).length > 0 ||
-            Object.keys(data.userProfile || {}).length > 0;
+        const hasCollections = ['tasks', 'focusSessions', 'notifications', 'habits', 'notes', 'sleepRecords', 'aiHistory']
+            .some(key => Array.isArray(data[key]) && data[key].length > 0);
+        if (hasCollections) return true;
+
+        const profile = data.userProfile || {};
+        if (profile.name || profile.avatar) return true;
+
+        // Default app preferences are initialized on every fresh browser.
+        // Do not mistake those defaults for pre-existing user data and show
+        // a false conflict instead of restoring the signed-in user's cloud state.
+        const defaults = {
+            pomodoroDuration: 25,
+            shortBreakDuration: 5,
+            longBreakDuration: 15,
+            darkMode: false,
+            language: 'ar',
+            timerNotification: true,
+            taskReminder: true
+        };
+        const settings = data.settings || {};
+        if (Object.keys(settings).some(key =>
+            !Object.prototype.hasOwnProperty.call(defaults, key) ||
+            settings[key] !== defaults[key]
+        )) return true;
+
+        const timer = data.timerState;
+        if (timer && typeof timer === 'object' &&
+            (timer.running || timer.paused || timer.currentTask || timer.endAt)) return true;
+
+        const water = data.waterData || {};
+        if ((Number(water.today) || 0) > 0 || Object.keys(water.history || {}).length > 0) return true;
+
+        return false;
     }
 
     function persistSnapshot(data) {
