@@ -163,10 +163,15 @@
 
     function raiseConflict(remote) {
         pendingConflict = remote;
-        emit('nuvio:sync-conflict', {
-            message: 'فيه اختلاف بين بيانات هذا الجهاز والنسخة السحابية. اختر النسخة التي تريد الاحتفاظ بها.',
-            remoteVersion: remote.revision
-        });
+        // Notify only after the current initialization/read operation releases
+        // its busy lock; the dialog handler may immediately resolve the choice.
+        setTimeout(() => {
+            if (!pendingConflict || pendingConflict !== remote) return;
+            emit('nuvio:sync-conflict', {
+                message: 'فيه اختلاف بين بيانات هذا الجهاز والنسخة السحابية. اختر النسخة التي تريد الاحتفاظ بها.',
+                remoteVersion: remote.revision
+            });
+        }, 0);
     }
 
     async function applyRemoteIfNewer() {
