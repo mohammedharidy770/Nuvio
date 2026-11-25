@@ -71,10 +71,10 @@
         return (accountId || 'unknown') + ':' + (hash >>> 0).toString(36);
     }
 
-    function backupConflictOnce(remoteData, accountId) {
+    async function backupConflictOnce(remoteData, accountId) {
         const signature = conflictSignature(remoteData, accountId);
         if (localStorage.getItem(CONFLICT_BACKUP_KEY) === signature) return true;
-        if (!backupLocalAccountData('initial-device-cloud-conflict', accountId)) return false;
+        if (!await backupLocalAccountData('initial-device-cloud-conflict', accountId)) return false;
         try {
             localStorage.setItem(CONFLICT_BACKUP_KEY, signature);
         } catch (error) {
@@ -102,7 +102,7 @@
         if (!['remote', 'local'].includes(choice)) return false;
 
         const conflict = pendingConflict;
-        if (!backupLocalAccountData('sync-conflict-' + choice, userId)) return false;
+        if (!await backupLocalAccountData('sync-conflict-' + choice, userId)) return false;
 
         try {
             const remoteKey = BACKUP_PREFIX + 'cloud_' + userId + '_' + Date.now();
@@ -371,19 +371,58 @@
         return false;
     }
 
-    function backupLocalAccountData(reason, nextUserId) {
+    function openRecoveryDatabase() {
+        return new Promise((resolve, reject) => {
+            if (!('indexedDB' in window)) {
+                reject(new Error('IndexedDB is unavailable'));
+                return;
+            }
+            const request = indexedDB.open('nuvio-recovery', 1);
+            request.onupgradeneeded = () => {
+                const db = request.result;
+                if (!db.objectStoreNames.contains('backups')) {
+                    db.createObjectStore('backups', { keyPath: 'id' });
+                }
+            };
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error || new Error('Could not open recovery database'));
+            request.onblocked = () => reject(new Error('Recovery database upgrade is blocked'));
+        });
+    }
+
+    async function backupLocalAccountData(reason, nextUserId) {
         const data = {};
-        DATA_KEYS.forEach(key => { const value = localStorage.getItem(key); if (value !== null) data[key] = value; });
+        DATA_KEYS.forEach(key => {
+            const value = localStorage.getItem(key);
+            if (value !== null) data[key] = value;
+        });
         if (!Object.keys(data).length) return true;
+
         const owner = localStorage.getItem(OWNER_KEY) || 'unclaimed';
-        const key = BACKUP_PREFIX + owner + '_' + Date.now();
+        const id = BACKUP_PREFIX + owner + '_' + Date.now();
+
         try {
-            localStorage.setItem(key, JSON.stringify({ createdAt: new Date().toISOString(), reason, previousOwner: owner, nextUserId: nextUserId || null, data }));
-            emit('nuvio:local-backup-created', { key, reason });
+            const db = await openRecoveryDatabase();
+            await new Promise((resolve, reject) => {
+                const transaction = db.transaction('backups', 'readwrite');
+                transaction.objectStore('backups').put({
+                    id,
+                    createdAt: new Date().toISOString(),
+                    reason,
+                    previousOwner: owner,
+                    nextUserId: nextUserId || null,
+                    data
+                });
+                transaction.oncomplete = resolve;
+                transaction.onerror = () => reject(transaction.error || new Error('Recovery backup failed'));
+                transaction.onabort = () => reject(transaction.error || new Error('Recovery backup was aborted'));
+            });
+            db.close();
+            emit('nuvio:local-backup-created', { key: id, reason, storage: 'indexeddb' });
             return true;
         } catch (error) {
             console.error('Nuvio local backup failed; refusing destructive cleanup:', error);
-            emit('nuvio:sync-error', { message: 'تعذر إنشاء نسخة احتياطية محلية؛ أوقفنا تبديل البيانات لحمايتها.' });
+            emit('nuvio:sync-error', { message: 'تعذر إنشاء نسخة احتياطية في مساحة الاسترداد؛ لم نغيّر بياناتك.' });
             return false;
         }
     }
@@ -393,8 +432,8 @@
         // Keep recovery backups and pre-import backups intact.
     }
 
-    function resetForDifferentAccount(nextUserId) {
-        if (!backupLocalAccountData('account-switch', nextUserId)) {
+    async function resetForDifferentAccount(nextUserId) {
+        if (!await backupLocalAccountData('account-switch', nextUserId)) {
             ready = false;
             userId = null;
             clearTimeout(timer);
@@ -607,7 +646,7 @@
 
         const ownerId = localStorage.getItem(OWNER_KEY);
         if (ownerId && ownerId !== nextUserId) {
-            resetForDifferentAccount(nextUserId);
+            await resetForDifferentAccount(nextUserId);
             return;
         }
 
@@ -645,7 +684,7 @@
                 if ((!ownerId && localHasData) ||
                     (localHasData && !remoteHasData && !localMatchesCloud) ||
                     (hasUnsentLocalChanges && !localMatchesCloud)) {
-                    if (!backupConflictOnce(row.data, nextUserId)) throw new Error('Local backup failed; refusing to replace local data.');
+                    if (!await backupConflictOnce(row.data, nextUserId)) throw new Error('Local backup failed; refusing to replace local data.');
                     localStorage.setItem(OWNER_KEY, nextUserId);
                     dirty = true;
                     initialLocalConflict = { data: row.data, version: lastRemoteVersion };
