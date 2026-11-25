@@ -23,6 +23,8 @@
     let applying = false;
     let dirty = false;
     let busy = false;
+    let pendingRemoteCheck = false;
+    let pendingWrite = false;
     let timer = null;
     let revision = 0;
     let generation = 0;
@@ -204,7 +206,11 @@
     }
 
     async function applyRemoteIfNewer() {
-        if (!ready || !userId || busy || applying) return;
+        if (!ready || !userId || applying) return;
+        if (busy) {
+            pendingRemoteCheck = true;
+            return;
+        }
         busy = true;
         try {
             const remote = await fetchRemote();
@@ -220,6 +226,20 @@
             report(error);
         } finally {
             busy = false;
+            flushPendingWork();
+        }
+    }
+
+    function flushPendingWork() {
+        if (busy || !ready || !userId) return;
+        if (pendingWrite || dirty) {
+            pendingWrite = false;
+            setTimeout(() => writeState(), 0);
+            return;
+        }
+        if (pendingRemoteCheck) {
+            pendingRemoteCheck = false;
+            setTimeout(() => applyRemoteIfNewer(), 0);
         }
     }
 
@@ -235,7 +255,11 @@
     }
 
     async function writeState() {
-        if (!ready || !userId || busy || !dirty) return;
+        if (!ready || !userId || !dirty) return;
+        if (busy) {
+            pendingWrite = true;
+            return;
+        }
         busy = true;
         const currentUser = userId;
         const currentGeneration = generation;
@@ -264,6 +288,7 @@
             report(error);
         } finally {
             busy = false;
+            flushPendingWork();
         }
     }
 
