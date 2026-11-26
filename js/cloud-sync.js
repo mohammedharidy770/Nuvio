@@ -51,8 +51,27 @@
             waterData: { goal: 8, today: 0, history: {}, reminder: false, lastDate: new Date().toDateString() },
             prayerData: { city: 'Cairo', method: '5', times: null, hijriDate: null, location: null },
             userProfile: { name: '', avatar: null },
-            timerState: null, aiHistory: [], aiSettings: {}
+            aiHistory: [], aiSettings: {}
         };
+    }
+
+    // The in-memory data of this tab belongs to this owner, even while another
+    // tab has temporarily removed OWNER_KEY in the middle of an account switch.
+    let tabOwner = localStorage.getItem(OWNER_KEY);
+
+    function clearPreviousAccount() {
+        const app = window.app;
+        applying = true;
+        try {
+            if (app?.timerState) app.timerState.currentTask = null;
+            app?.resetTimer?.();
+        } finally {
+            applying = false;
+        }
+        persistSnapshot(emptyUserState());
+        localStorage.removeItem(OWNER_KEY);
+        tabOwner = null;
+        emit('nuvio:remote-state-applied');
     }
 
     function snapshot() {
@@ -324,6 +343,7 @@
             revision = Number(remote.revision);
             dirty = false;
             localStorage.setItem(OWNER_KEY, userId);
+            tabOwner = userId;
             emit('nuvio:sync-resolved', { choice, revision });
             return true;
         }
@@ -350,14 +370,21 @@
         }
         if (nextUserId === userId && ready) return;
 
-        const oldOwner = localStorage.getItem(OWNER_KEY);
+        const storedOwner = localStorage.getItem(OWNER_KEY);
+        if (tabOwner && storedOwner && tabOwner !== storedOwner) {
+            // Another tab already switched this browser to storedOwner; drop
+            // this tab's stale in-memory copy and adopt the stored one.
+            persistSnapshot(localStorageSnapshot(), { keepDirtyMarker: true });
+            emit('nuvio:remote-state-applied');
+            tabOwner = storedOwner;
+        }
+        const oldOwner = storedOwner || tabOwner;
         const switchedAccount = Boolean(oldOwner && oldOwner !== nextUserId);
         if (switchedAccount && !localStorage.getItem(DIRTY_KEY)) {
             // Everything local is already in the previous account's cloud copy.
             // Drop it here so it can't leak into this account, then load this
             // account's data below.
-            persistSnapshot(emptyUserState());
-            localStorage.removeItem(OWNER_KEY);
+            clearPreviousAccount();
         } else if (switchedAccount) {
             userId = nextUserId;
             ready = false;
@@ -388,7 +415,15 @@
             } else {
                 revision = Number(remote.revision);
                 const local = snapshot();
-                const localHasData = !switchedAccount && hasUserData(local);
+                // After a switch, the kept display settings and the empty chat the
+                // AI page opens are not data; only edits made while fetching are.
+                const localHasData = switchedAccount
+                    ? hasUserData({
+                        ...local,
+                        settings: {},
+                        aiHistory: (local.aiHistory || []).filter(chat => chat?.messages?.length)
+                    })
+                    : hasUserData(local);
                 const remoteHasData = hasUserData(remote.state);
                 const localWasOwned = oldOwner === nextUserId;
                 if (localHasData && (!remoteHasData || !localWasOwned || (dirty && localWasOwned))) {
@@ -396,11 +431,13 @@
                 } else {
                     persistSnapshot(remote.state);
                     dirty = false;
+                    if (switchedAccount) emit('nuvio:remote-state-applied');
                 }
             }
 
             if (currentGeneration !== generation || userId !== nextUserId) return;
             localStorage.setItem(OWNER_KEY, nextUserId);
+            tabOwner = nextUserId;
             ready = true;
 
             if (realtimeChannel) await client.removeChannel(realtimeChannel);
