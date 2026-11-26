@@ -1,10 +1,14 @@
-const CACHE_NAME = 'nuvio-v64';
+const CACHE_NAME = 'nuvio-v65';
 const STATIC_ASSETS = [
     './',
     './index.html',
     './ai.html',
     './manifest.json',
     './assets/layer-group.svg',
+    './assets/icon-192.png',
+    './assets/icon-512.png',
+    './assets/icon-maskable-512.png',
+    './assets/apple-touch-icon.png',
     './css/base.css?v=10',
     './css/layout.css',
     './css/components.css?v=2',
