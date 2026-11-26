@@ -125,27 +125,7 @@ Object.assign(NuvioApp.prototype, {
                 'status.pending': 'معلقة', 'status.inProgress': 'قيد التنفيذ', 'status.completed': 'مكتملة',
                 'repeat.none': 'لا يتكرر', 'repeat.daily': 'يومي', 'repeat.weekly': 'أسبوعي', 'repeat.monthly': 'شهري',
                 'reminder.atTime': 'في الموعد', 'reminder.15min': '15 دقيقة',
-                                'help.title': 'كيف تستخدم Nuvio', 'help.prev': 'السابق',
-                'help.next': 'التالي', 'help.finish': 'ابدأ الاستخدام',
-                'help.welcomeTitle': 'مرحباً بك في Nuvio',
-                'help.welcomeDesc': 'نظام التشغيل الشخصي اللي هيساعدك ترتب يومك وتحقق أهدافك',
-                'help.tasksTitle': 'المهام',
-                'help.tasksDesc': 'أضف مهامك ورتبها حسب الأولوية والفئة. تقدر تحدد موعد نهاية وتذكير لكل مهمة',
-                'help.focusTitle': 'جلسات التركيز',
-                'help.focusDesc': 'استخدم تقنية البومودورو عشان تركز أكتر. جلسة تركيز 25 دقيقة واستراحة 5 دقايق',
-                'help.habitsTitle': 'العادات اليومية',
-                'help.habitsDesc': 'تابع عاداتك اليومية زي القراءة والرياضة والصلاة. كل يوم تضغط check لما تعمل العادة',
-                'help.prayerTitle': 'مواقيت الصلاة',
-                'help.prayerDesc': 'اعرف مواقيت الصلاة في مدينتك مع عد تنازلي للصلاة القادمة والتاريخ الهجري',
-                'help.reportsTitle': 'التقارير',
-                'help.reportsDesc': 'تابع تقدمك أسبوعياً وشهرياً. شوف إحصائيات المهام المكتملة وساعات التركيز',
-                'help.settingsTitle': 'إعداداتك',
-                'help.settingsDesc': 'غير اللغة والمظهر ومدة البومودورو والإشعارات حسب ما يناسبك',
-                'help.readyTitle': 'جاهز تبدأ؟',
-                'help.readyDesc': 'ابدأ بإضافة أول مهمة أو عادة وخلّي Nuvio يساعدك توصل لأهدافك',
-                'help.skip': 'تخطي', 'help.feature1': 'إدارة المهام الذكية',
-                'help.feature2': 'جلسات تركيز بومودورو', 'help.feature3': 'تتبع العادات اليومية',
-                'help.feature4': 'مواقيت الصلاة', 'help.feature5': 'تقارير وإحصائيات',
+                'help.skip': 'تخطي',
                 'help.feature6': 'تصدير واستيراد البيانات',
                                 'nav.notes': 'المذكرات',
                 'notes.newNote': 'مذكرة جديدة', 'notes.title': 'العنوان',
@@ -157,7 +137,7 @@ Object.assign(NuvioApp.prototype, {
                 'notes.noNotes': 'لا توجد مذكرات', 'notes.createFirst': 'اكتب أول مذكرة',
                 'notes.editNote': 'تعديل المذكرة', 'notes.deleteConfirm': 'هل أنت متأكد من حذف هذه المذكرة؟',
                 'notes.saved': 'تم حفظ المذكرة', 'notes.updated': 'تم تحديث المذكرة',
-                'notes.deleted': 'تم حذف المذكرة', 'actions.save': 'حفظ',
+                'notes.deleted': 'تم حذف المذكرة',
                 'reminder.30min': '30 دقيقة', 'reminder.1hour': 'ساعة', 'reminder.1day': 'يوم',
                                 'welcome.subtitle': 'نظام التشغيل الشخصي',
                 'welcome.choosePhoto': 'اختر صورة',
@@ -369,19 +349,6 @@ Object.assign(NuvioApp.prototype, {
                 'status.pending': 'Pending', 'status.inProgress': 'In Progress', 'status.completed': 'Completed',
                 'repeat.none': 'Does not repeat', 'repeat.daily': 'Daily', 'repeat.weekly': 'Weekly', 'repeat.monthly': 'Monthly',
                 'reminder.atTime': 'At time', 'reminder.15min': '15 minutes',
-                                'help.title': 'How to Use Nuvio', 'help.prev': 'Previous',
-                'help.next': 'Next', 'help.finish': 'Start Using',
-                'help.welcomeTitle': 'Welcome to Nuvio',
-                'help.welcomeDesc': 'Your personal operating system to organize your day and achieve your goals',
-                'help.tasksTitle': 'Tasks',
-                'help.tasksDesc': 'Add your tasks and organize them by priority and category. Set due dates and reminders',
-                'help.focusTitle': 'Focus Sessions',
-                'help.focusDesc': 'Use the Pomodoro technique to focus better. 25 min focus + 5 min break',
-                'help.habitsTitle': 'Daily Habits',
-                'help.habitsDesc': 'Track daily habits like reading, exercise, and prayer. Check them off each day',
-                'help.prayerTitle': 'Prayer Times',
-                'help.prayerDesc': 'Know prayer times in your city with countdown to next prayer and Hijri date',
-                'help.reportsTitle': 'Reports',
                                 'nav.sleep': 'Sleep Tracker', 'nav.water': 'Water Tracker',
                 'sleep.title': 'Sleep Tracker', 'sleep.addRecord': 'Add Sleep',
                 'sleep.avgHours': 'Avg Sleep', 'sleep.avgQuality': 'Sleep Quality',
@@ -398,14 +365,7 @@ Object.assign(NuvioApp.prototype, {
                 'water.glasses': 'glasses', 'water.addGlass': 'Glass',
                 'water.reminder': 'Hourly Reminder',
                 'water.congrats': 'Great! You reached your daily goal',
-                'help.reportsDesc': 'Track your weekly and monthly progress. See completed tasks and focus hours',
-                'help.settingsTitle': 'Your Settings',
-                'help.settingsDesc': 'Change language, theme, Pomodoro duration, and notifications to suit you',
-                'help.readyTitle': 'Ready to Start?',
-                'help.readyDesc': 'Add your first task or habit and let Nuvio help you reach your goals',
-                'help.skip': 'Skip', 'help.feature1': 'Smart Task Management',
-                'help.feature2': 'Pomodoro Focus Sessions', 'help.feature3': 'Daily Habit Tracking',
-                'help.feature4': 'Prayer Times', 'help.feature5': 'Reports & Analytics',
+                'help.skip': 'Skip',
                 'help.feature6': 'Export & Import Data',
                 'reminder.30min': '30 minutes', 'reminder.1hour': '1 hour', 'reminder.1day': '1 day',
                                 'welcome.subtitle': 'Personal Operating System',
@@ -456,7 +416,7 @@ Object.assign(NuvioApp.prototype, {
                 'notes.noNotes': 'No Notes', 'notes.createFirst': 'Write your first note',
                 'notes.editNote': 'Edit Note', 'notes.deleteConfirm': 'Are you sure you want to delete this note?',
                 'notes.saved': 'Note saved', 'notes.updated': 'Note updated',
-                'notes.deleted': 'Note deleted', 'actions.save': 'Save',
+                'notes.deleted': 'Note deleted',
                 'nav.habits': 'Daily Habits', 'nav.prayer': 'Prayer Times',
                 'habits.newHabit': 'New Habit', 'habits.habitTitle': 'Habit Name *',
                 'habits.habitTitlePlaceholder': 'e.g. Read 10 pages',
@@ -499,7 +459,6 @@ Object.assign(NuvioApp.prototype, {
         const isRTL = lang === 'ar';
 
         document.documentElement.lang = lang;
-        document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
         const aiSection = document.getElementById('aiSection');
         if (aiSection) aiSection.dir = isRTL ? 'rtl' : 'ltr';
 
@@ -572,7 +531,6 @@ Object.assign(NuvioApp.prototype, {
             if (isRTL) {
                 m.style.right = '0';
                 m.style.left = 'auto';
-                m.style.transform = m.classList.contains('active') ? 'translateX(0)' : 'translateX(100%)';
                 m.style.borderLeft = '1px solid var(--border-color)';
                 m.style.borderRight = 'none';
             } else {
