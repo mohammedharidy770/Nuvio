@@ -27,3 +27,24 @@ jobs:
             echo "Checking $file"
             node --check "$file"
           done < <(find js api -type f -name '*.js' -print0)
+
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Rebuild bundles
+        run: |
+          npm ci
+          npm run build
+      - name: Check committed bundles are up to date
+        run: |
+          if ! git diff --exit-code -- dist index.html sw.js; then
+            echo "::error::dist/, index.html or sw.js is stale. Run 'npm run build' and commit the result."
+            exit 1
+          fi
