@@ -381,7 +381,7 @@
         if (applying) return;
         changeVersion += 1;
         dirty = true;
-        try { localStorage.setItem(DIRTY_KEY, String(Date.now())); catch (error) {
+        try { localStorage.setItem(DIRTY_KEY, String(Date.now())); } catch (error) {
             console.warn('Nuvio could not store the dirty marker:', error);
         }
         if (localChannel) localChannel.postMessage({ type: 'local-change', at: Date.now() });
