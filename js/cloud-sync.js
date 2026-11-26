@@ -31,6 +31,12 @@
     let realtimeChannel = null;
     let pendingConflict = null;
     let localChannel = null;
+    let handoffTimer = null;
+    let pendingOwnerSeen = false;
+    let changeSeq = 0;
+    const tabId = Math.random().toString(36).slice(2);
+    let rivalQuery = { tab: null, at: 0 };
+    const HANDOFF_MS = 1500;
 
     const emit = (name, detail = {}) =>
         window.dispatchEvent(new CustomEvent(name, { detail }));
@@ -207,6 +213,7 @@
 
     async function applyRemoteIfNewer() {
         if (!ready || !userId || applying) return;
+        if (otherTabPending()) return checkOtherTabPending();
         if (busy) {
             pendingRemoteCheck = true;
             return;
@@ -251,6 +258,7 @@
     async function syncNow() {
         if (!ready || !userId || busy) return;
         if (dirty) return writeState();
+        if (otherTabPending()) return checkOtherTabPending();
         return applyRemoteIfNewer();
     }
 
@@ -264,6 +272,7 @@
         const currentUser = userId;
         const currentGeneration = generation;
         const data = snapshot();
+        const savedSeq = changeSeq;
         try {
             const { data: saved, error } = await client.rpc('nuvio_save_state', {
                 p_state: data,
@@ -281,8 +290,12 @@
             const row = Array.isArray(saved) ? saved[0] : saved;
             if (!row) throw new Error('The save RPC returned no row.');
             revision = Number(row.revision);
-            dirty = false;
-            localStorage.removeItem(DIRTY_KEY);
+            // Edits made while this upload was in flight are not in `data`;
+            // stay dirty so flushPendingWork uploads them next.
+            if (savedSeq === changeSeq) {
+                dirty = false;
+                localStorage.removeItem(DIRTY_KEY);
+            }
             if (localChannel) localChannel.postMessage({ type: 'saved', revision });
             emit('nuvio:sync-saved', { revision });
         } catch (error) {
@@ -296,6 +309,7 @@
     function scheduleSave() {
         if (applying) return;
         dirty = true;
+        changeSeq += 1;
         try { localStorage.setItem(DIRTY_KEY, String(Date.now())); } catch (error) {
             console.warn('Nuvio could not store the dirty marker:', error);
         }
@@ -414,11 +428,51 @@
         persistSnapshot(localStorageSnapshot(), { keepDirtyMarker: true });
     }
 
+    // A shared dirty marker without a local dirty flag means another tab made a
+    // change that is not in the cloud yet. Ask whether that tab is still alive;
+    // if nobody owns the change (e.g. the tab was closed offline), take over the
+    // upload instead of letting a newer cloud snapshot overwrite it.
+    function otherTabPending() {
+        return !dirty && !!localStorage.getItem(DIRTY_KEY);
+    }
+
+    // Several tabs may look for an owner at once; only the lowest id adopts.
+    function rivalWins() {
+        return rivalQuery.tab !== null &&
+            Date.now() - rivalQuery.at < HANDOFF_MS * 2 &&
+            rivalQuery.tab < tabId;
+    }
+
+    function checkOtherTabPending() {
+        if (handoffTimer) return;
+        pendingOwnerSeen = false;
+        if (localChannel) localChannel.postMessage({ type: 'pending-query', tab: tabId });
+        handoffTimer = setTimeout(() => {
+            handoffTimer = null;
+            if (!otherTabPending()) {
+                applyRemoteIfNewer();
+            } else if (!pendingOwnerSeen && !rivalWins()) {
+                dirty = true;
+                writeState();
+            }
+        }, HANDOFF_MS);
+    }
+
     if ('BroadcastChannel' in window) {
         localChannel = new BroadcastChannel(CHANNEL_NAME);
         localChannel.addEventListener('message', event => {
             if (event.data?.type === 'local-change') {
                 mirrorLocalChange();
+            } else if (event.data?.type === 'pending-query') {
+                if (dirty && ready) {
+                    localChannel.postMessage({ type: 'pending-owner' });
+                } else {
+                    const tab = String(event.data.tab);
+                    const recent = Date.now() - rivalQuery.at < HANDOFF_MS * 2;
+                    if (!recent || tab < rivalQuery.tab) rivalQuery = { tab, at: Date.now() };
+                }
+            } else if (event.data?.type === 'pending-owner') {
+                pendingOwnerSeen = true;
             } else if (event.data?.type === 'saved' && !dirty) {
                 const saved = Number(event.data.revision) || 0;
                 if (saved > revision) revision = saved;
