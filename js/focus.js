@@ -43,6 +43,11 @@ Object.assign(NuvioApp.prototype, {
 
     startTimer() {
         if (this.timerState.running) return;
+        if (!Number.isFinite(Number(this.timerState.timeLeft)) || this.timerState.timeLeft <= 0) {
+            this.timerState.timeLeft = 0;
+            this.timerComplete();
+            return;
+        }
 
         this.timerState.running = true;
         this.timerState.paused = false;
@@ -118,14 +123,35 @@ Object.assign(NuvioApp.prototype, {
     restoreTimerState() {
         try {
             const saved = JSON.parse(localStorage.getItem('nuvio_timer_state') || 'null');
-            if (!saved || !saved.mode) return;
-            this.timerState.mode = saved.mode;
-            this.timerState.totalTime = Number(saved.totalTime) || this.settings.pomodoroDuration * 60;
-            this.timerState.timeLeft = Number(saved.timeLeft) || this.timerState.totalTime;
+            if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return;
+
+            // A remote pause/reset must stop any interval already running in this tab.
+            clearInterval(this.timerState.interval);
+            this.timerState.interval = null;
+
+            const validModes = ['pomodoro', 'short', 'long'];
+            const mode = validModes.includes(saved.mode) ? saved.mode : 'pomodoro';
+            const fallbackDuration = Math.max(1, Number(this.settings.pomodoroDuration) || 25) * 60;
+            const parsedTotal = Number(saved.totalTime);
+            const totalTime = Number.isFinite(parsedTotal) && parsedTotal > 0
+                ? Math.min(86400, Math.floor(parsedTotal))
+                : fallbackDuration;
+            const parsedLeft = Number(saved.timeLeft);
+            const timeLeft = Number.isFinite(parsedLeft)
+                ? Math.max(0, Math.min(totalTime, Math.ceil(parsedLeft)))
+                : totalTime;
+            const parsedEndAt = Number(saved.endAt);
+            const hasValidEndAt = Number.isFinite(parsedEndAt) && parsedEndAt > 0;
+
+            this.timerState.mode = mode;
+            this.timerState.totalTime = totalTime;
+            this.timerState.timeLeft = timeLeft;
             this.timerState.currentTask = saved.currentTask || null;
-            if (saved.running && saved.endAt) {
-                this.timerState.endAt = saved.endAt;
-                this.timerState.timeLeft = Math.max(0, Math.ceil((saved.endAt - Date.now()) / 1000));
+            this.timerState.interval = null;
+
+            if (saved.running === true && hasValidEndAt) {
+                this.timerState.endAt = parsedEndAt;
+                this.timerState.timeLeft = Math.max(0, Math.ceil((parsedEndAt - Date.now()) / 1000));
                 this.timerState.running = false;
                 this.timerState.paused = false;
                 if (this.timerState.timeLeft > 0) {
@@ -140,7 +166,14 @@ Object.assign(NuvioApp.prototype, {
                 this.updateTimerDisplay();
                 this.syncTimerButtons();
             }
-        } catch (error) { console.warn('Could not restore focus timer:', error); }
+        } catch (error) {
+            console.warn('Could not restore focus timer:', error);
+            clearInterval(this.timerState.interval);
+            this.timerState.interval = null;
+            this.timerState.running = false;
+            this.timerState.endAt = null;
+            this.syncTimerButtons();
+        }
     },
 
     syncTimerButtons() {
@@ -200,7 +233,9 @@ Object.assign(NuvioApp.prototype, {
         const circle = document.getElementById('timerProgress');
         if (circle) {
             const circumference = 2 * Math.PI * 130;
-            const offset = circumference - (this.timerState.timeLeft / this.timerState.totalTime) * circumference;
+            const safeTotal = Math.max(1, Number(this.timerState.totalTime) || 1);
+            const safeLeft = Math.max(0, Math.min(safeTotal, Number(this.timerState.timeLeft) || 0));
+            const offset = circumference - (safeLeft / safeTotal) * circumference;
             circle.style.strokeDashoffset = offset;
         }
 
