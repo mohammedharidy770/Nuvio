@@ -1148,14 +1148,20 @@
                     }
                 }
             }
-            const actions = settings.actionsEnabled ? result.actions : [];
+            const requestedActions = Array.isArray(result.actions) ? result.actions : [];
+            const actions = settings.actionsEnabled ? requestedActions : [];
             const count = await executeActions(actions);
             const requestedTaskUpdate = actions.some(action => action?.type === 'update_task');
-            const reply = count
-                ? `${result.reply || 'تم تنفيذ الطلب.'}\nتم حفظ ${count} تعديل داخل الموقع.`
+            const incompleteActions = Math.max(0, actions.length - count);
+            const reply = count > 0
+                ? incompleteActions > 0
+                    ? `${result.reply || 'تم تنفيذ جزء من الطلب.'}\nتم تنفيذ ${count} من ${actions.length} إجراءات فقط. راجع النتيجة قبل إعادة المحاولة.`
+                    : `${result.reply || 'تم تنفيذ الطلب.'}\nتم تنفيذ ${count} إجراء بنجاح.`
                 : requestedTaskUpdate
                     ? 'لم يتم تعديل أي مهمة. لم أجد مهامًا مطابقة أو تعذر حفظ التواريخ. راجع المهام وحاول مرة أخرى.'
-                    : result.reply || escapeText(data.reply);
+                    : actions.length > 0
+                        ? 'لم يتم تنفيذ أي إجراء من الطلب. لم تتغير بياناتك؛ راجع أسماء العناصر أو تفاصيل الأمر وحاول مرة أخرى.'
+                        : result.reply || escapeText(data.reply);
             chat.messages.push({ role: 'assistant', content: reply });
             saveHistory();
             await animateReply(reply);
