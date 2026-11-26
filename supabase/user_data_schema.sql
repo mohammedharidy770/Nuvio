@@ -1,3 +1,6 @@
+-- LEGACY: superseded by nuvio_user_state + nuvio_save_state  
+-- (see supabase/user_state_schema.sql). Kept for reference only —  
+-- do NOT run on new projects.  
 -- Nuvio account-scoped cloud snapshot storage.
 -- Keep this schema aligned with js/cloud-sync.js (public.nuvio_data).
 
@@ -45,3 +48,9 @@ begin
     end if;
 end
 $$;
+-- Legacy function (reference only):  
+-- nuvio_set_data(p_key text, p_value jsonb): per-key merge into nuvio_data.  
+-- Whitelists keys: nuvio_tasks, nuvio_sessions, nuvio_settings,  
+-- nuvio_notifications, nuvio_habits, nuvio_user_profile, nuvio_sleep,  
+-- nuvio_water, nuvio_notes, nuvio_prayer. Raises 'Authentication required'  
+-- when auth.uid() is null; upserts via jsonb_set/delete, version + 1.  
