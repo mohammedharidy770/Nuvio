@@ -31,6 +31,9 @@
     let realtimeChannel = null;
     let pendingConflict = null;
     let localChannel = null;
+    let handoffTimer = null;
+    let pendingOwnerSeen = false;
+    const HANDOFF_MS = 1500;
 
     const emit = (name, detail = {}) =>
         window.dispatchEvent(new CustomEvent(name, { detail }));
@@ -207,6 +210,7 @@
 
     async function applyRemoteIfNewer() {
         if (!ready || !userId || applying) return;
+        if (otherTabPending()) return checkOtherTabPending();
         if (busy) {
             pendingRemoteCheck = true;
             return;
@@ -251,6 +255,7 @@
     async function syncNow() {
         if (!ready || !userId || busy) return;
         if (dirty) return writeState();
+        if (otherTabPending()) return checkOtherTabPending();
         return applyRemoteIfNewer();
     }
 
@@ -414,11 +419,38 @@
         persistSnapshot(localStorageSnapshot(), { keepDirtyMarker: true });
     }
 
+    // A shared dirty marker without a local dirty flag means another tab made a
+    // change that is not in the cloud yet. Ask whether that tab is still alive;
+    // if nobody owns the change (e.g. the tab was closed offline), take over the
+    // upload instead of letting a newer cloud snapshot overwrite it.
+    function otherTabPending() {
+        return !dirty && !!localStorage.getItem(DIRTY_KEY);
+    }
+
+    function checkOtherTabPending() {
+        if (handoffTimer) return;
+        pendingOwnerSeen = false;
+        if (localChannel) localChannel.postMessage({ type: 'pending-query' });
+        handoffTimer = setTimeout(() => {
+            handoffTimer = null;
+            if (!otherTabPending()) {
+                applyRemoteIfNewer();
+            } else if (!pendingOwnerSeen) {
+                dirty = true;
+                writeState();
+            }
+        }, HANDOFF_MS);
+    }
+
     if ('BroadcastChannel' in window) {
         localChannel = new BroadcastChannel(CHANNEL_NAME);
         localChannel.addEventListener('message', event => {
             if (event.data?.type === 'local-change') {
                 mirrorLocalChange();
+            } else if (event.data?.type === 'pending-query') {
+                if (dirty) localChannel.postMessage({ type: 'pending-owner' });
+            } else if (event.data?.type === 'pending-owner') {
+                pendingOwnerSeen = true;
             } else if (event.data?.type === 'saved' && !dirty) {
                 const saved = Number(event.data.revision) || 0;
                 if (saved > revision) revision = saved;
