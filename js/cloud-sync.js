@@ -44,6 +44,17 @@
         }
     }
 
+    function emptyUserState() {
+        return {
+            tasks: [], focusSessions: [], notifications: [], habits: [], notes: [], sleepRecords: [],
+            settings: window.app?.settings || readJSON('nuvio_settings', {}),
+            waterData: { goal: 8, today: 0, history: {}, reminder: false, lastDate: new Date().toDateString() },
+            prayerData: { city: 'Cairo', method: '5', times: null, hijriDate: null, location: null },
+            userProfile: { name: '', avatar: null },
+            timerState: null, aiHistory: [], aiSettings: {}
+        };
+    }
+
     function snapshot() {
         const app = window.app;
         return {
@@ -340,7 +351,14 @@
         if (nextUserId === userId && ready) return;
 
         const oldOwner = localStorage.getItem(OWNER_KEY);
-        if (oldOwner && oldOwner !== nextUserId) {
+        const switchedAccount = Boolean(oldOwner && oldOwner !== nextUserId);
+        if (switchedAccount && !localStorage.getItem(DIRTY_KEY)) {
+            // Everything local is already in the previous account's cloud copy.
+            // Drop it here so it can't leak into this account, then load this
+            // account's data below.
+            persistSnapshot(emptyUserState());
+            localStorage.removeItem(OWNER_KEY);
+        } else if (switchedAccount) {
             userId = nextUserId;
             ready = false;
             emit('nuvio:sync-error', { message: 'الحساب الحالي مختلف عن الحساب الذي يملك البيانات المحلية. سجّل خروجًا ثم ادخل بالحساب الصحيح قبل المزامنة.' });
@@ -370,7 +388,7 @@
             } else {
                 revision = Number(remote.revision);
                 const local = snapshot();
-                const localHasData = hasUserData(local);
+                const localHasData = !switchedAccount && hasUserData(local);
                 const remoteHasData = hasUserData(remote.state);
                 const localWasOwned = oldOwner === nextUserId;
                 if (localHasData && (!remoteHasData || !localWasOwned || (dirty && localWasOwned))) {
