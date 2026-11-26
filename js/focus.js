@@ -341,7 +341,7 @@ Object.assign(NuvioApp.prototype, {
         const tti = document.getElementById('timerTaskInfo');
         if (tti) {
             tti.innerHTML = `
-                <div class="task-name">${task ? task.title : ''}</div>
+                <div class="task-name">${task ? window.NuvioSecurity.escapeHTML(task.title) : ''}</div>
                 <p>${this.settings.language === 'ar' ? 'جلسة تركيز على المهمة المختارة' : 'Focus session on selected task'}</p>
             `;
         }

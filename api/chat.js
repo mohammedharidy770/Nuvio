@@ -399,7 +399,7 @@ ${actionsEnabled
         }
 
         if (typeof parsed.title !== 'string') parsed.title = '';
-        parsed.title = parsed.title.replace(/[\\u0000-\\u001f\\u007f]/g, ' ').trim().slice(0, 48);
+        parsed.title = parsed.title.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 48);
         if (typeof parsed.reply !== 'string') parsed.reply = 'تمت معالجة طلبك.';
         if (!Array.isArray(parsed.actions)) parsed.actions = [];
         parsed.actions = actionsEnabled ? parsed.actions.slice(0, 30).map(sanitizeAction).filter(Boolean) : [];
