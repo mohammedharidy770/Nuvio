@@ -146,6 +146,7 @@
         } finally {
             applying = false;
         }
+        if (!keepDirtyMarker) emit('nuvio:remote-state-applied', {});
     }
 
     function localStorageSnapshot() {
@@ -372,11 +373,27 @@
                 const local = snapshot();
                 const localHasData = hasUserData(local);
                 const remoteHasData = hasUserData(remote.state);
-                const localWasOwned = oldOwner === nextUserId;
-                if (localHasData && (!remoteHasData || !localWasOwned || (dirty && localWasOwned))) {
+
+                if (localHasData && !remoteHasData) {
+                    // This device has the only copy. Seed the empty cloud row
+                    // instead of asking the user to resolve a non-existent conflict.
+                    const { data: saved, error } = await client.rpc('nuvio_save_state', {
+                        p_state: local,
+                        p_expected_revision: revision
+                    });
+                    if (error) throw error;
+                    const row = Array.isArray(saved) ? saved[0] : saved;
+                    if (!row) throw new Error('The initial cloud save returned no row.');
+                    revision = Number(row.revision);
+                    dirty = false;
+                    localStorage.removeItem(DIRTY_KEY);
+                    emit('nuvio:sync-saved', { revision });
+                } else if (localHasData && remoteHasData && !same(local, remote.state)) {
+                    // A conflict is real only when both copies contain user data
+                    // and their contents differ.
                     raiseConflict(remote);
                 } else {
-                    persistSnapshot(remote.state);
+                    persistSnapshot(remote.state || {});
                     dirty = false;
                 }
             }

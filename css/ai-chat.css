@@ -115,3 +115,13 @@
     cursor: grabbing;
     transition: none;
 }
+
+/* Prevent long Arabic/English messages from overflowing the floating chat. */
+.ai-chat-logs { min-width: 0; }
+.ai-chat-message {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    unicode-bidi: plaintext;
+    text-align: start;
+}

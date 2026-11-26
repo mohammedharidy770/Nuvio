@@ -1352,3 +1352,55 @@ body.ai-standalone #aiSection .ai-messages {
 :root:not([data-theme="dark"]) .ai-memory-group textarea {
   background: var(--bg-input);
 }
+
+/* Nuvio AI reliability: direction-aware text, safe wrapping, and typing state. */
+.ai-section .ai-messages {
+  min-width: 0;
+  scroll-behavior: smooth;
+}
+.ai-section .ai-message {
+  min-width: 0;
+  max-width: min(88%, 780px);
+  overflow-wrap: anywhere;
+}
+.ai-section .ai-message-text {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  direction: inherit;
+  unicode-bidi: plaintext;
+  text-align: start;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.ai-section .ai-typing {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  width: fit-content;
+  min-width: 76px;
+  min-height: 42px;
+  padding: 12px 16px;
+}
+.ai-section .ai-typing span {
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .45;
+  animation: nuvio-ai-typing 1s ease-in-out infinite;
+}
+.ai-section .ai-typing span:nth-child(2) { animation-delay: .15s; }
+.ai-section .ai-typing span:nth-child(3) { animation-delay: .3s; }
+@keyframes nuvio-ai-typing {
+  0%, 60%, 100% { opacity: .35; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-4px); }
+}
+@media (max-width: 768px) {
+  .ai-section .ai-message { max-width: 94%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-section .ai-typing span { animation: none; }
+}

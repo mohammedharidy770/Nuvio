@@ -114,6 +114,23 @@ class NuvioApp {
         this.applyTheme();
         this.applyLanguage();
         this.setupEventListeners();
+
+        window.addEventListener('popstate', () => {
+            const params = new URLSearchParams(window.location.search);
+            const requested = params.get('section');
+            const validSections = ['dashboard', 'tasks', 'focus', 'calendar', 'reports', 'settings', 'habits', 'prayer', 'sleep', 'water', 'notes'];
+            const section = params.get('view') === 'ai'
+                ? 'ai'
+                : validSections.includes(requested) ? requested : 'dashboard';
+            this.showSection(section);
+        });
+
+        window.addEventListener('nuvio:sync-error', event => {
+            const fallback = this.settings.language === 'ar'
+                ? 'تعذرت مزامنة البيانات الآن. ستتم إعادة المحاولة تلقائيًا.'
+                : 'Sync failed. Nuvio will retry automatically.';
+            this.showToast(String(event.detail?.message || fallback), 'error');
+        });
         const firstRun = localStorage.getItem("nuvio_first_run");
         if (!firstRun) {
             // Never seed demo content automatically: app initialization can run

@@ -174,6 +174,7 @@
         message.className = `ai-message ai-message-${role}`;
         const content = document.createElement('span');
         content.className = 'ai-message-text';
+        content.dir = 'auto';
         content.textContent = escapeText(text);
         message.appendChild(content);
         if (role === 'assistant') {
@@ -1046,8 +1047,16 @@
                 await animateReply(scheduleReply);
                 return;
             }
-            const session = await window.NuvioCloud?.getSession();
-            if (!session?.access_token) throw new Error(aiT('loginRequired'));
+            const session = window.NuvioAuth?.getSession
+                ? await window.NuvioAuth.getSession()
+                : await window.NuvioCloud?.getSession?.();
+            if (!session?.access_token) {
+                window.NuvioAuth?.showLogin?.();
+                const loginMessage = window.app?.settings?.language === 'en'
+                    ? 'Please sign in to your Nuvio account, then send your message again.'
+                    : 'لاستخدام المساعد، سجّل الدخول إلى حساب Nuvio أولًا، ثم أعد إرسال رسالتك.';
+                throw new Error(loginMessage);
+            }
 
             const response = await fetch(API_URL, {
                 method: 'POST',
@@ -1068,9 +1077,29 @@
                     }
                 })
             });
-            if (response.status === 401) throw new Error(aiT('loginRequired'));
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'تعذر الاتصال بالمساعد');
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                const isEnglish = window.app?.settings?.language === 'en';
+                if (response.status === 401) {
+                    window.NuvioAuth?.showLogin?.();
+                    throw new Error(isEnglish
+                        ? 'Your sign-in session has expired. Please sign in again.'
+                        : 'انتهت جلسة تسجيل الدخول. سجّل الدخول مرة أخرى للمتابعة.');
+                }
+                if (response.status === 429) {
+                    throw new Error(isEnglish
+                        ? 'The AI request limit has been reached. Please wait a little and try again.'
+                        : 'وصلت إلى حد الطلبات المسموح به مؤقتًا. انتظر قليلًا ثم حاول مرة أخرى.');
+                }
+                if (response.status === 502) {
+                    throw new Error(isEnglish
+                        ? 'The AI service is temporarily unavailable. Please try again shortly.'
+                        : 'خدمة الذكاء الاصطناعي غير متاحة مؤقتًا. حاول مرة أخرى بعد قليل.');
+                }
+                throw new Error(data.error || (isEnglish
+                    ? 'The assistant could not process your request.'
+                    : 'تعذر على المساعد معالجة طلبك الآن.'));
+            }
             typing.remove();
 
             const result = parseJSON(data.reply);
@@ -1301,13 +1330,20 @@
         }
     }
 
-    window.addEventListener('nuvio:remote-state-applied', () => {
+    function refreshHistoryAfterSync() {
+        const previousActiveId = activeId;
         loadHistory();
+        activeId = conversations.some(chat => chat.id === previousActiveId)
+            ? previousActiveId
+            : conversations[0]?.id || null;
         if (dom.messages && document.getElementById('aiSection')?.classList.contains('active')) {
-            activeId = conversations[0]?.id || null;
             if (activeId) render();
             else createChat();
         }
+    }
+
+    ['nuvio:remote-state-applied', 'nuvio:sync-updated', 'nuvio:sync-resolved'].forEach(eventName => {
+        window.addEventListener(eventName, refreshHistoryAfterSync);
     });
 
     initialize();
