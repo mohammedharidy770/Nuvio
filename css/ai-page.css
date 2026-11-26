@@ -1317,3 +1317,38 @@ body.ai-standalone #aiSection .ai-messages {
     border-radius: 18px 18px 12px 12px;
   }
 }
+
+/* Light theme: replace the dark-only AI surfaces with theme colors. */
+:root:not([data-theme="dark"]) .ai-section {
+  --ai-chat-surface: var(--bg-card);
+  --ai-chat-surface-raised: var(--bg-tertiary);
+  --ai-chat-line: var(--border-color);
+  --ai-chat-muted: var(--text-muted);
+}
+:root:not([data-theme="dark"]) .ai-section .ai-sidebar,
+:root:not([data-theme="dark"]) .ai-section .ai-header {
+  background: var(--bg-primary);
+}
+:root:not([data-theme="dark"]) .ai-section .ai-message-assistant,
+:root:not([data-theme="dark"]) .ai-section .ai-composer,
+:root:not([data-theme="dark"]) .ai-section .ai-suggestions button {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+:root:not([data-theme="dark"]) .ai-section .ai-message-user {
+  color: #fff;
+}
+:root:not([data-theme="dark"]) .ai-section .ai-messages {
+  scrollbar-color: rgba(0,0,0,.2) transparent;
+}
+:root:not([data-theme="dark"]) .ai-settings-group,
+:root:not([data-theme="dark"]) .ai-skill-card,
+:root:not([data-theme="dark"]) .ai-memory-copy-prompt,
+:root:not([data-theme="dark"]) .ai-memory-clear {
+  background: var(--bg-tertiary);
+}
+:root:not([data-theme="dark"]) .ai-memory-group textarea {
+  background: var(--bg-input);
+}

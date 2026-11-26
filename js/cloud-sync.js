@@ -101,7 +101,7 @@
         return false;
     }
 
-    function persistSnapshot(data) {
+    function persistSnapshot(data, { keepDirtyMarker = false } = {}) {
         const app = window.app;
         if (!app || !data || typeof data !== 'object') return;
         applying = true;
@@ -134,7 +134,7 @@
             if (Array.isArray(data.aiHistory)) localStorage.setItem('nuvio_ai_history', JSON.stringify(data.aiHistory));
             if (data.aiSettings && typeof data.aiSettings === 'object') localStorage.setItem('nuvio_ai_settings', JSON.stringify(data.aiSettings));
 
-            localStorage.removeItem(DIRTY_KEY);
+            if (!keepDirtyMarker) localStorage.removeItem(DIRTY_KEY);
             app.applyTheme?.();
             app.applyLanguage?.();
             app.renderAll?.();
@@ -283,6 +283,7 @@
             revision = Number(row.revision);
             dirty = false;
             localStorage.removeItem(DIRTY_KEY);
+            if (localChannel) localChannel.postMessage({ type: 'saved', revision });
             emit('nuvio:sync-saved', { revision });
         } catch (error) {
             report(error);
@@ -405,26 +406,27 @@
         }
     }
 
+    // Another tab of this browser changed local data. That tab owns the cloud
+    // write, so only mirror its state here; writing from every tab would race
+    // on the same revision and raise false sync conflicts.
+    function mirrorLocalChange() {
+        if (applying) return;
+        persistSnapshot(localStorageSnapshot(), { keepDirtyMarker: true });
+    }
+
     if ('BroadcastChannel' in window) {
         localChannel = new BroadcastChannel(CHANNEL_NAME);
         localChannel.addEventListener('message', event => {
-            if (event.data?.type !== 'local-change' || applying) return;
-            const local = localStorageSnapshot();
-            persistSnapshot(local);
-            if (ready) {
-                dirty = true;
-                clearTimeout(timer);
-                timer = setTimeout(() => writeState(), 500);
+            if (event.data?.type === 'local-change') {
+                mirrorLocalChange();
+            } else if (event.data?.type === 'saved' && !dirty) {
+                const saved = Number(event.data.revision) || 0;
+                if (saved > revision) revision = saved;
             }
         });
     } else {
         window.addEventListener('storage', event => {
-            if (KEYS.includes(event.key) && ready && !applying) {
-                persistSnapshot(localStorageSnapshot());
-                dirty = true;
-                clearTimeout(timer);
-                timer = setTimeout(() => writeState(), 500);
-            }
+            if (KEYS.includes(event.key)) mirrorLocalChange();
         });
     }
 
@@ -440,14 +442,6 @@
         if (document.visibilityState === 'visible') syncNow();
     });
     window.addEventListener('online', syncNow);
-    window.addEventListener('storage', event => {
-        if (KEYS.includes(event.key) && ready && !applying) {
-            persistSnapshot(localStorageSnapshot());
-            dirty = true;
-            clearTimeout(timer);
-            timer = setTimeout(() => writeState(), 500);
-        }
-    });
     setInterval(() => {
         if (document.visibilityState === 'visible') syncNow();
     }, 20000);

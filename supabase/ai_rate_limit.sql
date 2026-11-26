@@ -1,7 +1,7 @@
 -- Fixed per-user AI quota: 30 requests per rolling 60-second window.
 -- Keep this source SQL aligned with the live Supabase schema and function.
--- The RPC runs as SECURITY INVOKER; authenticated table access is constrained
--- by the ownership policies below.
+-- The RPC runs as SECURITY DEFINER and only ever touches the caller's own row
+-- (auth.uid()); the table itself is not exposed to API roles.
 
 create table if not exists public.nuvio_ai_rate_limits (
     user_id uuid primary key references auth.users(id) on delete cascade,
@@ -11,39 +11,20 @@ create table if not exists public.nuvio_ai_rate_limits (
 
 alter table public.nuvio_ai_rate_limits enable row level security;
 
--- The browser/API caller must not access quota rows directly as anon.
--- The authenticated RPC can only read/write the caller's own row.
+-- Signed-in users must not touch quota rows directly, otherwise they could
+-- reset their own counter. Only the SECURITY DEFINER RPC below writes here.
 revoke all on table public.nuvio_ai_rate_limits from public, anon, authenticated;
-grant select, insert, update on table public.nuvio_ai_rate_limits to authenticated;
 
 drop policy if exists "Authenticated users can read own AI quota" on public.nuvio_ai_rate_limits;
-create policy "Authenticated users can read own AI quota"
-    on public.nuvio_ai_rate_limits
-    for select
-    to authenticated
-    using ((select auth.uid()) = user_id);
-
 drop policy if exists "Authenticated users can insert own AI quota" on public.nuvio_ai_rate_limits;
-create policy "Authenticated users can insert own AI quota"
-    on public.nuvio_ai_rate_limits
-    for insert
-    to authenticated
-    with check ((select auth.uid()) = user_id);
-
 drop policy if exists "Authenticated users can update own AI quota" on public.nuvio_ai_rate_limits;
-create policy "Authenticated users can update own AI quota"
-    on public.nuvio_ai_rate_limits
-    for update
-    to authenticated
-    using ((select auth.uid()) = user_id)
-    with check ((select auth.uid()) = user_id);
 
 drop function if exists public.consume_nuvio_ai_quota(integer, integer);
 
 create or replace function public.consume_nuvio_ai_quota()
 returns boolean
 language plpgsql
-security invoker
+security definer
 set search_path = ''
 as $function$
 declare

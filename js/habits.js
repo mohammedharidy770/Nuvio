@@ -319,7 +319,7 @@ Object.assign(NuvioApp.prototype, {
 
         return `
             <div class="habit-weekly-row">
-                <span class="habit-weekly-name">${habit.title}</span>
+                <span class="habit-weekly-name">${window.NuvioSecurity.escapeHTML(habit.title)}</span>
                 <div class="habit-weekly-days">
                     ${days.join('')}
                 </div>
