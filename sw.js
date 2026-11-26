@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nuvio-v65';
+const CACHE_NAME = 'nuvio-v66';
 const STATIC_ASSETS = [
     './',
     './index.html',

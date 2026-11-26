@@ -125,12 +125,6 @@ class NuvioApp {
             this.showSection(section);
         });
 
-        window.addEventListener('nuvio:sync-error', event => {
-            const fallback = this.settings.language === 'ar'
-                ? 'تعذرت مزامنة البيانات الآن. ستتم إعادة المحاولة تلقائيًا.'
-                : 'Sync failed. Nuvio will retry automatically.';
-            this.showToast(String(event.detail?.message || fallback), 'error');
-        });
         const firstRun = localStorage.getItem("nuvio_first_run");
         if (!firstRun) {
             // Never seed demo content automatically: app initialization can run

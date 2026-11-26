@@ -31,6 +31,8 @@
     let realtimeChannel = null;
     let pendingConflict = null;
     let localChannel = null;
+    let startupRetryTimer = null;
+    let startupRetryDelay = 5000;
 
     const emit = (name, detail = {}) =>
         window.dispatchEvent(new CustomEvent(name, { detail }));
@@ -193,17 +195,77 @@
         return data;
     }
 
-    function raiseConflict(remote) {
-        pendingConflict = remote;
-        // Notify only after the current initialization/read operation releases
-        // its busy lock; the dialog handler may immediately resolve the choice.
-        setTimeout(() => {
-            if (!pendingConflict || pendingConflict !== remote) return;
-            emit('nuvio:sync-conflict', {
-                message: 'فيه اختلاف بين بيانات هذا الجهاز والنسخة السحابية. اختر النسخة التي تريد الاحتفاظ بها.',
-                remoteVersion: remote.revision
+    function mergeCollection(remoteItems, localItems) {
+        const result = new Map();
+        const keyOf = item => {
+            if (item && typeof item === 'object') {
+                const id = item.id ?? item.taskId ?? item.noteId ?? item.recordId;
+                if (id !== undefined && id !== null) return String(id);
+            }
+            return JSON.stringify(item);
+        };
+        [...(Array.isArray(remoteItems) ? remoteItems : []), ...(Array.isArray(localItems) ? localItems : [])]
+            .forEach(item => result.set(keyOf(item), item));
+        return [...result.values()];
+    }
+
+    function mergeSnapshots(remoteState, localState) {
+        const remote = remoteState && typeof remoteState === 'object' ? remoteState : {};
+        const local = localState && typeof localState === 'object' ? localState : {};
+        const merged = { ...remote, ...local };
+        [
+            'tasks', 'focusSessions', 'notifications', 'habits', 'notes',
+            'sleepRecords', 'aiHistory'
+        ].forEach(key => {
+            merged[key] = mergeCollection(remote[key], local[key]);
+        });
+        ['settings', 'waterData', 'prayerData', 'userProfile', 'aiSettings'].forEach(key => {
+            merged[key] = { ...(remote[key] || {}), ...(local[key] || {}) };
+        });
+        merged.schemaVersion = 1;
+        return merged;
+    }
+
+    async function reconcileConflict(remote, localState = snapshot()) {
+        if (!remote || !userId) return false;
+        const backupKey = 'nuvio_sync_backup_' + userId;
+        try {
+            localStorage.setItem(backupKey, JSON.stringify({
+                createdAt: new Date().toISOString(),
+                remoteRevision: Number(remote.revision) || 0,
+                local: localState,
+                remote: remote.state || {}
+            }));
+        } catch (backupError) {
+            console.error('Nuvio could not create a conflict backup:', backupError);
+            return false;
+        }
+
+        let latest = remote;
+        let merged = mergeSnapshots(latest.state, localState);
+        for (let attempt = 0; attempt < 3; attempt++) {
+            const { data, error } = await client.rpc('nuvio_save_state', {
+                p_state: merged,
+                p_expected_revision: Number(latest.revision) || 0
             });
-        }, 0);
+            if (!error) {
+                const row = Array.isArray(data) ? data[0] : data;
+                if (!row) throw new Error('Conflict merge returned no saved row.');
+                revision = Number(row.revision);
+                dirty = false;
+                persistSnapshot(merged);
+                localStorage.setItem(OWNER_KEY, userId);
+                emit('nuvio:sync-resolved', { choice: 'merged', revision });
+                return true;
+            }
+            if (error.code !== '40001' && !String(error.message || '').includes('revision_conflict')) {
+                throw error;
+            }
+            latest = await fetchRemote();
+            if (!latest) throw new Error('Cloud state disappeared during conflict resolution.');
+            merged = mergeSnapshots(latest.state, merged);
+        }
+        throw new Error('Sync conflict kept changing during automatic reconciliation.');
     }
 
     async function applyRemoteIfNewer() {
@@ -217,7 +279,8 @@
             const remote = await fetchRemote();
             if (!remote || Number(remote.revision) <= revision) return;
             if (dirty) {
-                raiseConflict(remote);
+                const resolved = await reconcileConflict(remote, snapshot());
+                if (!resolved) throw new Error('Automatic conflict reconciliation could not preserve both copies.');
                 return;
             }
             persistSnapshot(remote.state);
@@ -245,8 +308,9 @@
     }
 
     function report(error) {
-        console.error('Nuvio sync failed:', error);
-        emit('nuvio:sync-error', { message: 'تعذرت مزامنة البيانات الآن. ستتم إعادة المحاولة تلقائيًا.' });
+        // Transient network failures are logged quietly; repeated popups interrupt
+        // the app while the existing online/focus/interval retry mechanisms recover.
+        console.warn('Nuvio sync will retry:', error);
     }
 
     async function syncNow() {
@@ -273,7 +337,7 @@
             if (error) {
                 if (error.code === '40001' || String(error.message || '').includes('revision_conflict')) {
                     const remote = await fetchRemote();
-                    if (remote) raiseConflict(remote);
+                    if (remote) await reconcileConflict(remote, data);
                     return;
                 }
                 throw error;
@@ -332,6 +396,9 @@
             pendingConflict = null;
             generation += 1;
             clearTimeout(timer);
+            clearTimeout(startupRetryTimer);
+            startupRetryTimer = null;
+            startupRetryDelay = 5000;
             if (realtimeChannel) {
                 client.removeChannel(realtimeChannel);
                 realtimeChannel = null;
@@ -389,9 +456,9 @@
                     localStorage.removeItem(DIRTY_KEY);
                     emit('nuvio:sync-saved', { revision });
                 } else if (localHasData && remoteHasData && !same(local, remote.state)) {
-                    // A conflict is real only when both copies contain user data
-                    // and their contents differ.
-                    raiseConflict(remote);
+                    // Keep both copies in a local backup, then merge without prompting.
+                    const resolved = await reconcileConflict(remote, local);
+                    if (!resolved) throw new Error('Automatic conflict reconciliation could not preserve both copies.');
                 } else {
                     persistSnapshot(remote.state || {});
                     dirty = false;
@@ -402,6 +469,9 @@
             localStorage.setItem(OWNER_KEY, nextUserId);
             ready = true;
 
+            clearTimeout(startupRetryTimer);
+            startupRetryTimer = null;
+            startupRetryDelay = 5000;
             if (realtimeChannel) await client.removeChannel(realtimeChannel);
             realtimeChannel = client.channel('nuvio-state-v1-' + nextUserId)
                 .on('postgres_changes', {
@@ -420,6 +490,12 @@
         } catch (error) {
             ready = false;
             report(error);
+            clearTimeout(startupRetryTimer);
+            const retryDelay = startupRetryDelay;
+            startupRetryDelay = Math.min(startupRetryDelay * 2, 60000);
+            startupRetryTimer = setTimeout(() => {
+                if (userId === nextUserId && !ready) start(session);
+            }, retryDelay);
         }
     }
 
