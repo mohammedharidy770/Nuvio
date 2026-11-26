@@ -33,6 +33,8 @@
     let localChannel = null;
     let startupRetryTimer = null;
     let startupRetryDelay = 5000;
+    // Incremented for every local mutation so an in-flight request cannot mark newer edits as saved.
+    let changeVersion = 0;
 
     const emit = (name, detail = {}) =>
         window.dispatchEvent(new CustomEvent(name, { detail }));
@@ -226,7 +228,7 @@
         return merged;
     }
 
-    async function reconcileConflict(remote, localState = snapshot()) {
+    async function reconcileConflict(remote, localState = snapshot(), capturedVersion = changeVersion) {
         if (!remote || !userId) return false;
         const backupKey = 'nuvio_sync_backup_' + userId;
         try {
@@ -252,8 +254,16 @@
                 const row = Array.isArray(data) ? data[0] : data;
                 if (!row) throw new Error('Conflict merge returned no saved row.');
                 revision = Number(row.revision);
-                dirty = false;
-                persistSnapshot(merged);
+                if (capturedVersion === changeVersion) {
+                    dirty = false;
+                    localStorage.removeItem(DIRTY_KEY);
+                    persistSnapshot(merged);
+                } else {
+                    // New edits happened while the merge was being saved. Keep the current
+                    // in-memory/localStorage copy and immediately save it against this revision.
+                    dirty = true;
+                    try { localStorage.setItem(DIRTY_KEY, String(Date.now())); } catch {}
+                }
                 localStorage.setItem(OWNER_KEY, userId);
                 emit('nuvio:sync-resolved', { choice: 'merged', revision });
                 return true;
@@ -275,11 +285,12 @@
             return;
         }
         busy = true;
+        const observedVersion = changeVersion;
         try {
             const remote = await fetchRemote();
             if (!remote || Number(remote.revision) <= revision) return;
-            if (dirty) {
-                const resolved = await reconcileConflict(remote, snapshot());
+            if (dirty || observedVersion !== changeVersion) {
+                const resolved = await reconcileConflict(remote, snapshot(), changeVersion);
                 if (!resolved) throw new Error('Automatic conflict reconciliation could not preserve both copies.');
                 return;
             }
@@ -329,6 +340,7 @@
         const currentUser = userId;
         const currentGeneration = generation;
         const data = snapshot();
+        const savedVersion = changeVersion;
         try {
             const { data: saved, error } = await client.rpc('nuvio_save_state', {
                 p_state: data,
@@ -337,7 +349,7 @@
             if (error) {
                 if (error.code === '40001' || String(error.message || '').includes('revision_conflict')) {
                     const remote = await fetchRemote();
-                    if (remote) await reconcileConflict(remote, data);
+                    if (remote) await reconcileConflict(remote, data, savedVersion);
                     return;
                 }
                 throw error;
@@ -346,10 +358,17 @@
             const row = Array.isArray(saved) ? saved[0] : saved;
             if (!row) throw new Error('The save RPC returned no row.');
             revision = Number(row.revision);
-            dirty = false;
-            localStorage.removeItem(DIRTY_KEY);
-            if (localChannel) localChannel.postMessage({ type: 'saved', revision });
-            emit('nuvio:sync-saved', { revision });
+            if (savedVersion === changeVersion) {
+                dirty = false;
+                localStorage.removeItem(DIRTY_KEY);
+                if (localChannel) localChannel.postMessage({ type: 'saved', revision });
+                emit('nuvio:sync-saved', { revision });
+            } else {
+                // Do not clear a newer dirty marker: flushPendingWork will persist the latest state.
+                dirty = true;
+                try { localStorage.setItem(DIRTY_KEY, String(Date.now())); } catch {}
+                pendingWrite = true;
+            }
         } catch (error) {
             report(error);
         } finally {
@@ -360,6 +379,7 @@
 
     function scheduleSave() {
         if (applying) return;
+        changeVersion += 1;
         dirty = true;
         try { localStorage.setItem(DIRTY_KEY, String(Date.now())); } catch (error) {
             console.warn('Nuvio could not store the dirty marker:', error);
