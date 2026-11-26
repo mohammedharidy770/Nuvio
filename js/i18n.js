@@ -459,6 +459,7 @@ Object.assign(NuvioApp.prototype, {
         const isRTL = lang === 'ar';
 
         document.documentElement.lang = lang;
+        document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
         const aiSection = document.getElementById('aiSection');
         if (aiSection) aiSection.dir = isRTL ? 'rtl' : 'ltr';
 
@@ -531,6 +532,7 @@ Object.assign(NuvioApp.prototype, {
             if (isRTL) {
                 m.style.right = '0';
                 m.style.left = 'auto';
+                m.style.transform = m.classList.contains('active') ? 'translateX(0)' : 'translateX(100%)';
                 m.style.borderLeft = '1px solid var(--border-color)';
                 m.style.borderRight = 'none';
             } else {
