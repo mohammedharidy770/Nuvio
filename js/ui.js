@@ -288,6 +288,10 @@ Object.assign(NuvioApp.prototype, {
             this.renderFocusStats();
         }
 
+        const nextUrl = section === 'ai'
+            ? './index.html?view=ai'
+            : './index.html?section=' + encodeURIComponent(section);
+        window.history.replaceState(null, '', nextUrl);
         window.scrollTo(0, 0);
     },
 
