@@ -31,6 +31,8 @@
     let realtimeChannel = null;
     let pendingConflict = null;
     let localChannel = null;
+    let startupRetryTimer = null;
+    let startupRetryDelay = 5000;
 
     const emit = (name, detail = {}) =>
         window.dispatchEvent(new CustomEvent(name, { detail }));
@@ -228,15 +230,12 @@
         if (!remote || !userId) return false;
         const backupKey = 'nuvio_sync_backup_' + userId;
         try {
-            const previous = readJSON(backupKey, []);
-            const backups = Array.isArray(previous) ? previous : [];
-            backups.push({
+            localStorage.setItem(backupKey, JSON.stringify({
                 createdAt: new Date().toISOString(),
                 remoteRevision: Number(remote.revision) || 0,
                 local: localState,
                 remote: remote.state || {}
-            });
-            localStorage.setItem(backupKey, JSON.stringify(backups.slice(-5)));
+            }));
         } catch (backupError) {
             console.error('Nuvio could not create a conflict backup:', backupError);
             return false;
@@ -280,7 +279,8 @@
             const remote = await fetchRemote();
             if (!remote || Number(remote.revision) <= revision) return;
             if (dirty) {
-                await reconcileConflict(remote, snapshot());
+                const resolved = await reconcileConflict(remote, snapshot());
+                if (!resolved) throw new Error('Automatic conflict reconciliation could not preserve both copies.');
                 return;
             }
             persistSnapshot(remote.state);
@@ -396,6 +396,9 @@
             pendingConflict = null;
             generation += 1;
             clearTimeout(timer);
+            clearTimeout(startupRetryTimer);
+            startupRetryTimer = null;
+            startupRetryDelay = 5000;
             if (realtimeChannel) {
                 client.removeChannel(realtimeChannel);
                 realtimeChannel = null;
@@ -454,7 +457,8 @@
                     emit('nuvio:sync-saved', { revision });
                 } else if (localHasData && remoteHasData && !same(local, remote.state)) {
                     // Keep both copies in a local backup, then merge without prompting.
-                    await reconcileConflict(remote, local);
+                    const resolved = await reconcileConflict(remote, local);
+                    if (!resolved) throw new Error('Automatic conflict reconciliation could not preserve both copies.');
                 } else {
                     persistSnapshot(remote.state || {});
                     dirty = false;
@@ -465,6 +469,9 @@
             localStorage.setItem(OWNER_KEY, nextUserId);
             ready = true;
 
+            clearTimeout(startupRetryTimer);
+            startupRetryTimer = null;
+            startupRetryDelay = 5000;
             if (realtimeChannel) await client.removeChannel(realtimeChannel);
             realtimeChannel = client.channel('nuvio-state-v1-' + nextUserId)
                 .on('postgres_changes', {
@@ -483,6 +490,12 @@
         } catch (error) {
             ready = false;
             report(error);
+            clearTimeout(startupRetryTimer);
+            const retryDelay = startupRetryDelay;
+            startupRetryDelay = Math.min(startupRetryDelay * 2, 60000);
+            startupRetryTimer = setTimeout(() => {
+                if (userId === nextUserId && !ready) start(session);
+            }, retryDelay);
         }
     }
 
